@@ -7,11 +7,13 @@ import { ArrowRight, Building2, BarChart3, MessageSquare, Sparkles } from 'lucid
 
 export default async function HomePage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession()
 
-  if (!user) {
+  if (!session?.user) {
     redirect('/auth/login')
   }
+  
+  const user = session.user
 
   // Get user profile
   const { data: profile } = await supabase
