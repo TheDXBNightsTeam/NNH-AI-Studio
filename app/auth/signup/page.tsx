@@ -52,7 +52,7 @@ export default function SignUpPage() {
         },
       })
       if (error) throw error
-      router.push("/auth/signup-success")
+      router.push("/home")
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
