@@ -78,37 +78,61 @@ export default function SignUpPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSignUp} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-foreground">
-                  Full Name
-                </Label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  placeholder="John Doe"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="bg-secondary border-primary/30 text-foreground placeholder:text-muted-foreground focus:border-primary"
-                  disabled={isLoading}
-                />
+            <div className="space-y-5">
+              {/* Google OAuth */}
+              <Button
+                type="button"
+                className="w-full bg-white text-black hover:bg-white/90"
+                onClick={async () => {
+                  const supabase = createClient()
+                  const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: { redirectTo: `${window.location.origin}/auth/callback` }
+                  })
+                  if (error) console.error(error)
+                }}
+              >
+                Continue with Google
+              </Button>
+
+              {/* Divider */}
+              <div className="flex items-center gap-4">
+                <div className="h-px bg-primary/20 flex-1" />
+                <span className="text-xs text-muted-foreground">or create with email</span>
+                <div className="h-px bg-primary/20 flex-1" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-foreground">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-secondary border-primary/30 text-foreground placeholder:text-muted-foreground focus:border-primary"
-                  disabled={isLoading}
-                />
-              </div>
+
+              <form onSubmit={handleSignUp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fullName" className="text-foreground">
+                    Full Name
+                  </Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="John Doe"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="bg-secondary border-primary/30 text-foreground placeholder:text-muted-foreground focus:border-primary"
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-foreground">
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="bg-secondary border-primary/30 text-foreground placeholder:text-muted-foreground focus:border-primary"
+                    disabled={isLoading}
+                  />
+                </div>
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-foreground">
                   Password
@@ -160,16 +184,20 @@ export default function SignUpPage() {
                   "Create Account"
                 )}
               </Button>
-              <div className="text-center text-sm text-muted-foreground">
-                Already have an account?{" "}
-                <Link
-                  href="/auth/login"
-                  className="text-primary hover:text-accent underline underline-offset-4 transition-colors"
-                >
-                  Sign in
-                </Link>
-              </div>
-            </form>
+                <div className="text-center text-sm text-muted-foreground">
+                  By signing up you agree to our <Link href="/terms" className="underline">Terms</Link> and <Link href="/privacy" className="underline">Privacy</Link>.
+                </div>
+                <div className="text-center text-sm text-muted-foreground">
+                  Already have an account?{" "}
+                  <Link
+                    href="/auth/login"
+                    className="text-primary hover:text-accent underline underline-offset-4 transition-colors"
+                  >
+                    Sign in
+                  </Link>
+                </div>
+              </form>
+            </div>
           </CardContent>
         </Card>
       </motion.div>
