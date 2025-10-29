@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const SCOPES = [
@@ -47,25 +47,47 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 30);
     
-    // Save state to database
-    const { error: stateError } = await supabase
+    // Save state to database using admin client to bypass RLS
+    // (We've already authenticated the user above with getUser())
+    console.log('[Create Auth URL] Attempting to insert state:', {
+      state,
+      user_id: user.id,
+      expires_at: expiresAt.toISOString(),
+      used: false,
+    });
+    
+    const adminClient = createAdminClient();
+    const { data: insertData, error: stateError } = await adminClient
       .from('oauth_states')
       .insert({
         state,
         user_id: user.id,
         expires_at: expiresAt.toISOString(),
         used: false,
-      });
+      })
+      .select();
       
     if (stateError) {
-      console.error('[Create Auth URL] Error saving state:', stateError);
+      console.error('[Create Auth URL] ===== ERROR SAVING STATE =====');
+      console.error('[Create Auth URL] Full error object:', JSON.stringify(stateError, null, 2));
+      console.error('[Create Auth URL] Error code:', stateError.code);
+      console.error('[Create Auth URL] Error message:', stateError.message);
+      console.error('[Create Auth URL] Error details:', stateError.details);
+      console.error('[Create Auth URL] Error hint:', stateError.hint);
+      console.error('[Create Auth URL] ================================');
+      
       return NextResponse.json(
-        { error: 'Failed to save OAuth state' },
+        { 
+          error: 'Failed to save OAuth state', 
+          message: stateError.message,
+          code: stateError.code,
+          hint: stateError.hint
+        },
         { status: 500 }
       );
     }
     
-    console.log('[Create Auth URL] State saved successfully');
+    console.log('[Create Auth URL] State saved successfully:', insertData);
     
     // Build OAuth URL
     const authUrl = new URL(GOOGLE_AUTH_URL);
