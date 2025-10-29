@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, MapPin, MessageSquare, Sparkles, BarChart3, Settings, LogOut } from "lucide-react"
+import { LayoutDashboard, MapPin, MessageSquare, Users, Sparkles, BarChart3, Settings, LogOut } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
@@ -12,6 +12,7 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Locations", href: "/locations", icon: MapPin },
   { name: "Reviews", href: "/reviews", icon: MessageSquare },
+  { name: "Accounts", href: "/accounts", icon: Users },
   { name: "AI Studio", href: "/ai-studio", icon: Sparkles },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Settings", href: "/settings", icon: Settings },
