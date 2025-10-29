@@ -27,6 +27,7 @@ export default function AccountsPage() {
   const [syncing, setSyncing] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
+  const [autoSyncTriggered, setAutoSyncTriggered] = useState(false)
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -34,7 +35,7 @@ export default function AccountsPage() {
     try {
       setLoading(true)
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) return []
 
       const { data: accountsData, error } = await supabase
         .from('gmb_accounts')
@@ -61,6 +62,7 @@ export default function AccountsPage() {
       )
 
       setAccounts(accountsWithLocations)
+      return accountsWithLocations
     } catch (error) {
       console.error('Error fetching accounts:', error)
       toast({
@@ -68,13 +70,96 @@ export default function AccountsPage() {
         description: 'Failed to fetch accounts',
         variant: 'destructive'
       })
+      return []
     } finally {
       setLoading(false)
     }
   }
 
+  const handleAutoSync = async (accountsToSync: GmbAccount[]) => {
+    if (!accountsToSync || accountsToSync.length === 0) {
+      console.log('No accounts to auto-sync')
+      return
+    }
+    
+    // Find the most recently created active account
+    const activeAccounts = accountsToSync.filter(a => a.status === 'active' || a.is_active === true)
+    if (activeAccounts.length === 0) {
+      console.log('No active accounts found for auto-sync')
+      return
+    }
+    
+    const mostRecentAccount = activeAccounts[0] // Already sorted by created_at desc
+    
+    console.log('Auto-triggering sync for newly connected account:', mostRecentAccount.id)
+    
+    toast({
+      title: 'Account Connected Successfully!',
+      description: 'Starting automatic sync of your Google My Business data...'
+    })
+    
+    // Trigger sync for the newly connected account
+    await handleSync(mostRecentAccount.id, true)
+  }
+
   useEffect(() => {
-    fetchAccounts()
+    // Check for success/error hash parameters from OAuth callback
+    const checkHashAndSync = async () => {
+      const hash = window.location.hash
+      
+      if (hash.includes('success=true') && !autoSyncTriggered) {
+        console.log('OAuth success detected, fetching accounts and triggering sync...')
+        setAutoSyncTriggered(true)
+        
+        // Remove the hash from URL to prevent re-triggering
+        window.history.replaceState(null, '', window.location.pathname)
+        
+        // Fetch accounts first, then trigger sync for the newly connected one
+        const latestAccounts = await fetchAccounts()
+        
+        // Small delay to ensure the account data is fully saved in database
+        setTimeout(() => {
+          handleAutoSync(latestAccounts)
+        }, 1500)
+      } else if (hash.includes('error=')) {
+        // Extract and show error message
+        const errorMatch = hash.match(/error=([^&]+)/)
+        if (errorMatch) {
+          const errorMessage = decodeURIComponent(errorMatch[1])
+          toast({
+            title: 'Connection Failed',
+            description: errorMessage || 'Failed to connect Google account',
+            variant: 'destructive'
+          })
+          // Remove the hash
+          window.history.replaceState(null, '', window.location.pathname)
+        }
+        
+        fetchAccounts()
+      } else if (hash.includes('autosync=')) {
+        // Support for autosync parameter if needed
+        const autoSyncMatch = hash.match(/autosync=([^&]+)/)
+        if (autoSyncMatch) {
+          const accountId = decodeURIComponent(autoSyncMatch[1])
+          console.log('Auto-sync requested for account:', accountId)
+          setAutoSyncTriggered(true)
+          
+          // Remove the hash
+          window.history.replaceState(null, '', window.location.pathname)
+          
+          // Fetch accounts and trigger sync
+          const latestAccounts = await fetchAccounts()
+          const accountToSync = latestAccounts.find(a => a.id === accountId)
+          if (accountToSync) {
+            await handleSync(accountId, true)
+          }
+        }
+      } else {
+        fetchAccounts()
+      }
+    }
+    
+    checkHashAndSync()
   }, [])
 
   const handleConnect = async () => {
@@ -120,11 +205,13 @@ export default function AccountsPage() {
     }
   }
 
-  const handleSync = async (accountId: string) => {
+  const handleSync = async (accountId: string, isAutoSync = false) => {
     setSyncing(accountId)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('No session')
+
+      console.log(`${isAutoSync ? 'Auto-syncing' : 'Manually syncing'} account ${accountId}`)
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/gmb-sync`,
@@ -140,12 +227,15 @@ export default function AccountsPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
+        console.error('Sync API error:', errorData)
         throw new Error(errorData.error || 'Sync failed')
       }
 
       const data = await response.json()
+      console.log('Sync successful:', data)
+      
       toast({
-        title: 'Success',
+        title: isAutoSync ? 'Auto-Sync Complete!' : 'Sync Successful!',
         description: `Synced ${data.counts?.locations || 0} locations, ${data.counts?.reviews || 0} reviews, ${data.counts?.media || 0} media`
       })
 

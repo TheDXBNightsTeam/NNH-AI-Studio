@@ -131,13 +131,16 @@ Deno.serve(async (req: Request) => {
     const gmbAccountsData = await gmbAccountsResponse.json();
     const gmbAccounts = gmbAccountsData.accounts || [];
 
+    console.log(`Found ${gmbAccounts.length} GMB accounts for user ${userId}`);
     if (gmbAccounts.length === 0) {
       console.warn("No GMB accounts found for user");
     }
 
     for (const gmbAccount of gmbAccounts) {
       const accountName = gmbAccount.accountName || gmbAccount.name;
-      const accountId = gmbAccount.name; // هذا هو (e.g., "accounts/12345")
+      const accountId = gmbAccount.name; // e.g., "accounts/12345"
+      
+      console.log(`Processing GMB account: ${accountName} (${accountId}) for user ${userId}`);
 
       const { data: existingAccount } = await supabase
         .from("gmb_accounts")
@@ -149,89 +152,68 @@ Deno.serve(async (req: Request) => {
       let savedAccountId: string;
 
       if (existingAccount) {
-        // Try with status first
-        let { error: updateError } = await supabase
+        console.log(`Updating existing account ${existingAccount.id} for user ${userId}`);
+        
+        // Always set both is_active and user_id to ensure compatibility
+        const updateData = {
+          user_id: userId,
+          account_name: accountName,
+          account_id: accountId,
+          email: userInfo.email,
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token ?? existingAccount.refresh_token,
+          token_expires_at: tokenExpiresAt.toISOString(),
+          is_active: true,
+          last_sync: new Date().toISOString(),
+        };
+        
+        const { error: updateError } = await supabase
           .from("gmb_accounts")
-          .update({
-            account_name: accountName,
-            account_id: accountId,
-            email: userInfo.email,
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token ?? existingAccount.refresh_token,
-            token_expires_at: tokenExpiresAt.toISOString(),
-            status: "active",
-            last_sync: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq("id", existingAccount.id);
 
-        // Fallback if 'status' column is missing
         if (updateError) {
-          const fb = await supabase
-            .from("gmb_accounts")
-            .update({
-              account_name: accountName,
-              account_id: accountId,
-              email: userInfo.email,
-              access_token: tokens.access_token,
-              refresh_token: tokens.refresh_token ?? existingAccount.refresh_token,
-              token_expires_at: tokenExpiresAt.toISOString(),
-              is_active: true,
-              last_sync: new Date().toISOString(),
-            })
-            .eq("id", existingAccount.id);
-          if (fb.error) {
-            console.error("Error updating account:", fb.error);
-            continue;
-          }
+          console.error("Error updating account:", updateError);
+          throw new Error(`Failed to update account: ${updateError.message}`);
         }
+        
+        console.log(`Successfully updated account ${existingAccount.id} as active`);
         savedAccountId = existingAccount.id;
       } else {
-        // Try insert with status first
-        let insert = await supabase
+        console.log(`Creating new account for user ${userId}`);
+        
+        // Always insert with both is_active: true and user_id
+        const insertData = {
+          user_id: userId,
+          account_name: accountName,
+          account_id: accountId,
+          email: userInfo.email,
+          google_account_id: userInfo.id,
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          token_expires_at: tokenExpiresAt.toISOString(),
+          is_active: true,
+          last_sync: null,
+          created_at: new Date().toISOString(),
+        };
+        
+        const { data: insertedAccount, error: insertError } = await supabase
           .from("gmb_accounts")
-          .insert({
-            user_id: userId,
-            account_name: accountName,
-            account_id: accountId,
-            email: userInfo.email,
-            google_account_id: userInfo.id,
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
-            token_expires_at: tokenExpiresAt.toISOString(),
-            status: "active",
-          })
+          .insert(insertData)
           .select("id")
           .single();
 
-        if (insert.error || !insert.data) {
-          // Fallback insert with is_active
-          const fb = await supabase
-            .from("gmb_accounts")
-            .insert({
-              user_id: userId,
-              account_name: accountName,
-              account_id: accountId,
-              email: userInfo.email,
-              google_account_id: userInfo.id,
-              access_token: tokens.access_token,
-              refresh_token: tokens.refresh_token,
-              token_expires_at: tokenExpiresAt.toISOString(),
-              is_active: true,
-            })
-            .select("id")
-            .single();
-          if (fb.error || !fb.data) {
-            console.error("Error inserting account:", insert.error || fb.error);
-            continue;
-          }
-          savedAccountId = fb.data.id;
-        } else {
-          savedAccountId = insert.data.id;
+        if (insertError || !insertedAccount) {
+          console.error("Error inserting account:", insertError);
+          throw new Error(`Failed to insert account: ${insertError?.message || 'Unknown error'}`);
         }
+        
+        console.log(`Successfully created account ${insertedAccount.id} for user ${userId}`);
+        savedAccountId = insertedAccount.id;
       }
 
-      // *** هذا هو السطر الذي تم إصلاحه ***
-      // تم استخدام الرابط الكامل لـ Google API
+      // Fetch and save locations for this account
+      console.log(`Fetching locations for account ${accountId}`);
       const locationsResponse = await fetch(
         `https://mybusinessbusinessinformation.googleapis.com/v1/${accountId}/locations?readMask=name,title,storefrontAddress,phoneNumbers,websiteUri,categories`,
         {
@@ -244,6 +226,8 @@ Deno.serve(async (req: Request) => {
       if (locationsResponse.ok) {
         const locationsData = await locationsResponse.json();
         const locations = locationsData.locations || [];
+        
+        console.log(`Found ${locations.length} locations for account ${accountId}`);
 
         for (const location of locations) {
           const { data: existingLocation } = await supabase
@@ -255,6 +239,7 @@ Deno.serve(async (req: Request) => {
 
           const locationData = {
             gmb_account_id: savedAccountId,
+            user_id: userId, // Always include user_id
             location_name: location.title || "Unnamed Location",
             location_id: location.name,
             address: location.storefrontAddress
@@ -265,19 +250,34 @@ Deno.serve(async (req: Request) => {
             website: location.websiteUri || null,
             is_active: true,
             metadata: location,
+            updated_at: new Date().toISOString(),
           };
 
           if (existingLocation) {
-            await supabase
+            const { error: updateLocationError } = await supabase
               .from("gmb_locations")
               .update(locationData)
               .eq("id", existingLocation.id);
+              
+            if (updateLocationError) {
+              console.error(`Error updating location ${location.name}:`, updateLocationError);
+            } else {
+              console.log(`Updated location ${location.name}`);
+            }
           } else {
-            await supabase
+            const { error: insertLocationError } = await supabase
               .from("gmb_locations")
               .insert(locationData);
+              
+            if (insertLocationError) {
+              console.error(`Error inserting location ${location.name}:`, insertLocationError);
+            } else {
+              console.log(`Inserted new location ${location.name}`);
+            }
           }
         }
+      } else {
+        console.error(`Failed to fetch locations for account ${accountId}:`, await locationsResponse.text());
       }
     }
 
