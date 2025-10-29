@@ -178,19 +178,35 @@ export async function GET(request: NextRequest) {
       
       console.log(`[OAuth Callback] Processing GMB account: ${accountName} (${accountId})`);
       
-      // Check if account already exists
+      // Check if this specific GMB account already exists for this user
       const { data: existingAccount } = await supabase
         .from('gmb_accounts')
-        .select('id, refresh_token')
+        .select('id, refresh_token, user_id')
         .eq('user_id', userId)
         .eq('account_id', accountId)
         .maybeSingle();
+      
+      // Security check: prevent cross-user takeover via google_account_id
+      if (!existingAccount) {
+        const { data: otherUserAccount } = await supabase
+          .from('gmb_accounts')
+          .select('user_id, account_id')
+          .eq('account_id', accountId)
+          .maybeSingle();
+          
+        if (otherUserAccount && otherUserAccount.user_id !== userId) {
+          console.error('[OAuth Callback] Security violation: GMB account already linked to different user');
+          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+          return NextResponse.redirect(
+            `${baseUrl}/accounts#error=${encodeURIComponent('This Google My Business account is already linked to another user')}`
+          );
+        }
+      }
         
       if (existingAccount) {
         console.log(`[OAuth Callback] Updating existing account ${existingAccount.id}`);
         
         const updateData = {
-          user_id: userId,
           account_name: accountName,
           account_id: accountId,
           email: userInfo.email,
@@ -227,7 +243,6 @@ export async function GET(request: NextRequest) {
           token_expires_at: tokenExpiresAt.toISOString(),
           is_active: true,
           last_sync: null,
-          created_at: new Date().toISOString(),
         };
         
         const { data: insertedAccount, error: insertError } = await supabase
