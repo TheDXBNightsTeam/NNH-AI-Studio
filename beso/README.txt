@@ -1,13 +1,16 @@
 ========================================
-نسخة احتياطية - ملفات Google My Business
+نسخة احتياطية - ملفات Google My Business + Auth
 GMB Platform Backup
 تاريخ النسخ: 29 أكتوبر 2025
+آخر تحديث: 29 أكتوبر 2025 (إضافة صفحات Auth)
 ========================================
 
 📋 محتويات هذا المجلد:
 ----------------------
 
-هذا المجلد يحتوي على نسخة احتياطية كاملة من جميع الملفات المتعلقة بـ Google و Google My Business في المشروع.
+هذا المجلد يحتوي على نسخة احتياطية كاملة من جميع الملفات المتعلقة بـ:
+- Google و Google My Business
+- صفحات تسجيل الدخول والتسجيل (Authentication)
 
 📁 الهيكل:
 -----------
@@ -42,12 +45,20 @@ GMB Platform Backup
        ├── review-card.tsx
        └── reply-dialog.tsx
 
-5. app/ (4 ملفات)
+5. app/ (11 ملفات)
    ├── dashboard/
    │   ├── accounts/page.tsx
    │   ├── locations/page.tsx
    │   └── reviews/page.tsx
-   └── auth/callback/route.ts
+   └── auth/
+       ├── login/page.tsx              → صفحة تسجيل الدخول
+       ├── signup/page.tsx             → صفحة إنشاء حساب
+       ├── reset/page.tsx              → إعادة تعيين كلمة المرور
+       ├── update-password/page.tsx    → تحديث كلمة المرور
+       ├── signup-success/page.tsx     → رسالة نجاح التسجيل
+       ├── error/page.tsx              → صفحة الأخطاء
+       ├── callback/route.ts           → OAuth Callback
+       └── signout/route.ts            → تسجيل الخروج
 
 6. supabase/migrations/ (4 ملفات SQL)
    ├── 20251029_create_oauth_tables.sql
@@ -61,14 +72,30 @@ GMB Platform Backup
 ========================================
 📊 الإحصائيات:
 --------------
-إجمالي الملفات: ~27 ملف
-API Routes: 3
-Server Actions: 4
-Hooks: 2
-Components: 7
-Pages: 4
-Database Files: 5
-Types: 1
+إجمالي الملفات: ~34 ملف
+
+تصنيف حسب النوع:
+- API Routes: 3
+- Server Actions: 4
+- Hooks: 2
+- Components: 7
+- GMB Pages: 3
+- Auth Pages: 7 ✨ (جديد)
+- Database Files: 5
+- Types: 1
+- README: 1
+
+========================================
+🔐 صفحات Authentication:
+------------------------
+✅ login/page.tsx              - تسجيل دخول (Email/Phone/Google)
+✅ signup/page.tsx             - إنشاء حساب جديد
+✅ reset/page.tsx              - إعادة تعيين كلمة المرور
+✅ update-password/page.tsx    - تحديث كلمة المرور
+✅ signup-success/page.tsx     - رسالة نجاح
+✅ error/page.tsx              - صفحة الأخطاء
+✅ callback/route.ts           - OAuth callback handler
+✅ signout/route.ts            - API تسجيل الخروج
 
 ========================================
 ⚠️ ملاحظات مهمة:
@@ -76,13 +103,19 @@ Types: 1
 1. هذه نسخة احتياطية فقط - الملفات الأصلية موجودة في مكانها
 2. يمكنك حذف هذا المجلد في أي وقت
 3. لا تستخدم هذه الملفات مباشرة - هي للرجوع فقط
+4. جميع صفحات Auth تدعم: Email, Phone, Google OAuth
 
 ========================================
 🔑 Environment Variables المطلوبة:
 ----------------------------------
-GOOGLE_CLIENT_ID
-GOOGLE_CLIENT_SECRET
-GOOGLE_REDIRECT_URI
-SUPABASE_SERVICE_ROLE_KEY
+Google OAuth:
+  - GOOGLE_CLIENT_ID
+  - GOOGLE_CLIENT_SECRET
+  - GOOGLE_REDIRECT_URI
+
+Supabase:
+  - NEXT_PUBLIC_SUPABASE_URL
+  - NEXT_PUBLIC_SUPABASE_ANON_KEY
+  - SUPABASE_SERVICE_ROLE_KEY
 
 ========================================
