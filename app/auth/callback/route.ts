@@ -29,6 +29,16 @@ export async function GET(request: Request) {
   const state = requestUrl.searchParams.get('state')
   const baseUrl = getOriginFromRequest(request)
 
+  // Handle OAuth callback from Google (GMB) - check state FIRST
+  // Google OAuth sends both code AND state, so we check state first
+  if (state) {
+    // GMB OAuth is handled by /api/gmb/oauth-callback directly
+    // This route should not be used for GMB OAuth
+    // Redirect to the Next.js API route instead
+    return NextResponse.redirect(`${baseUrl}/api/gmb/oauth-callback${requestUrl.search}`)
+  }
+
+  // Handle Supabase auth callback (only code, no state)
   if (code) {
     const supabase = await createClient()
     
@@ -39,44 +49,8 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${baseUrl}/auth/login?error=${encodeURIComponent(error.message)}`)
     }
 
-    // Redirect to accounts page with success
-    return NextResponse.redirect(`${baseUrl}/accounts#success=true`)
-  }
-
-  // Handle OAuth callback from Google
-  if (state) {
-    const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    
-    if (!session) {
-      return NextResponse.redirect(`${baseUrl}/auth/login?error=no_session`)
-    }
-
-    // Call google-oauth-callback Edge Function
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/google-oauth-callback${requestUrl.search}`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
-          }
-        }
-      )
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        return NextResponse.redirect(
-          `${baseUrl}/accounts#error=${encodeURIComponent(errorData.error || 'OAuth callback failed')}`
-        )
-      }
-
-      return NextResponse.redirect(`${baseUrl}/accounts#success=true&autosync=true`)
-    } catch (error: any) {
-      return NextResponse.redirect(
-        `${baseUrl}/accounts#error=${encodeURIComponent(error.message || 'OAuth callback failed')}`
-      )
-    }
+    // Redirect to dashboard with success
+    return NextResponse.redirect(`${baseUrl}/dashboard`)
   }
 
   return NextResponse.redirect(baseUrl)

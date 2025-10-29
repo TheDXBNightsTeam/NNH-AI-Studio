@@ -16,6 +16,10 @@ All server-side mutations are isolated in dedicated server action files within `
 
 Input validation uses Zod schemas defined in `/lib/validations/` to ensure type-safe input constraints and prevent data corruption.
 
+### Database Schema Management
+
+The project uses Supabase PostgreSQL with direct SQL migrations stored in `/supabase/migrations/`. TypeScript interfaces are defined in `/lib/types/database.ts` to match the database schema. There is no ORM layer - database interactions use the Supabase client directly.
+
 ### Frontend Architecture
 
 The frontend is built with Next.js 14+ using the App Router, React Server Components (RSC), and TypeScript. Styling is managed with Tailwind CSS and a custom OKLCH color system, with dark mode as default. UI components leverage Radix UI primitives and shadcn/ui (New York style variant), with Framer Motion for animations.
