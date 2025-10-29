@@ -45,7 +45,7 @@
 
 ---
 
-## 📋 ما المتبقي (3 خطوات):
+## 📋 ما المتبقي (خطوة واحدة فقط!):
 
 ### الخطوة 1: تشغيل Profile Trigger ✅ **مكتملة**
 **الهدف:** إنشاء profile تلقائياً لكل مستخدم جديد يسجل
@@ -57,62 +57,23 @@
 
 ---
 
-### الخطوة 2: نشر Supabase Edge Functions ⏳
+### الخطوة 2: نشر Supabase Edge Functions ✅ **مكتملة**
 **الهدف:** نشر الـ 6 وظائف الخلفية للتطبيق
 
-**الوظائف المطلوبة:**
-1. `ai-generate` - توليد محتوى بالذكاء الاصطناعي
-2. `account-disconnect` - فصل حساب Google
-3. `create-auth-url` - إنشاء رابط OAuth
-4. `gmb-sync` - مزامنة بيانات Google My Business
-5. `google-oauth-callback` - معالجة OAuth callback
-6. `review-reply` - الرد على التقييمات
+**الحالة:** ✅ كل الوظائف موجودة ونشطة
+1. ✅ `ai-generate` - توليد محتوى بالذكاء الاصطناعي
+2. ✅ `account-disconnect` - فصل حساب Google
+3. ✅ `create-auth-url` - إنشاء رابط OAuth
+4. ✅ `gmb-sync` - مزامنة بيانات Google My Business
+5. ✅ `google-oauth-callback` - معالجة OAuth callback
+6. ✅ `review-reply` - الرد على التقييمات
 
-**الخطوات:**
-
-#### أ) تثبيت Supabase CLI:
-```bash
-npm install -g supabase
-```
-
-#### ب) تسجيل الدخول:
-```bash
-supabase login
-```
-سيفتح لك المتصفح - سجل دخول بحساب Supabase
-
-#### ج) ربط المشروع:
-```bash
-supabase link --project-ref YOUR_PROJECT_REF
-```
-**كيف تحصل على PROJECT_REF؟**
-- روح Supabase Dashboard
-- رابط المشروع يكون: `https://supabase.com/dashboard/project/YOUR_PROJECT_REF`
-- أو من: Project Settings → General → Reference ID
-
-#### د) نشر الوظائف (واحدة واحدة):
-```bash
-supabase functions deploy ai-generate
-supabase functions deploy account-disconnect
-supabase functions deploy create-auth-url
-supabase functions deploy gmb-sync
-supabase functions deploy google-oauth-callback
-supabase functions deploy review-reply
-```
-
-#### هـ) إضافة المفاتيح البيئية للوظائف:
-```bash
-# Google OAuth
-supabase secrets set GOOGLE_CLIENT_ID=نفس_القيمة_اللي_في_Replit
-supabase secrets set GOOGLE_CLIENT_SECRET=نفس_القيمة_اللي_في_Replit
-
-# AI APIs
-supabase secrets set GROQ_API_KEY=نفس_القيمة_اللي_في_Replit
-supabase secrets set DEEPSEEK_API_KEY=نفس_القيمة_اللي_في_Replit
-supabase secrets set TOGETHER_API_KEY=نفس_القيمة_اللي_في_Replit
-```
-
-**ملاحظة:** القيم نفسها اللي في Replit Secrets - ما تحتاج تغيرها
+**ملاحظة:** تأكد من إضافة المفاتيح البيئية للوظائف إذا لم تكن موجودة:
+- GOOGLE_CLIENT_ID
+- GOOGLE_CLIENT_SECRET
+- GROQ_API_KEY
+- DEEPSEEK_API_KEY
+- TOGETHER_API_KEY
 
 ---
 
@@ -181,7 +142,7 @@ https://YOUR_PRODUCTION_URL_FROM_REPLIT
 | **Replit** | ✅ جاهز 100% | البناء ينجح، كل الإعدادات موجودة |
 | **Supabase Database** | ✅ جاهز 100% | RLS + Tables + Policies كلها موجودة |
 | **Profile Trigger** | ✅ جاهز | تم إنشاء trigger للـ profiles |
-| **Edge Functions** | ⏳ متبقي | 6 وظائف + المفاتيح |
+| **Edge Functions** | ✅ جاهز 100% | كل الـ 6 وظائف نشطة |
 | **Google OAuth** | ⏳ متبقي | إضافة production URLs |
 | **النشر** | ⏳ بعد الخطوات فوق | جاهز للنشر فوراً |
 
