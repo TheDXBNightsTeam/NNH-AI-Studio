@@ -1,0 +1,144 @@
+2025-10-29 10:23:07.80
+40a4143b
+User
+at process.processTimers (node:internal/timers:519:7) {
+2025-10-29 10:23:07.80
+40a4143b
+User
+digest: '2297380701'
+2025-10-29 10:23:07.80
+40a4143b
+User
+}
+2025-10-29 10:23:09.26
+40a4143b
+User
+Auth error in middleware: [AuthSessionMissingError: Auth session missing!] {
+2025-10-29 10:23:09.26
+40a4143b
+User
+__isAuthError: true,
+2025-10-29 10:23:09.26
+40a4143b
+User
+name: 'AuthSessionMissingError',
+2025-10-29 10:23:09.26
+40a4143b
+User
+status: 400,
+2025-10-29 10:23:09.26
+40a4143b
+User
+code: undefined
+2025-10-29 10:23:09.26
+40a4143b
+User
+}
+2025-10-29 10:23:14.80
+40a4143b
+User
+Error: Functions cannot be passed directly to Client Components unless you explicitly expose it by marking it with "use server". Or maybe you meant to call this function rather than return it.
+2025-10-29 10:23:14.80
+40a4143b
+User
+{$$typeof: ..., render: function, displayName: ...}
+2025-10-29 10:23:14.80
+40a4143b
+User
+^^^^^^^^
+2025-10-29 10:23:14.80
+40a4143b
+User
+at ek (/home/runner/workspace/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:140609)
+2025-10-29 10:23:14.80
+40a4143b
+User
+at Object.toJSON (/home/runner/workspace/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135629)
+2025-10-29 10:23:14.80
+40a4143b
+User
+at stringify ()
+2025-10-29 10:23:14.80
+40a4143b
+User
+at eP (/home/runner/workspace/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142093)
+2025-10-29 10:23:14.80
+40a4143b
+User
+at eE (/home/runner/workspace/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142572)
+2025-10-29 10:23:14.80
+40a4143b
+User
+at Timeout._onTimeout (/home/runner/workspace/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135349)
+2025-10-29 10:23:14.80
+40a4143b
+User
+at listOnTimeout (node:internal/timers:581:17)
+2025-10-29 10:23:14.80
+40a4143b
+User
+at process.processTimers (node:internal/timers:519:7) {
+2025-10-29 10:23:14.80
+40a4143b
+User
+digest: '2297380701'
+2025-10-29 10:23:14.80
+40a4143b
+User
+}
+2025-10-29 10:23:21.78
+40a4143b
+User
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+2025-10-29 10:23:28.13
+40a4143b
+User
+Error: Functions cannot be passed directly to Client Components unless you explicitly expose it by marking it with "use server". Or maybe you meant to call this function rather than return it.
+2025-10-29 10:23:28.13
+40a4143b
+User
+{$$typeof: ..., render: function, displayName: ...}
+2025-10-29 10:23:28.13
+40a4143b
+User
+^^^^^^^^
+2025-10-29 10:23:28.13
+40a4143b
+User
+at ek (/home/runner/workspace/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:140609)
+2025-10-29 10:23:28.13
+40a4143b
+User
+at Object.toJSON (/home/runner/workspace/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135629)
+2025-10-29 10:23:28.13
+40a4143b
+User
+at stringify ()
+2025-10-29 10:23:28.13
+40a4143b
+User
+at eP (/home/runner/workspace/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142093)
+2025-10-29 10:23:28.13
+40a4143b
+User
+at eE (/home/runner/workspace/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:142572)
+2025-10-29 10:23:28.13
+40a4143b
+User
+at Timeout._onTimeout (/home/runner/workspace/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:135349)
+2025-10-29 10:23:28.13
+40a4143b
+User
+at listOnTimeout (node:internal/timers:581:17)
+2025-10-29 10:23:28.13
+40a4143b
+User
+at process.processTimers (node:internal/timers:519:7) {
+2025-10-29 10:23:28.13
+40a4143b
+User
+digest: '2297380701'
+2025-10-29 10:23:28.13
+40a4143b
+User
+}
