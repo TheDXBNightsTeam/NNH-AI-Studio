@@ -1,4 +1,4 @@
-export interface GMBAccount {
+export interface GmbAccount {
   id: string
   user_id: string
   account_id: string

@@ -1,329 +1,142 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Loader2, Plus, RefreshCw, Trash2, Building2, MapPin, Clock } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+// Import necessary React hooks and components
+import { useState, useCallback, useEffect } from 'react'; // Added useEffect
+import { Button } from '@/components/ui/button';
+import { Loader2, Plus } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
-interface GmbAccount {
-  id: string
-  user_id: string
-  account_name: string
-  email?: string
-  account_id?: string
-  is_active?: boolean
-  status?: string
-  last_sync?: string
-  created_at: string
-  total_locations?: number
-}
+// Import custom hooks and components
+import { useAccountsManagement } from '@/lib/hooks/useAccountsManagement'; // Adjust path if needed
+import { useOAuthCallbackHandler } from '@/lib/hooks/useOAuthCallbackHandler'; // Adjust path if needed
+import { AccountCard } from '@/components/accounts/AccountCard'; // Adjust path if needed
+import { NoAccountsPlaceholder } from '@/components/accounts/NoAccountsPlaceholder'; // Adjust path if needed
 
+// Helper function (can be moved to a utils file)
+const formatDate = (dateString?: string | null): string => { // Allow null
+  if (!dateString) return 'Never';
+  try {
+      const date = new Date(dateString);
+      // Check if date is valid
+      if (isNaN(date.getTime())) return 'Invalid Date';
+
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays < 7) return `${diffDays}d ago`;
+      // Consistent date format
+      return date.toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch (e) {
+      console.error("Error formatting date:", dateString, e);
+      return 'Invalid Date';
+  }
+};
+
+// Main page component
 export default function AccountsPage() {
-  const [accounts, setAccounts] = useState<GmbAccount[]>([])
-  const [loading, setLoading] = useState(true)
-  const [syncing, setSyncing] = useState<string | null>(null)
-  const [deleting, setDeleting] = useState<string | null>(null)
-  const [connecting, setConnecting] = useState(false)
-  const [autoSyncTriggered, setAutoSyncTriggered] = useState(false)
-  const { toast } = useToast()
-  const supabase = createClient()
+  // Use the custom hook for account state and actions
+  const {
+    accounts,
+    loading,
+    syncing,
+    deleting,
+    fetchAccounts, // Get fetchAccounts from the hook
+    handleSync,
+    handleDisconnect,
+  } = useAccountsManagement();
 
-  const fetchAccounts = async () => {
+  // State for the connect button loading state
+  const [connecting, setConnecting] = useState(false);
+  const { toast } = useToast();
+
+  // Initialize the OAuth callback handler hook, passing necessary functions
+   useOAuthCallbackHandler({ fetchAccounts, handleSync });
+
+    // Call fetchAccounts on initial mount IF the callback handler doesn't trigger a fetch
+    // Note: useOAuthCallbackHandler now handles the initial fetch based on hash presence.
+    // useEffect(() => {
+    //    // Initial fetch is now handled by useOAuthCallbackHandler
+    //    // fetchAccounts();
+    // }, [fetchAccounts]); // fetchAccounts is stable due to useCallback
+
+  // Callback for initiating the Google connection process
+  const handleConnect = useCallback(async () => {
+    setConnecting(true);
+    console.log('[Accounts Page] handleConnect initiated...');
     try {
-      setLoading(true)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return []
-
-      const { data: accountsData, error } = await supabase
-        .from('gmb_accounts')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      // Fetch location counts
-      const accountsWithLocations = await Promise.all(
-        (accountsData || []).map(async (account) => {
-          const { count } = await supabase
-            .from('gmb_locations')
-            .select('*', { count: 'exact', head: true })
-            .eq('gmb_account_id', account.id)
-
-          return {
-            ...account,
-            total_locations: count || 0,
-            status: account.is_active === false ? 'disconnected' : (account.status || 'active')
-          }
-        })
-      )
-
-      setAccounts(accountsWithLocations)
-      return accountsWithLocations
-    } catch (error) {
-      console.error('Error fetching accounts:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch accounts',
-        variant: 'destructive'
-      })
-      return []
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleAutoSync = async (accountsToSync: GmbAccount[]) => {
-    if (!accountsToSync || accountsToSync.length === 0) {
-      console.log('No accounts to auto-sync')
-      return
-    }
-    
-    // Find the most recently created active account
-    const activeAccounts = accountsToSync.filter(a => a.status === 'active' || a.is_active === true)
-    if (activeAccounts.length === 0) {
-      console.log('No active accounts found for auto-sync')
-      return
-    }
-    
-    const mostRecentAccount = activeAccounts[0] // Already sorted by created_at desc
-    
-    console.log('Auto-triggering sync for newly connected account:', mostRecentAccount.id)
-    
-    toast({
-      title: 'Account Connected Successfully!',
-      description: 'Starting automatic sync of your Google My Business data...'
-    })
-    
-    // Trigger sync for the newly connected account
-    await handleSync(mostRecentAccount.id, true)
-  }
-
-  useEffect(() => {
-    // Check for success/error hash parameters from OAuth callback
-    const checkHashAndSync = async () => {
-      const hash = window.location.hash
-      
-      if (hash.includes('success=true') && !autoSyncTriggered) {
-        console.log('OAuth success detected, fetching accounts and triggering sync...')
-        setAutoSyncTriggered(true)
-        
-        // Remove the hash from URL to prevent re-triggering
-        window.history.replaceState(null, '', window.location.pathname)
-        
-        // Fetch accounts first, then trigger sync for the newly connected one
-        const latestAccounts = await fetchAccounts()
-        
-        // Small delay to ensure the account data is fully saved in database
-        setTimeout(() => {
-          handleAutoSync(latestAccounts)
-        }, 1500)
-      } else if (hash.includes('error=')) {
-        // Extract and show error message
-        const errorMatch = hash.match(/error=([^&]+)/)
-        if (errorMatch) {
-          const errorMessage = decodeURIComponent(errorMatch[1])
-          toast({
-            title: 'Connection Failed',
-            description: errorMessage || 'Failed to connect Google account',
-            variant: 'destructive'
-          })
-          // Remove the hash
-          window.history.replaceState(null, '', window.location.pathname)
-        }
-        
-        fetchAccounts()
-      } else if (hash.includes('autosync=')) {
-        // Support for autosync parameter if needed
-        const autoSyncMatch = hash.match(/autosync=([^&]+)/)
-        if (autoSyncMatch) {
-          const accountId = decodeURIComponent(autoSyncMatch[1])
-          console.log('Auto-sync requested for account:', accountId)
-          setAutoSyncTriggered(true)
-          
-          // Remove the hash
-          window.history.replaceState(null, '', window.location.pathname)
-          
-          // Fetch accounts and trigger sync
-          const latestAccounts = await fetchAccounts()
-          const accountToSync = latestAccounts.find(a => a.id === accountId)
-          if (accountToSync) {
-            await handleSync(accountId, true)
-          }
-        }
-      } else {
-        fetchAccounts()
-      }
-    }
-    
-    checkHashAndSync()
-  }, [])
-
-  const handleConnect = async () => {
-    setConnecting(true)
-    try {
-      console.log('[Accounts Page] Starting Google OAuth connection...')
-      
-      // Use new Next.js API route instead of Supabase Edge Function
+      // Call the API route to get the Google OAuth URL
       const response = await fetch('/api/gmb/create-auth-url', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
+        headers: { 'Content-Type': 'application/json' },
+        // No body needed if the API route gets user context from session/auth
+      });
 
       if (!response.ok) {
-        const errorData = await response.json()
-        console.error('[Accounts Page] Failed to create auth URL:', errorData)
-        throw new Error(errorData.error || 'Failed to create auth URL')
+        // Try to parse error details from the server response
+        const errorData = await response.json().catch(() => ({ error: 'Failed to parse server error response' }));
+        console.error('[Accounts Page] Failed response from create-auth-url:', response.status, errorData);
+        // Throw a user-friendly error message
+        throw new Error(errorData.error || errorData.message || `Failed to initiate connection (status: ${response.status})`);
       }
 
-      const data = await response.json()
-      const authUrl = data.authUrl || data.url
-      
-      console.log('[Accounts Page] Redirecting to Google OAuth...')
-      if (authUrl) {
-        window.location.href = authUrl
+      // Get the auth URL from the successful response
+      const data = await response.json();
+      const authUrl = data.authUrl || data.url; // Support both keys for safety
+
+      if (authUrl && typeof authUrl === 'string') {
+        console.log('[Accounts Page] Redirecting to Google OAuth:', authUrl);
+        // Redirect the user's browser to Google's authentication page
+        window.location.href = authUrl;
+        // Keep the `connecting` state true because the page will navigate away
       } else {
-        throw new Error('No auth URL returned')
+        // Handle case where URL is missing or invalid in the response
+        throw new Error('Invalid authorization URL received from server.');
       }
     } catch (error: any) {
-      console.error('[Accounts Page] Error connecting:', error)
+      console.error('[Accounts Page] Error during handleConnect:', error);
+      // Show an error toast to the user
       toast({
         title: 'Connection Error',
-        description: error.message || 'Failed to connect Google account',
-        variant: 'destructive'
-      })
-    } finally {
-      setConnecting(false)
+        description: error.message || 'Could not start the Google connection process. Please try again.',
+        variant: 'destructive',
+      });
+      setConnecting(false); // Reset button state only if redirection fails
     }
-  }
+    // No `finally` block needed here as successful execution redirects the page
+  }, [toast]); // Include toast in dependencies
 
-  const handleSync = async (accountId: string, isAutoSync = false) => {
-    setSyncing(accountId)
-    try {
-      console.log(`[Accounts Page] ${isAutoSync ? 'Auto-syncing' : 'Manually syncing'} account ${accountId}`)
-
-      // Use new Next.js API route instead of Supabase Edge Function
-      const response = await fetch('/api/gmb/sync', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ accountId, syncType: 'full' })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('[Accounts Page] Sync API error:', errorData)
-        
-        // Handle specific error cases
-        if (errorData.error === 'invalid_grant') {
-          toast({
-            title: 'Authorization Expired',
-            description: 'Your Google authorization has expired. Please reconnect your account.',
-            variant: 'destructive'
-          })
-          
-          // Update account status to show it needs reconnection
-          await fetchAccounts()
-          return
-        }
-        
-        throw new Error(errorData.error || errorData.message || 'Sync failed')
-      }
-
-      const data = await response.json()
-      console.log('[Accounts Page] Sync successful:', data)
-      
-      toast({
-        title: isAutoSync ? 'Auto-Sync Complete!' : 'Sync Successful!',
-        description: `Synced ${data.counts?.locations || 0} locations, ${data.counts?.reviews || 0} reviews, ${data.counts?.media || 0} media`
-      })
-
-      await fetchAccounts()
-    } catch (error: any) {
-      console.error('[Accounts Page] Sync error:', error)
-      toast({
-        title: 'Sync Failed',
-        description: error.message || 'Failed to sync account',
-        variant: 'destructive'
-      })
-    } finally {
-      setSyncing(null)
-    }
-  }
-
-  const handleDisconnect = async (accountId: string) => {
-    if (!confirm('Are you sure you want to disconnect this account?')) return
-
-    setDeleting(accountId)
-    try {
-      const { error } = await supabase
-        .from('gmb_accounts')
-        .update({ is_active: false })
-        .eq('id', accountId)
-
-      if (error) throw error
-
-      toast({
-        title: 'Success',
-        description: 'Account disconnected successfully'
-      })
-
-      await fetchAccounts()
-    } catch (error) {
-      console.error('Disconnect error:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to disconnect account',
-        variant: 'destructive'
-      })
-    } finally {
-      setDeleting(null)
-    }
-  }
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Never'
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMins / 60)
-    const diffDays = Math.floor(diffHours / 24)
-
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays < 7) return `${diffDays}d ago`
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  }
-
+  // Render loading state
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Loading connected accounts...</span>
       </div>
-    )
+    );
   }
 
+  // Render the main page content
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Page Header and Connect Button */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-primary/10 pb-4">
         <div>
-          <h1 className="text-3xl font-bold">Google Accounts</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage your connected Google My Business accounts
+          <h1 className="text-2xl font-bold text-foreground">Google Accounts</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage connections to your Google My Business accounts.
           </p>
         </div>
-        <Button onClick={handleConnect} disabled={connecting}>
+        <Button onClick={handleConnect} disabled={connecting} className="w-full sm:w-auto">
           {connecting ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Connecting...
+              Redirecting...
             </>
           ) : (
             <>
@@ -334,91 +147,26 @@ export default function AccountsPage() {
         </Button>
       </div>
 
+      {/* Conditional Rendering: Placeholder or Account Cards */}
       {accounts.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-20">
-            <Building2 className="w-16 h-16 text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No Accounts Connected</h3>
-            <p className="text-muted-foreground mb-6 text-center max-w-md">
-              Connect your Google My Business account to start managing your locations
-            </p>
-            <Button onClick={handleConnect} disabled={connecting}>
-              {connecting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Connect First Account
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+        // Show placeholder if no accounts are connected
+        <NoAccountsPlaceholder onConnect={handleConnect} isConnecting={connecting} />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        // Show grid of account cards if accounts exist
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
           {accounts.map((account) => (
-            <Card key={account.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <Building2 className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <CardTitle>{account.account_name}</CardTitle>
-                      <CardDescription>{account.email}</CardDescription>
-                    </div>
-                  </div>
-                  <Badge variant={account.status === 'active' ? 'default' : 'secondary'}>
-                    {account.status === 'active' ? 'Connected' : 'Disconnected'}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-muted/50 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <MapPin className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">Locations</p>
-                    </div>
-                    <p className="text-2xl font-bold">{account.total_locations || 0}</p>
-                  </div>
-                  <div className="bg-muted/50 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Clock className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">Last Sync</p>
-                    </div>
-                    <p className="text-sm font-medium">{formatDate(account.last_sync)}</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => handleSync(account.id)}
-                    disabled={syncing === account.id || account.status !== 'active'}
-                    className="flex-1"
-                    variant="outline"
-                  >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${syncing === account.id ? 'animate-spin' : ''}`} />
-                    {syncing === account.id ? 'Syncing...' : 'Sync Now'}
-                  </Button>
-                  <Button
-                    onClick={() => handleDisconnect(account.id)}
-                    disabled={deleting === account.id}
-                    variant="destructive"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    {deleting === account.id ? 'Disconnecting...' : 'Disconnect'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <AccountCard
+              key={account.id} // Use account.id as the key
+              account={account}
+              syncingAccountId={syncing}
+              deletingAccountId={deleting}
+              onSync={handleSync}
+              onDisconnect={handleDisconnect}
+              formatDate={formatDate}
+            />
           ))}
         </div>
       )}
     </div>
-  )
+  );
 }
