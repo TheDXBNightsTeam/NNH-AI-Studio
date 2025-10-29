@@ -20,21 +20,31 @@ export default function LocationsPage() {
 
   useEffect(() => {
     const fetchLocations = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) return
 
-      const { data, error } = await supabase
-        .from("gmb_locations")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
+        const { data, error } = await supabase
+          .from("gmb_locations")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
 
-      if (!error && data) {
-        setLocations(data)
+        if (error) {
+          console.error('[Locations Page] Error fetching locations:', error)
+          return
+        }
+
+        if (data) {
+          setLocations(data)
+        }
+      } catch (error) {
+        console.error('[Locations Page] Unexpected error:', error)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
     fetchLocations()

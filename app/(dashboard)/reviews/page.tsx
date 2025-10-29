@@ -20,31 +20,47 @@ export default function ReviewsPage() {
   const supabase = createClient()
 
   const fetchData = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
 
-    // Fetch locations
-    const { data: locationsData } = await supabase.from("gmb_locations").select("*").eq("user_id", user.id)
+      // Fetch locations
+      const { data: locationsData, error: locationsError } = await supabase
+        .from("gmb_locations")
+        .select("*")
+        .eq("user_id", user.id)
 
-    if (locationsData) setLocations(locationsData)
+      if (locationsError) {
+        console.error('[Reviews Page] Error fetching locations:', locationsError)
+      } else if (locationsData) {
+        setLocations(locationsData)
+      }
 
-    // Fetch reviews
-    let query = supabase
-      .from("gmb_reviews")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
+      // Fetch reviews
+      let query = supabase
+        .from("gmb_reviews")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
 
-    if (selectedLocation !== "all") {
-      query = query.eq("location_id", selectedLocation)
+      if (selectedLocation !== "all") {
+        query = query.eq("location_id", selectedLocation)
+      }
+
+      const { data: reviewsData, error: reviewsError } = await query
+
+      if (reviewsError) {
+        console.error('[Reviews Page] Error fetching reviews:', reviewsError)
+      } else if (reviewsData) {
+        setReviews(reviewsData)
+      }
+    } catch (error) {
+      console.error('[Reviews Page] Unexpected error:', error)
+    } finally {
+      setLoading(false)
     }
-
-    const { data: reviewsData } = await query
-
-    if (reviewsData) setReviews(reviewsData)
-    setLoading(false)
   }
 
   useEffect(() => {
