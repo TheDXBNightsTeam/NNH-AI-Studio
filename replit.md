@@ -202,15 +202,27 @@ Preferred communication style: Simple, everyday language.
 - ✅ All 25 routes generated successfully
 - ✅ Production runtime stable
 - ✅ Middleware (middleware.ts) working correctly
+- ✅ OAuth redirects fixed for production domain (nnh.ae)
 - ⚠️ Build command updated to unset NODE_ENV (Replit environment issue)
 
 **Recent Fixes (Oct 29, 2025):**
+- **OAuth Redirect Fix**: Resolved `0.0.0.0:5000` redirect issue
+  - Added `getOriginFromRequest()` helper in auth/callback/route.ts
+  - Uses request headers (x-forwarded-host, x-forwarded-proto) for reverse proxy support
+  - Works in development (localhost, 127.0.0.1), Replit preview, and production (nnh.ae)
+  - Client-side components use `getBaseUrlClient()` utility
+  - Supports environment override via `NEXT_PUBLIC_BASE_URL`
 - Downgraded from Next.js 16.0.0 to 14.2.24 (stable)
   - Reason: Next.js 16 had global-error prerendering bug causing build failures
 - Updated build script to `unset NODE_ENV && next build`
   - Reason: Replit environment sets non-standard NODE_ENV value
 - Reverted proxy.ts back to middleware.ts
   - Reason: middleware.ts is standard in Next.js 14
+
+**OAuth Configuration:**
+- Server-side callbacks: Use `getOriginFromRequest(request)` for dynamic origin detection
+- Client-side redirects: Use `getBaseUrlClient()` for browser-based flows
+- Supports Google OAuth, Magic Links, Password Reset, and Email Signup
 
 ### Recent Changes for Production
 
