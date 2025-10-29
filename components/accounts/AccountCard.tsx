@@ -31,9 +31,9 @@ export function AccountCard({
 
   const isSyncing = syncingAccountId === account.id;
   const isDeleting = deletingAccountId === account.id;
-  // Determine status: explicitly check is_active first. Fallback to status field. Default to 'unknown'.
-  const currentStatus = account.is_active === false ? 'disconnected' : (account.status || 'active');
-  const isActive = currentStatus === 'active';
+  // Determine status based on is_active field
+  const isActive = account.is_active ?? false;
+  const currentStatus = isActive ? 'active' : 'disconnected';
 
   return (
     // Added data-testid for easier testing

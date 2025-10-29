@@ -31,8 +31,7 @@ export async function getAccounts() {
 
       return {
         ...account,
-        total_locations: count || 0,
-        status: account.is_active === false ? 'disconnected' : (account.status || 'active')
+        total_locations: count || 0
       }
     })
   )

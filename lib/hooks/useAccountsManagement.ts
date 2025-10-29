@@ -46,29 +46,28 @@ export function useAccountsManagement() {
           if (!account.id) {
              console.warn('[useAccountsManagement] Account found without ID:', account);
              // Return a partial object or skip, ensure GmbAccount type compatibility
-             return { ...account, id: `unknown-${Math.random()}`, total_locations: 0, status: 'error' } as GmbAccount;
+             return { ...account, id: `unknown-${Math.random()}`, total_locations: 0 } as GmbAccount;
           }
           const { count, error: countError } = await supabase
             .from('gmb_locations')
             .select('*', { count: 'exact', head: true })
-            .eq('gmb_account_id', account.id); // التأكد من أن هذا العمود موجود ويشير لـ gmb_accounts.id
+            .eq('gmb_account_id', account.id);
 
           if (countError) {
              console.error(`[useAccountsManagement] Error fetching location count for account ${account.id}:`, countError);
              // Return account data even if count fails
-             return { ...account, total_locations: 0, status: account.is_active === false ? 'disconnected' : (account.status || 'active') };
+             return { ...account, total_locations: 0 };
           }
 
           return {
             ...account,
             total_locations: count || 0,
-            status: account.is_active === false ? 'disconnected' : (account.status || 'active'),
           };
         })
       );
 
       // Filter out potential error objects if needed, ensuring type safety
-      const validAccounts = accountsWithLocations.filter(acc => acc.id && acc.status !== 'error') as GmbAccount[];
+      const validAccounts = accountsWithLocations.filter(acc => acc.id) as GmbAccount[];
 
       console.log('[useAccountsManagement] Accounts processed:', validAccounts);
       setAccounts(validAccounts);
@@ -146,7 +145,7 @@ export function useAccountsManagement() {
 
       const { error } = await supabase
         .from('gmb_accounts')
-        .update({ is_active: false, status: 'disconnected' })
+        .update({ is_active: false })
         .eq('id', accountId)
         .eq('user_id', user.id); // Ensure only the owner can disconnect
 
