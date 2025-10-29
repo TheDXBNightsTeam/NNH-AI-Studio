@@ -170,9 +170,9 @@ https://YOUR_PRODUCTION_URL_FROM_REPLIT
 - ✅ Real-time subscriptions جاهزة
 
 ### المراقبة:
-- استخدم Vercel Analytics (مدمج في التطبيق)
 - تابع Logs في Replit Dashboard
 - تابع Edge Functions logs في Supabase
+- استخدم Developer Console في المتصفح
 
 ### التكلفة:
 - Replit: حسب استخدام الـ Autoscale

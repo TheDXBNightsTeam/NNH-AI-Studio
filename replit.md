@@ -123,11 +123,11 @@ Preferred communication style: Simple, everyday language.
 - Edge Functions for OAuth callbacks
 - Row Level Security policies
 
-**Vercel** (Deployment & Hosting)
-- Auto-deployment from repository
-- Environment variable management
-- Analytics and Speed Insights integration
-- Edge middleware support
+**Replit** (Deployment & Hosting)
+- Autoscale deployment
+- Environment secrets management
+- Built-in workflow system
+- Port 5000 binding (0.0.0.0:5000)
 
 ### Third-Party APIs
 
