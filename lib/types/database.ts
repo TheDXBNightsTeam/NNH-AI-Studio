@@ -3,6 +3,7 @@ export interface GmbAccount {
   user_id: string
   account_id: string
   account_name: string
+  email?: string
   access_token?: string
   refresh_token?: string
   token_expires_at?: string
@@ -11,6 +12,7 @@ export interface GmbAccount {
   settings: Record<string, any>
   created_at: string
   updated_at: string
+  total_locations?: number
 }
 
 export interface GMBLocation {
