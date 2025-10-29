@@ -17,19 +17,30 @@ Preferred communication style: Simple, everyday language.
 - Each action file starts with `"use server"` directive
 - Strict authentication checks on all actions
 - Cache revalidation via `revalidatePath` after mutations
+- Comprehensive error handling with try/catch blocks
+- Input validation using Zod schemas
 - Modular organization:
   - `auth.ts`: Authentication actions (signOut, getCurrentUser, getSession)
   - `accounts.ts`: GMB account management (getAccounts, deleteAccount, syncAccount)
-  - `locations.ts`: Location CRUD operations (getLocations, addLocation, updateLocation, deleteLocation)
-  - `reviews.ts`: Review management (getReviews, updateReviewStatus, addReviewReply)
-  - `dashboard.ts`: Dashboard data (getDashboardStats, getActivityLogs)
+  - `locations.ts`: Location CRUD operations with Zod validation (getLocations, addLocation, updateLocation, deleteLocation)
+  - `reviews.ts`: Review management with Zod validation (getReviews, updateReviewStatus, addReviewReply)
+  - `dashboard.ts`: Dashboard data (getDashboardStats, getActivityLogs, getMonthlyStats)
   - `index.ts`: Centralized export point for all actions
+
+**Input Validation**: `/lib/validations/`
+- Zod schemas for all user inputs
+- `dashboard.ts`: LocationSchema, UpdateLocationSchema, ReviewReplySchema, ReviewStatusSchema
+- Validation errors return user-friendly messages
+- Prevents SQL injection and data corruption
+- Type-safe input constraints (string length, regex patterns, enums)
 
 **Benefits:**
 - ✅ No "Functions cannot be passed directly to Client Components" errors
 - ✅ Clear separation between server and client code
 - ✅ Type-safe server actions with automatic serialization
 - ✅ Centralized authentication and authorization
+- ✅ Comprehensive error handling with meaningful error messages
+- ✅ Input validation prevents bad data from entering the database
 - ✅ Simplified testing and maintenance
 
 ### Frontend Architecture
@@ -120,6 +131,30 @@ Preferred communication style: Simple, everyday language.
 - Immediate UI feedback for user actions
 - Background synchronization with database
 - Error handling with rollback capability
+
+### Dashboard Features (Enhanced Oct 29, 2025)
+
+**Real-Time Dashboard**:
+- Live statistics: total locations, total reviews, average rating, response rate
+- Monthly performance chart with real review data (last 6 months)
+- Activity feed with real-time Supabase subscriptions
+- Error handling: graceful degradation with user-friendly error messages
+- Loading states: skeleton loaders for better UX
+- Empty states: helpful messages when no data exists
+
+**Performance Chart**:
+- Dynamic data from `getMonthlyStats()` server action
+- Groups reviews by month automatically
+- Calculates average rating per month
+- Shows review count trends
+- Handles empty data gracefully
+- Client-side loading and error states
+
+**Data Integrity**:
+- All dashboard queries check authentication first
+- Database errors are caught and logged
+- User sees clear error messages instead of crashes
+- Null-safe calculations (handles missing ratings)
 
 ### Analytics & Visualization
 
