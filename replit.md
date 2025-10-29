@@ -10,6 +10,28 @@ Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
+### Server Actions Architecture (Added Oct 29, 2025)
+
+**Centralized Server Actions**: `/server/actions/`
+- All server-side mutations isolated in dedicated server action files
+- Each action file starts with `"use server"` directive
+- Strict authentication checks on all actions
+- Cache revalidation via `revalidatePath` after mutations
+- Modular organization:
+  - `auth.ts`: Authentication actions (signOut, getCurrentUser, getSession)
+  - `accounts.ts`: GMB account management (getAccounts, deleteAccount, syncAccount)
+  - `locations.ts`: Location CRUD operations (getLocations, addLocation, updateLocation, deleteLocation)
+  - `reviews.ts`: Review management (getReviews, updateReviewStatus, addReviewReply)
+  - `dashboard.ts`: Dashboard data (getDashboardStats, getActivityLogs)
+  - `index.ts`: Centralized export point for all actions
+
+**Benefits:**
+- ✅ No "Functions cannot be passed directly to Client Components" errors
+- ✅ Clear separation between server and client code
+- ✅ Type-safe server actions with automatic serialization
+- ✅ Centralized authentication and authorization
+- ✅ Simplified testing and maintenance
+
 ### Frontend Architecture
 
 **Framework**: Next.js 14+ with App Router
@@ -17,6 +39,7 @@ Preferred communication style: Simple, everyday language.
 - TypeScript for type safety across the application
 - Tailwind CSS with custom OKLCH color system for styling
 - Dark mode theme as default
+- Proper `"use client"` directive on all client components
 
 **UI Component System**: 
 - Radix UI primitives for accessible component foundation
