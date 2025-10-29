@@ -13,6 +13,7 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import { createBrowserClient } from "@supabase/ssr"
 import { Loader2 } from "lucide-react"
+import { getBaseUrlClient } from "@/lib/utils/get-base-url-client"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -57,12 +58,13 @@ export default function LoginPage() {
 
   const handleGoogle = async () => {
     const supabase = createClient()
+    const baseUrl = getBaseUrlClient()
     setIsGoogleLoading(true)
     setError(null)
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: `${window.location.origin}/auth/callback` }
+        options: { redirectTo: `${baseUrl}/auth/callback` }
       })
       if (error) throw error
       // Supabase will redirect; nothing else here
@@ -74,12 +76,13 @@ export default function LoginPage() {
 
   const handleMagicLink = async () => {
     const supabase = createClient()
+    const baseUrl = getBaseUrlClient()
     setIsMagicLoading(true)
     setError(null)
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${window.location.origin}/home` }
+        options: { emailRedirectTo: `${baseUrl}/home` }
       })
       if (error) throw error
       setError("Magic link sent to your email.")

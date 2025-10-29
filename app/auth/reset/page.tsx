@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { Loader2 } from "lucide-react"
+import { getBaseUrlClient } from "@/lib/utils/get-base-url-client"
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState("")
@@ -19,11 +20,12 @@ export default function ResetPasswordPage() {
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault()
     const supabase = createClient()
+    const baseUrl = getBaseUrlClient()
     setIsLoading(true)
     setError(null)
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
+        redirectTo: `${baseUrl}/auth/update-password`,
       })
       if (error) throw error
       setSent(true)

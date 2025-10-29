@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { Loader2 } from "lucide-react"
+import { getBaseUrlClient } from "@/lib/utils/get-base-url-client"
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("")
@@ -25,6 +26,7 @@ export default function SignUpPage() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     const supabase = createClient()
+    const baseUrl = getBaseUrlClient()
     setIsLoading(true)
     setError(null)
 
@@ -45,7 +47,7 @@ export default function SignUpPage() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/home`,
+          emailRedirectTo: `${baseUrl}/home`,
           data: {
             full_name: fullName,
           },
@@ -85,9 +87,10 @@ export default function SignUpPage() {
                 className="w-full bg-white text-black hover:bg-white/90"
                 onClick={async () => {
                   const supabase = createClient()
+                  const baseUrl = getBaseUrlClient()
                   const { error } = await supabase.auth.signInWithOAuth({
                     provider: 'google',
-                    options: { redirectTo: `${window.location.origin}/auth/callback` }
+                    options: { redirectTo: `${baseUrl}/auth/callback` }
                   })
                   if (error) console.error(error)
                 }}
