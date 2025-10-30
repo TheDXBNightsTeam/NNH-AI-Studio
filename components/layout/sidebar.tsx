@@ -4,12 +4,13 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, MapPin, MessageSquare, Users, Sparkles, BarChart3, Settings, LogOut } from "lucide-react"
+import { LayoutDashboard, MapPin, MessageSquare, Users, Sparkles, BarChart3, Settings, LogOut, Home } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 
 const navigation = [
+  { name: "Home", href: "/home", icon: Home },
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Locations", href: "/locations", icon: MapPin },
   { name: "Reviews", href: "/reviews", icon: MessageSquare },
