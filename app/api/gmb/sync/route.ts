@@ -138,13 +138,42 @@ async function fetchLocations(
     },
   });
 
-  const data = await response.json();
-  
+  // Check if response failed
   if (!response.ok) {
-    console.error('[GMB Sync] Failed to fetch locations:', data);
-    throw new Error(`Failed to fetch locations: ${data.error?.message || 'Unknown error'}`);
+    // Try to read error as JSON if Content-Type is correct
+    const contentType = response.headers.get('content-type')?.toLowerCase();
+    let errorData: any = {};
+    
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        // Failed to parse JSON, continue with empty object
+        console.error('[GMB Sync] Failed to parse error response as JSON');
+      }
+    } else {
+      // Not JSON, try to read as text for debugging
+      try {
+        const errorText = await response.text();
+        console.error('[GMB Sync] Non-JSON error response:', errorText.substring(0, 200));
+      } catch (e) {
+        // Ignore text parsing errors
+      }
+    }
+    
+    console.error('[GMB Sync] Failed to fetch locations:', errorData);
+    throw new Error(`Failed to fetch locations: ${errorData.error?.message || 'Unknown error'}`);
   }
 
+  // Response is OK, verify Content-Type before parsing
+  const contentType = response.headers.get('content-type')?.toLowerCase();
+  if (!contentType || !contentType.includes('application/json')) {
+    console.error('[GMB Sync] Unexpected content type for locations:', contentType);
+    throw new Error('Unexpected response format from Google API');
+  }
+
+  const data = await response.json();
+  
   console.log(`[GMB Sync] Fetched ${data.locations?.length || 0} locations`);
   return {
     locations: data.locations || [],
@@ -172,14 +201,43 @@ async function fetchReviews(
     },
   });
 
-  const data = await response.json();
-  
+  // Check if response failed
   if (!response.ok) {
-    console.error('[GMB Sync] Failed to fetch reviews for location:', locationResource, data);
+    // Try to read error as JSON if Content-Type is correct
+    const contentType = response.headers.get('content-type')?.toLowerCase();
+    let errorData: any = {};
+    
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        // Failed to parse JSON, continue with empty object
+        console.error('[GMB Sync] Failed to parse error response as JSON');
+      }
+    } else {
+      // Not JSON, try to read as text for debugging
+      try {
+        const errorText = await response.text();
+        console.error('[GMB Sync] Non-JSON error response:', errorText.substring(0, 200));
+      } catch (e) {
+        // Ignore text parsing errors
+      }
+    }
+    
+    console.error('[GMB Sync] Failed to fetch reviews for location:', locationResource, errorData);
     // Don't throw error for reviews, just return empty array
     return { reviews: [], nextPageToken: undefined };
   }
 
+  // Response is OK, verify Content-Type before parsing
+  const contentType = response.headers.get('content-type')?.toLowerCase();
+  if (!contentType || !contentType.includes('application/json')) {
+    console.error('[GMB Sync] Unexpected content type for reviews:', contentType);
+    return { reviews: [], nextPageToken: undefined };
+  }
+
+  const data = await response.json();
+  
   return {
     reviews: data.reviews || [],
     nextPageToken: data.nextPageToken,
@@ -206,14 +264,43 @@ async function fetchMedia(
     },
   });
 
-  const data = await response.json();
-  
+  // Check if response failed
   if (!response.ok) {
-    console.error('[GMB Sync] Failed to fetch media for location:', locationResource, data);
+    // Try to read error as JSON if Content-Type is correct
+    const contentType = response.headers.get('content-type')?.toLowerCase();
+    let errorData: any = {};
+    
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        // Failed to parse JSON, continue with empty object
+        console.error('[GMB Sync] Failed to parse error response as JSON');
+      }
+    } else {
+      // Not JSON, try to read as text for debugging
+      try {
+        const errorText = await response.text();
+        console.error('[GMB Sync] Non-JSON error response:', errorText.substring(0, 200));
+      } catch (e) {
+        // Ignore text parsing errors
+      }
+    }
+    
+    console.error('[GMB Sync] Failed to fetch media for location:', locationResource, errorData);
     // Don't throw error for media, just return empty array
     return { media: [], nextPageToken: undefined };
   }
 
+  // Response is OK, verify Content-Type before parsing
+  const contentType = response.headers.get('content-type')?.toLowerCase();
+  if (!contentType || !contentType.includes('application/json')) {
+    console.error('[GMB Sync] Unexpected content type for media:', contentType);
+    return { media: [], nextPageToken: undefined };
+  }
+
+  const data = await response.json();
+  
   return {
     media: data.mediaItems || [],
     nextPageToken: data.nextPageToken,

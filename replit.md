@@ -8,6 +8,13 @@ GMB Platform is a Next.js-based Google My Business (GMB) management application 
 
 ## Recent Changes
 
+### October 30, 2025 - Content-Type Validation for Google API Responses
+- **Enhanced Error Handling:** Added Content-Type verification to `fetchLocations()`, `fetchReviews()`, and `fetchMedia()` functions in `app/api/gmb/sync/route.ts` to prevent crashes when Google API returns HTML error pages instead of JSON.
+- **Pre-Parse Validation:** All functions now check `Content-Type` header before attempting `.json()` parsing, with fallback to `.text()` for debugging non-JSON responses.
+- **Graceful Degradation:** Reviews and Media fetch failures return empty arrays instead of crashing, while Locations failures throw descriptive errors with parsed error messages.
+- **Improved Logging:** Enhanced error messages include actual Content-Type received, truncated error text (200 chars), and clear indication of JSON parse failures.
+- **Production Safety:** Prevents "Unexpected token '<'" errors when Google APIs return HTML error pages, ensuring sync process continues gracefully even with API failures.
+
 ### October 30, 2025 - All-Time Analytics Implementation
 - **Removed Time Constraints:** Eliminated all time-based filters (6 months, 30 days, 7 days) from analytics queries to show complete historical data across entire platform lifetime.
 - **Server Actions Update:** Modified `getMonthlyStats()` in `server/actions/dashboard.ts` to fetch all reviews without date restrictions, removed `.slice(-6)` limitation, and updated error messages to reflect all-time scope.
