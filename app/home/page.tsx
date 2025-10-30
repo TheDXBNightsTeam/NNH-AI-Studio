@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { 
   ArrowRight, Building2, BarChart3, MessageSquare, LogOut, 
   Star, TrendingUp, Zap, Shield, Clock, Users,
-  Sparkles, Target, Award, CheckCircle2, Headphones, Globe
+  Sparkles, Target, Award, CheckCircle2, Headphones, Globe, Play
 } from 'lucide-react'
 import Image from 'next/image'
 import type { Metadata } from 'next'
@@ -86,6 +86,20 @@ export default async function HomePage() {
     .select('*', { count: 'exact', head: true })
     .eq('user_id', user.id)
 
+  // Fetch YouTube stats
+  const { data: youtubeToken } = await supabase
+    .from('oauth_tokens')
+    .select('metadata')
+    .eq('user_id', user.id)
+    .eq('provider', 'youtube')
+    .maybeSingle()
+
+  const youtubeStats = youtubeToken?.metadata as any
+  const youtubeSubs = youtubeStats?.statistics?.subscriberCount ? Number(youtubeStats.statistics.subscriberCount) : 0
+  const youtubeViews = youtubeStats?.statistics?.viewCount ? Number(youtubeStats.statistics.viewCount) : 0
+  const youtubeVideos = youtubeStats?.statistics?.videoCount ? Number(youtubeStats.statistics.videoCount) : 0
+  const hasYouTube = !!youtubeToken
+
   return (
     <div className="min-h-screen bg-background">
       {/* Premium Animated Background with Orange Glow */}
@@ -153,7 +167,7 @@ export default async function HomePage() {
             </h2>
             
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Harness the power of AI to manage your Google My Business presence, respond to reviews, and grow your local reach—all from one intelligent dashboard.
+              Harness the power of AI to manage your Google My Business presence, YouTube channel, respond to reviews, and grow your local reach—all from one intelligent dashboard.
             </p>
 
             <div className="flex gap-4 justify-center pt-4">
@@ -182,7 +196,7 @@ export default async function HomePage() {
 
         {/* Quick Stats Dashboard */}
         <section className="container mx-auto px-6 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             {[
               {
                 icon: Building2,
@@ -215,7 +229,15 @@ export default async function HomePage() {
                 suffix: '',
                 color: 'text-green-500',
                 bgColor: 'bg-green-500/10'
-              }
+              },
+              ...(hasYouTube ? [{
+                icon: Play,
+                label: 'YouTube Subscribers',
+                value: youtubeSubs.toLocaleString(),
+                suffix: '',
+                color: 'text-red-500',
+                bgColor: 'bg-red-500/10'
+              }] : [])
             ].map((stat, index) => (
               <Card 
                 key={index}
@@ -291,6 +313,12 @@ export default async function HomePage() {
                 title: 'Auto-Responses',
                 description: 'Set up automated review responses with customizable templates and AI assistance',
                 gradient: 'from-green-500/20 to-green-500/5'
+              },
+              {
+                icon: Play,
+                title: 'YouTube Management',
+                description: 'Manage your YouTube channel with analytics, video insights, comments, and AI content generation',
+                gradient: 'from-red-500/20 to-red-500/5'
               }
             ].map((feature, index) => (
               <Card 
@@ -456,11 +484,12 @@ export default async function HomePage() {
               <CardDescription>Jump to the most common tasks</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {[
                   { icon: Building2, label: 'Connect Account', href: '/accounts' },
                   { icon: BarChart3, label: 'View Analytics', href: '/analytics' },
                   { icon: MessageSquare, label: 'Manage Reviews', href: '/reviews' },
+                  { icon: Play, label: 'YouTube Dashboard', href: '/youtube-dashboard' },
                   { icon: Sparkles, label: 'AI Studio', href: '/ai-studio' }
                 ].map((action, index) => (
                   <Link key={index} href={action.href}>
@@ -497,7 +526,7 @@ export default async function HomePage() {
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Empowering businesses with AI-powered Google My Business management.
+                  Empowering businesses with AI-powered Google My Business and YouTube management.
                 </p>
               </div>
 
@@ -507,6 +536,7 @@ export default async function HomePage() {
                   <li><Link href="/features" className="hover:text-primary transition-colors">Features</Link></li>
                   <li><Link href="/pricing" className="hover:text-primary transition-colors">Pricing</Link></li>
                   <li><Link href="/analytics" className="hover:text-primary transition-colors">Analytics</Link></li>
+                  <li><Link href="/youtube-dashboard" className="hover:text-primary transition-colors">YouTube Dashboard</Link></li>
                   <li><Link href="/ai-studio" className="hover:text-primary transition-colors">AI Studio</Link></li>
                 </ul>
               </div>
