@@ -8,6 +8,11 @@ GMB Platform is a Next.js-based Google My Business (GMB) management application 
 
 ## Recent Changes
 
+### October 30, 2025 - Google API JSON Response Enforcement
+- **Fixed "Unexpected token '<'" Errors:** Added explicit JSON request/response handling to ALL Google API calls by including `Accept: application/json` headers and `alt=json` query parameters, preventing HTML error pages from being returned instead of JSON.
+- **Comprehensive API Coverage:** Updated all Google API fetch calls in `sync/route.ts` (fetchLocations, fetchReviews, fetchMedia, account discovery) and `oauth-callback/route.ts` (userinfo, GMB accounts, locations) with JSON safeguards.
+- **Production-Ready Implementation:** Architect-verified that all Google API endpoints now enforce JSON responses, eliminating parsing errors and ensuring graceful error handling across OAuth flows and sync operations.
+
 ### October 30, 2025 - API Error Handling & Schema Column Fixes
 - **Improved Sync Error Handling:** Fixed "Unexpected token '<'" errors in `useAccountsManagement.ts` by using `.text()` first before attempting `.json()` parsing, preventing crashes when API returns HTML error pages (500, 404, etc.).
 - **Enhanced Error Logging:** Added comprehensive error context logging (status, url, text) for debugging sync failures, with automatic JSON/HTML response detection.
