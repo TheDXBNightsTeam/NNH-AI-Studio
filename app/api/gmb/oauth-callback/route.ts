@@ -178,87 +178,55 @@ export async function GET(request: NextRequest) {
       
       console.log(`[OAuth Callback] Processing GMB account: ${accountName} (${accountId})`);
       
-      // Check if this specific GMB account already exists for this user
+      // Security check: prevent cross-user takeover
+      // Check if this account_id exists and belongs to a different user
       const { data: existingAccount } = await supabase
         .from('gmb_accounts')
-        .select('id, refresh_token, user_id')
-        .eq('user_id', userId)
+        .select('user_id, refresh_token')
         .eq('account_id', accountId)
         .maybeSingle();
+        
+      if (existingAccount && existingAccount.user_id !== userId) {
+        console.error('[OAuth Callback] Security violation: GMB account already linked to different user');
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+        return NextResponse.redirect(
+          `${baseUrl}/accounts#error=${encodeURIComponent('This Google My Business account is already linked to another user')}`
+        );
+      }
       
-      // Security check: prevent cross-user takeover via google_account_id
-      if (!existingAccount) {
-        const { data: otherUserAccount } = await supabase
-          .from('gmb_accounts')
-          .select('user_id, account_id')
-          .eq('account_id', accountId)
-          .maybeSingle();
-          
-        if (otherUserAccount && otherUserAccount.user_id !== userId) {
-          console.error('[OAuth Callback] Security violation: GMB account already linked to different user');
-          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-          return NextResponse.redirect(
-            `${baseUrl}/accounts#error=${encodeURIComponent('This Google My Business account is already linked to another user')}`
-          );
-        }
+      // Use UPSERT to insert or update the account
+      console.log(`[OAuth Callback] Upserting GMB account ${accountId}`);
+      
+      const upsertData = {
+        user_id: userId,
+        account_id: accountId,
+        account_name: accountName,
+        email: userInfo.email,
+        google_account_id: userInfo.id,
+        access_token: tokenData.access_token,
+        refresh_token: tokenData.refresh_token || existingAccount?.refresh_token || null,
+        token_expires_at: tokenExpiresAt.toISOString(),
+        is_active: true,
+        last_sync: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      
+      const { data: upsertedAccount, error: upsertError } = await supabase
+        .from('gmb_accounts')
+        .upsert(upsertData, {
+          onConflict: 'account_id',
+          ignoreDuplicates: false,
+        })
+        .select('id')
+        .single();
+        
+      if (upsertError || !upsertedAccount) {
+        console.error('[OAuth Callback] Error upserting account:', upsertError);
+        continue;
       }
-        
-      if (existingAccount) {
-        console.log(`[OAuth Callback] Updating existing account ${existingAccount.id}`);
-        
-        const updateData = {
-          account_name: accountName,
-          account_id: accountId,
-          email: userInfo.email,
-          access_token: tokenData.access_token,
-          refresh_token: tokenData.refresh_token || existingAccount.refresh_token,
-          token_expires_at: tokenExpiresAt.toISOString(),
-          is_active: true,
-          last_sync: new Date().toISOString(),
-        };
-        
-        const { error: updateError } = await supabase
-          .from('gmb_accounts')
-          .update(updateData)
-          .eq('id', existingAccount.id);
-          
-        if (updateError) {
-          console.error('[OAuth Callback] Error updating account:', updateError);
-          continue;
-        }
-        
-        savedAccountId = existingAccount.id;
-        console.log(`[OAuth Callback] Successfully updated account ${existingAccount.id}`);
-      } else {
-        console.log(`[OAuth Callback] Creating new account for user ${userId}`);
-        
-        const insertData = {
-          user_id: userId,
-          account_name: accountName,
-          account_id: accountId,
-          email: userInfo.email,
-          google_account_id: userInfo.id,
-          access_token: tokenData.access_token,
-          refresh_token: tokenData.refresh_token,
-          token_expires_at: tokenExpiresAt.toISOString(),
-          is_active: true,
-          last_sync: null,
-        };
-        
-        const { data: insertedAccount, error: insertError } = await supabase
-          .from('gmb_accounts')
-          .insert(insertData)
-          .select('id')
-          .single();
-          
-        if (insertError || !insertedAccount) {
-          console.error('[OAuth Callback] Error inserting account:', insertError);
-          continue;
-        }
-        
-        savedAccountId = insertedAccount.id;
-        console.log(`[OAuth Callback] Successfully created account ${insertedAccount.id}`);
-      }
+      
+      savedAccountId = upsertedAccount.id;
+      console.log(`[OAuth Callback] Successfully upserted account ${upsertedAccount.id}`);
       
       // Fetch initial locations for this account
       console.log(`[OAuth Callback] Fetching initial locations for account ${accountId}`);
