@@ -13,9 +13,17 @@ export function ResponseTimeChart() {
   useEffect(() => {
     async function fetchResponseData() {
       try {
+        // Get current user first
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          setIsLoading(false)
+          return
+        }
+
         const { data: reviews } = await supabase
           .from("gmb_reviews")
           .select("created_at, reply_text, updated_at")
+          .eq("user_id", user.id)
           .not("reply_text", "is", null)
 
         if (reviews) {

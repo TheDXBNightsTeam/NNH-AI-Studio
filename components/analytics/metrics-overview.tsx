@@ -72,8 +72,15 @@ export function MetricsOverview() {
   useEffect(() => {
     async function fetchMetrics() {
       try {
-        const { data: locations } = await supabase.from("gmb_locations").select("*")
-        const { data: reviews } = await supabase.from("gmb_reviews").select("*")
+        // Get current user first
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          setIsLoading(false)
+          return
+        }
+
+        const { data: locations } = await supabase.from("gmb_locations").select("*").eq("user_id", user.id)
+        const { data: reviews } = await supabase.from("gmb_reviews").select("*").eq("user_id", user.id)
 
         const totalViews = locations?.reduce((sum, loc) => sum + (loc.total_views || 0), 0) || 0
         const totalReviews = reviews?.length || 0

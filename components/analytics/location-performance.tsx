@@ -16,9 +16,17 @@ export function LocationPerformance() {
   useEffect(() => {
     async function fetchLocations() {
       try {
+        // Get current user first
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          setIsLoading(false)
+          return
+        }
+
         const { data } = await supabase
           .from("gmb_locations_with_rating")
           .select("*")
+          .eq("user_id", user.id)
           .order("rating", { ascending: false })
           .limit(4)
 

@@ -13,9 +13,17 @@ export function ReviewSentimentChart() {
   useEffect(() => {
     async function fetchSentimentData() {
       try {
+        // Get current user first
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          setIsLoading(false)
+          return
+        }
+
         const { data: reviews } = await supabase
           .from("gmb_reviews")
           .select("ai_sentiment, created_at")
+          .eq("user_id", user.id)
           .order("created_at", { ascending: true })
 
         if (reviews) {

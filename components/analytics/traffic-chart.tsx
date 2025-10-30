@@ -13,9 +13,17 @@ export function TrafficChart() {
   useEffect(() => {
     async function fetchTrafficData() {
       try {
+        // Get current user first
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          setIsLoading(false)
+          return
+        }
+
         const { data: reviews } = await supabase
           .from("gmb_reviews")
           .select("created_at")
+          .eq("user_id", user.id)
           .order("created_at", { ascending: true })
 
         if (reviews && reviews.length > 0) {
