@@ -14,6 +14,7 @@ GMB Platform is a Next.js-based Google My Business (GMB) management application 
 - **Animated Background:** Implemented three rotating gradient orbs with CSS animations (7s duration, staggered delays) for dynamic visual appeal.
 - **Enhanced Components:** Upgraded CTA button with gradient styling (from-primary to-accent), feature cards with hover scale animations, welcome badge with icon, and glass-effect header with Sign Out button.
 - **Improved UX:** Better typography hierarchy (5xl/6xl headings), enhanced descriptions, smooth transitions, and responsive design for all screen sizes.
+- **Server Component Fix:** Moved all CSS animations from styled-jsx to `app/globals.css` to maintain Server Component compatibility and fix deployment build errors.
 - **Architect Verified:** Production-ready implementation with recommendation to add prefers-reduced-motion guard for accessibility improvements.
 
 ### October 30, 2025 - Content-Type Validation for Google API Responses
