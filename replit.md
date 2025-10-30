@@ -8,6 +8,10 @@ GMB Platform is a Next.js-based Google My Business (GMB) management application 
 
 ## Recent Changes
 
+### October 30, 2025 - Unified Login Redirect to /home Page
+- **Consistent Redirect Logic:** Updated `app/auth/callback/route.ts` to redirect all authentication methods (Magic Link, Google OAuth, email/password) to `/home` instead of `/dashboard`.
+- **User Experience:** All users now land on the professional welcome page at `/home` after successful login, regardless of authentication method used.
+
 ### October 30, 2025 - Professional Home Page Redesign with NNH Branding
 - **Complete UI Overhaul:** Redesigned `/home` page with same professional design as auth pages (animated gradient background, glass morphism effects, modern typography).
 - **NNH Branding Integration:** Added NNH logo (48x48px) to header, "NNH - AI Studio" title with gradient text effect, and updated all content to reflect NNH brand identity.
