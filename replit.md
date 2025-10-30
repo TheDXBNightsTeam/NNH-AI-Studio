@@ -8,11 +8,12 @@ GMB Platform is a Next.js-based Google My Business (GMB) management application 
 
 ## Recent Changes
 
-### October 30, 2025 - OAuth Callback UPSERT Simplification
-- **Simplified OAuth Account Persistence:** Replaced manual IF/ELSE logic (check → INSERT or UPDATE) with single UPSERT operation on `account_id` conflict key, reducing code from ~80 lines to ~50 lines while maintaining identical functionality.
-- **Enhanced Security:** Moved cross-user takeover check before UPSERT to prevent accounts from being transferred between users, maintaining security guard that validates `account_id` ownership.
-- **Refresh Token Preservation:** Properly handles Google OAuth refresh token preservation using fallback logic (`tokenData.refresh_token || existingAccount?.refresh_token || null`) to prevent token loss when Google omits new refresh token.
-- **Code Maintainability:** Simplified OAuth callback flow in `app/api/gmb/oauth-callback/route.ts` with cleaner, more maintainable UPSERT pattern.
+### October 30, 2025 - OAuth Callback Composite Key UPSERT
+- **Database Schema Enhancement:** Changed from single UNIQUE constraint on `account_id` to composite UNIQUE constraint on `(user_id, account_id)`, enabling proper multi-account support per user while preventing cross-user takeover at database level.
+- **Simplified Account Persistence:** Replaced manual security check + conditional INSERT/UPDATE with streamlined UPSERT on composite key `(user_id, account_id)`, reducing code complexity while maintaining robust security.
+- **Enhanced Error Handling:** Eliminated silent failures by ensuring all error paths (cross-user conflict, upsert failure, no account saved) return explicit error redirects with clear messages, preventing false success indicators.
+- **Refresh Token Preservation:** Maintained refresh token preservation logic with fallback (`tokenData.refresh_token || existingAccount?.refresh_token || null`) to prevent token loss when Google omits new refresh token.
+- **Production-Ready Flow:** Implemented comprehensive validation ensuring success redirect only occurs when `savedAccountId` exists, architect-verified as production-ready with zero silent failure paths.
 
 ### October 30, 2025 - Database View for Location Ratings
 - **Created gmb_locations_with_rating View:** Added database view that aggregates rating, reviews_count, and last_review_date from gmb_reviews table, eliminating need for manual joins and ensuring consistent rating calculations across the application.
