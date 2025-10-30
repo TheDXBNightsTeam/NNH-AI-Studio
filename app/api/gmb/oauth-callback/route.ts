@@ -119,9 +119,13 @@ export async function GET(request: NextRequest) {
     
     // Get user info from Google
     console.log('[OAuth Callback] Fetching user info...');
-    const userInfoResponse = await fetch(GOOGLE_USERINFO_URL, {
+    const userInfoUrl = new URL(GOOGLE_USERINFO_URL);
+    userInfoUrl.searchParams.set('alt', 'json');
+    
+    const userInfoResponse = await fetch(userInfoUrl.toString(), {
       headers: {
         Authorization: `Bearer ${tokenData.access_token}`,
+        Accept: 'application/json',
       },
     });
     
@@ -142,9 +146,13 @@ export async function GET(request: NextRequest) {
     
     // Fetch GMB accounts
     console.log('[OAuth Callback] Fetching GMB accounts...');
-    const gmbAccountsResponse = await fetch(GMB_ACCOUNTS_URL, {
+    const gmbAccountsUrl = new URL(GMB_ACCOUNTS_URL);
+    gmbAccountsUrl.searchParams.set('alt', 'json');
+    
+    const gmbAccountsResponse = await fetch(gmbAccountsUrl.toString(), {
       headers: {
         Authorization: `Bearer ${tokenData.access_token}`,
+        Accept: 'application/json',
       },
     });
     
@@ -234,15 +242,16 @@ export async function GET(request: NextRequest) {
       
       // Fetch initial locations for this account
       console.log(`[OAuth Callback] Fetching initial locations for account ${accountId}`);
-      const locationsUrl = `${GMB_LOCATIONS_URL}/${accountId}/locations`;
-      const locationsResponse = await fetch(
-        `${locationsUrl}?readMask=name,title,storefrontAddress,phoneNumbers,websiteUri,categories`,
-        {
-          headers: {
-            Authorization: `Bearer ${tokenData.access_token}`,
-          },
-        }
-      );
+      const locationsUrl = new URL(`${GMB_LOCATIONS_URL}/${accountId}/locations`);
+      locationsUrl.searchParams.set('readMask', 'name,title,storefrontAddress,phoneNumbers,websiteUri,categories');
+      locationsUrl.searchParams.set('alt', 'json');
+      
+      const locationsResponse = await fetch(locationsUrl.toString(), {
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`,
+          Accept: 'application/json',
+        },
+      });
       
       if (locationsResponse.ok) {
         const locationsData = await locationsResponse.json();

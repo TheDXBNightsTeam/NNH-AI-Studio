@@ -126,12 +126,16 @@ async function fetchLocations(
   const url = new URL(`${GBP_LOC_BASE}/${accountResource}/locations`);
   url.searchParams.set('readMask', 'name,title,storefrontAddress,phoneNumbers,websiteUri,categories');
   url.searchParams.set('pageSize', '100');
+  url.searchParams.set('alt', 'json');
   if (pageToken) {
     url.searchParams.set('pageToken', pageToken);
   }
 
   const response = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { 
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+    },
   });
 
   const data = await response.json();
@@ -156,12 +160,16 @@ async function fetchReviews(
 ): Promise<{ reviews: any[]; nextPageToken?: string }> {
   const url = new URL(`${GBP_V4_BASE}/${locationResource}/reviews`);
   url.searchParams.set('pageSize', '50');
+  url.searchParams.set('alt', 'json');
   if (pageToken) {
     url.searchParams.set('pageToken', pageToken);
   }
 
   const response = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { 
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+    },
   });
 
   const data = await response.json();
@@ -186,12 +194,16 @@ async function fetchMedia(
 ): Promise<{ media: any[]; nextPageToken?: string }> {
   const url = new URL(`${GBP_V4_BASE}/${locationResource}/media`);
   url.searchParams.set('pageSize', '50');
+  url.searchParams.set('alt', 'json');
   if (pageToken) {
     url.searchParams.set('pageToken', pageToken);
   }
 
   const response = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { 
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+    },
   });
 
   const data = await response.json();
@@ -271,12 +283,15 @@ export async function POST(request: NextRequest) {
       const accessToken = await getValidAccessToken(supabase, accountId);
       
       // Try to get account resource name from Google
-      const accountsResponse = await fetch(
-        'https://mybusinessaccountmanagement.googleapis.com/v1/accounts',
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      );
+      const accountsUrl = new URL('https://mybusinessaccountmanagement.googleapis.com/v1/accounts');
+      accountsUrl.searchParams.set('alt', 'json');
+      
+      const accountsResponse = await fetch(accountsUrl.toString(), {
+        headers: { 
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+        },
+      });
       
       if (accountsResponse.ok) {
         const accountsData = await accountsResponse.json();
