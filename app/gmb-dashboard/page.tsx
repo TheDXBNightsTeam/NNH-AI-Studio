@@ -1016,6 +1016,12 @@ export default function GMBDashboardPage() {
   const [user, setUser] = useState<any>(null)
   const [activeTab, setActiveTab] = useState("dashboard")
   
+  // GMB Connection state
+  const [hasGMBAccount, setHasGMBAccount] = useState<boolean>(false)
+  const [gmbAccountName, setGmbAccountName] = useState<string | null>(null)
+  const [connecting, setConnecting] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
+  
   // Notifications state
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -1064,6 +1070,57 @@ export default function GMBDashboardPage() {
     }
   }
 
+  // Handle Connect GMB
+  const handleConnectGMB = async () => {
+    try {
+      setConnecting(true)
+      const res = await fetch('/api/gmb/create-auth-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const data = await res.json()
+      if (data.authUrl || data.url) {
+        window.location.href = data.authUrl || data.url
+      } else {
+        throw new Error(data.error || 'Failed to create auth URL')
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to connect Google My Business')
+      setConnecting(false)
+    }
+  }
+
+  // Handle Disconnect GMB
+  const handleDisconnectGMB = async () => {
+    if (!confirm('Are you sure you want to disconnect your Google My Business account?')) return
+    try {
+      setDisconnecting(true)
+      // Delete GMB account
+      const { error } = await supabase
+        .from('gmb_accounts')
+        .delete()
+        .eq('user_id', user?.id)
+      
+      if (error) throw error
+      
+      // Reset state
+      setHasGMBAccount(false)
+      setGmbAccountName(null)
+      setStats({
+        totalLocations: 0,
+        totalReviews: 0,
+        averageRating: "0.0",
+        responseRate: 0
+      })
+      
+      toast.success('Google My Business account disconnected successfully')
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to disconnect')
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
   // Fetch dashboard stats
   useEffect(() => {
     async function loadData() {
@@ -1074,6 +1131,22 @@ export default function GMBDashboardPage() {
           return
         }
         setUser(user)
+
+        // Check if GMB account is connected
+        const { data: gmbAccount } = await supabase
+          .from('gmb_accounts')
+          .select('account_name, is_active')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .maybeSingle()
+
+        if (gmbAccount) {
+          setHasGMBAccount(true)
+          setGmbAccountName(gmbAccount.account_name)
+        } else {
+          setHasGMBAccount(false)
+          setGmbAccountName(null)
+        }
 
         // Fetch stats from database
         const { data: locations } = await supabase
@@ -1102,6 +1175,13 @@ export default function GMBDashboardPage() {
             averageRating,
             responseRate
           })
+        } else {
+          setStats({
+            totalLocations: 0,
+            totalReviews: 0,
+            averageRating: "0.0",
+            responseRate: 0
+          })
         }
       } catch (err) {
         console.error('Error loading data:', err)
@@ -1129,18 +1209,18 @@ export default function GMBDashboardPage() {
               <p className="text-muted-foreground">Manage your Google Business Profile</p>
             </div>
             
-            {/* Notifications */}
-            <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="relative glass-strong border-primary/30">
-                  <Bell className="h-5 w-5" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 h-5 w-5 bg-primary text-white text-xs rounded-full flex items-center justify-center">
-                      {unreadCount}
-                    </span>
-                  )}
-                </Button>
-              </PopoverTrigger>
+              {/* Notifications */}
+              <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="relative glass-strong border-primary/30">
+                    <Bell className="h-5 w-5" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 h-5 w-5 bg-primary text-white text-xs rounded-full flex items-center justify-center">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
               <PopoverContent className="w-96 glass-strong border-primary/30" align="end">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b border-primary/20 pb-3">
@@ -1194,6 +1274,46 @@ export default function GMBDashboardPage() {
 
           {activeTab === "dashboard" && (
             <div className="space-y-6">
+              {/* Empty State - No GMB Account Connected */}
+              {!hasGMBAccount && !loading && (
+                <Card className="glass-strong border-primary/30 shadow-xl">
+                  <CardContent className="p-12">
+                    <div className="flex flex-col items-center justify-center text-center space-y-4">
+                      <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center glow-orange">
+                        <MapPin className="w-10 h-10 text-primary" />
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-2xl font-bold gradient-text-orange">No Google My Business Account Connected</h3>
+                        <p className="text-muted-foreground max-w-md">
+                          Connect your Google My Business account to unlock powerful features like location management, review responses, analytics, and AI-powered content creation.
+                        </p>
+                      </div>
+                      <Button 
+                        onClick={handleConnectGMB} 
+                        disabled={connecting}
+                        size="lg"
+                        className="mt-4 gap-2 bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-600/90 text-white shadow-lg hover-glow"
+                      >
+                        {connecting ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            Connecting...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-5 w-5" />
+                            Connect Google My Business
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Dashboard Content - Only show if connected */}
+              {hasGMBAccount && (
+                <>
               {/* Stats Cards */}
               <div className="grid gap-6 md:grid-cols-4">
                 <StatCard
@@ -1234,13 +1354,167 @@ export default function GMBDashboardPage() {
                 <PerformanceChart />
                 <ActivityFeed />
               </div>
+                </>
+              )}
             </div>
           )}
 
-          {activeTab === "posts" && <GMBPostsSection />}
-          {activeTab === "locations" && <LocationsList />}
-          {activeTab === "reviews" && <ReviewsList />}
-          {activeTab === "analytics" && <AnalyticsDashboard />}
+          {activeTab === "posts" && (
+            !hasGMBAccount ? (
+              <Card className="glass-strong border-primary/30 shadow-xl">
+                <CardContent className="p-12">
+                  <div className="flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center glow-orange">
+                      <Sparkles className="w-10 h-10 text-primary" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-2xl font-bold gradient-text-orange">Connect to Create Posts</h3>
+                      <p className="text-muted-foreground max-w-md">
+                        Connect your Google My Business account to create and publish posts to your business locations.
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={handleConnectGMB} 
+                      disabled={connecting}
+                      size="lg"
+                      className="mt-4 gap-2 bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-600/90 text-white shadow-lg hover-glow"
+                    >
+                      {connecting ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Connecting...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-5 w-5" />
+                          Connect Google My Business
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <GMBPostsSection />
+            )
+          )}
+          {activeTab === "locations" && (
+            !hasGMBAccount ? (
+              <Card className="glass-strong border-primary/30 shadow-xl">
+                <CardContent className="p-12">
+                  <div className="flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center glow-orange">
+                      <MapPin className="w-10 h-10 text-primary" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-2xl font-bold gradient-text-orange">Connect to View Locations</h3>
+                      <p className="text-muted-foreground max-w-md">
+                        Connect your Google My Business account to view and manage your business locations.
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={handleConnectGMB} 
+                      disabled={connecting}
+                      size="lg"
+                      className="mt-4 gap-2 bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-600/90 text-white shadow-lg hover-glow"
+                    >
+                      {connecting ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Connecting...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-5 w-5" />
+                          Connect Google My Business
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <LocationsList />
+            )
+          )}
+          {activeTab === "reviews" && (
+            !hasGMBAccount ? (
+              <Card className="glass-strong border-primary/30 shadow-xl">
+                <CardContent className="p-12">
+                  <div className="flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center glow-orange">
+                      <MessageSquare className="w-10 h-10 text-primary" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-2xl font-bold gradient-text-orange">Connect to View Reviews</h3>
+                      <p className="text-muted-foreground max-w-md">
+                        Connect your Google My Business account to view and respond to customer reviews.
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={handleConnectGMB} 
+                      disabled={connecting}
+                      size="lg"
+                      className="mt-4 gap-2 bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-600/90 text-white shadow-lg hover-glow"
+                    >
+                      {connecting ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Connecting...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-5 w-5" />
+                          Connect Google My Business
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <ReviewsList />
+            )
+          )}
+          {activeTab === "analytics" && (
+            !hasGMBAccount ? (
+              <Card className="glass-strong border-primary/30 shadow-xl">
+                <CardContent className="p-12">
+                  <div className="flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center glow-orange">
+                      <TrendingUp className="w-10 h-10 text-primary" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-2xl font-bold gradient-text-orange">Connect to View Analytics</h3>
+                      <p className="text-muted-foreground max-w-md">
+                        Connect your Google My Business account to view detailed analytics and performance insights.
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={handleConnectGMB} 
+                      disabled={connecting}
+                      size="lg"
+                      className="mt-4 gap-2 bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-600/90 text-white shadow-lg hover-glow"
+                    >
+                      {connecting ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Connecting...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-5 w-5" />
+                          Connect Google My Business
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <AnalyticsDashboard />
+            )
+          )}
           {activeTab === "settings" && <GMBSettings />}
         </div>
       </main>
