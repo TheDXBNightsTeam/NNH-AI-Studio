@@ -512,23 +512,95 @@ export default function YoutubeDashboardPage() {
   }
   
   const handleUpload = async () => {
+    // Validation
+    if (!videoFile) {
+      toast.error("Please select a video file")
+      return
+    }
+    
+    if (!videoTitle.trim()) {
+      toast.error("Video title is required")
+      return
+    }
+    
+    if (!videoDescription.trim()) {
+      toast.error("Video description is required")
+      return
+    }
+    
     setUploadStage('processing')
-    setUploadProgress(50)
+    setUploadProgress(10)
     
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(interval)
-          setUploadStage('complete')
-          return 100
+    try {
+      // Create FormData for file upload
+      const formData = new FormData()
+      formData.append('video', videoFile)
+      formData.append('title', videoTitle)
+      formData.append('description', videoDescription)
+      formData.append('tags', JSON.stringify(videoTags))
+      formData.append('category', videoCategory)
+      formData.append('language', videoLanguage)
+      formData.append('privacy', videoPrivacy)
+      formData.append('allowComments', String(allowComments))
+      formData.append('allowEmbedding', String(allowEmbedding))
+      formData.append('ageRestriction', String(ageRestriction))
+      if (scheduleDate) {
+        formData.append('scheduledAt', scheduleDate)
+      }
+      if (thumbnailFile) {
+        formData.append('thumbnail', thumbnailFile)
+      }
+      
+      // Upload video with progress tracking
+      const xhr = new XMLHttpRequest()
+      
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = Math.round((e.loaded / e.total) * 90) + 10 // 10-100%
+          setUploadProgress(percentComplete)
         }
-        return prev + 10
       })
-    }, 500)
-    
-    // Here you would implement actual upload logic
-    toast.success("Video uploaded successfully!")
+      
+      xhr.addEventListener('load', async () => {
+        if (xhr.status === 200) {
+          const response = JSON.parse(xhr.responseText)
+          setUploadProgress(100)
+          setUploadStage('complete')
+          toast.success("Video uploaded successfully!")
+          
+          // Refresh videos list and show in Manager
+          try {
+            await Promise.all([fetchVideos(), fetchFromDB()])
+            // Switch to Manager tab to see the uploaded video
+            setTimeout(() => {
+              setActiveTab('manager')
+            }, 1000)
+          } catch (refreshError) {
+            console.error('Failed to refresh videos:', refreshError)
+            // Still switch to manager even if refresh fails
+            setTimeout(() => {
+              setActiveTab('manager')
+            }, 1000)
+          }
+        } else {
+          const error = JSON.parse(xhr.responseText || '{}')
+          throw new Error(error.error || 'Upload failed')
+        }
+      })
+      
+      xhr.addEventListener('error', () => {
+        throw new Error('Network error during upload')
+      })
+      
+      xhr.open('POST', '/api/youtube/videos/upload')
+      xhr.send(formData)
+      
+    } catch (error: any) {
+      console.error('Upload error:', error)
+      toast.error(error.message || 'Failed to upload video')
+      setUploadStage('details')
+      setUploadProgress(0)
+    }
   }
 
   // AI Generation handlers

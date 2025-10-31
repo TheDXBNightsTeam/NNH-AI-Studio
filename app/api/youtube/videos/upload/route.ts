@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 300 // 5 minutes for large video uploads
 
 async function refreshYouTubeToken(refreshToken: string) {
   const clientId = process.env.YT_CLIENT_ID || process.env.GOOGLE_CLIENT_ID
@@ -27,10 +28,30 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const body = await request.json()
-    const { title, description, videoUrl, videoPath, scheduledAt } = body
-    if (!title || !description || (!videoUrl && !videoPath)) {
-      return NextResponse.json({ error: 'Missing title, description, or video' }, { status: 400 })
+    // Parse FormData
+    const formData = await request.formData()
+    const videoFile = formData.get('video') as File
+    const title = formData.get('title') as string
+    const description = formData.get('description') as string
+    const tagsStr = formData.get('tags') as string
+    const category = formData.get('category') as string || '22' // Default to People & Blogs
+    const language = formData.get('language') as string || 'en'
+    const privacy = formData.get('privacy') as string || 'private'
+    const allowComments = formData.get('allowComments') === 'true'
+    const allowEmbedding = formData.get('allowEmbedding') === 'true'
+    const ageRestriction = formData.get('ageRestriction') === 'true'
+    const scheduledAt = formData.get('scheduledAt') as string | null
+    const thumbnailFile = formData.get('thumbnail') as File | null
+
+    // Validation
+    if (!videoFile) {
+      return NextResponse.json({ error: 'Video file is required' }, { status: 400 })
+    }
+    if (!title || !title.trim()) {
+      return NextResponse.json({ error: 'Title is required' }, { status: 400 })
+    }
+    if (!description || !description.trim()) {
+      return NextResponse.json({ error: 'Description is required' }, { status: 400 })
     }
 
     // Get YouTube token
@@ -61,15 +82,146 @@ export async function POST(request: NextRequest) {
 
     if (!accessToken) return NextResponse.json({ error: 'Missing YouTube access token' }, { status: 400 })
 
-    // Note: Full YouTube video upload requires resumable upload protocol
-    // Current implementation saves draft metadata - video upload feature planned for future release
-    return NextResponse.json({
-      ok: true,
-      message: 'Video metadata saved. YouTube upload feature coming soon.',
-      videoUrl,
-      scheduledAt,
-    })
+    // Parse tags
+    let tags: string[] = []
+    try {
+      tags = tagsStr ? JSON.parse(tagsStr) : []
+    } catch {
+      tags = []
+    }
+
+    // Step 1: Initialize resumable upload session
+    const videoMetadata = {
+      snippet: {
+        title,
+        description,
+        tags: tags.slice(0, 30), // YouTube allows max 30 tags
+        categoryId: category,
+        defaultLanguage: language,
+      },
+      status: {
+        privacyStatus: privacy,
+        selfDeclaredMadeForKids: false,
+        ...(ageRestriction && { contentRating: { ytRating: 'ytAgeRestricted' } }),
+      },
+    }
+
+    // Initialize resumable upload
+    const initResponse = await fetch(
+      `https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Upload-Content-Type': videoFile.type || 'video/*',
+          'X-Upload-Content-Length': videoFile.size.toString(),
+        },
+        body: JSON.stringify(videoMetadata),
+      }
+    )
+
+    if (!initResponse.ok) {
+      const errorData = await initResponse.json()
+      console.error('[YouTube Upload] Init error:', errorData)
+      return NextResponse.json(
+        { error: errorData.error?.message || 'Failed to initialize upload' },
+        { status: initResponse.status }
+      )
+    }
+
+    const uploadUrl = initResponse.headers.get('Location')
+    if (!uploadUrl) {
+      return NextResponse.json({ error: 'Failed to get upload URL' }, { status: 500 })
+    }
+
+    // Step 2: Upload video file in chunks (resumable upload)
+    const chunkSize = 256 * 1024 // 256KB chunks
+    const fileBuffer = await videoFile.arrayBuffer()
+    const totalChunks = Math.ceil(fileBuffer.byteLength / chunkSize)
+
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+      const start = chunkIndex * chunkSize
+      const end = Math.min(start + chunkSize, fileBuffer.byteLength)
+      const chunk = fileBuffer.slice(start, end)
+      const isLastChunk = chunkIndex === totalChunks - 1
+
+      const chunkResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Length': (end - start).toString(),
+          'Content-Range': `bytes ${start}-${end - 1}/${fileBuffer.byteLength}`,
+        },
+        body: chunk,
+      })
+
+      if (!chunkResponse.ok && chunkResponse.status !== 308) {
+        // 308 is expected for partial uploads (except last chunk)
+        const errorData = await chunkResponse.text()
+        console.error('[YouTube Upload] Chunk error:', errorData)
+        return NextResponse.json(
+          { error: 'Failed to upload video chunk' },
+          { status: chunkResponse.status }
+        )
+      }
+
+      // Last chunk should return 200
+      if (isLastChunk && chunkResponse.status === 200) {
+        const uploadedVideo = await chunkResponse.json()
+        
+        // Step 3: Upload thumbnail if provided
+        if (thumbnailFile && uploadedVideo.id) {
+          try {
+            const thumbnailBuffer = await thumbnailFile.arrayBuffer()
+            await fetch(
+              `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${uploadedVideo.id}`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  'Content-Type': thumbnailFile.type || 'image/jpeg',
+                },
+                body: thumbnailBuffer,
+              }
+            )
+          } catch (thumbError) {
+            console.error('[YouTube Upload] Thumbnail upload error:', thumbError)
+            // Don't fail the whole upload if thumbnail fails
+          }
+        }
+
+        // Step 4: Save video metadata to database
+        try {
+          await supabase.from('youtube_videos').insert({
+            user_id: user.id,
+            video_id: uploadedVideo.id,
+            title,
+            description,
+            tags: tags,
+            category: category,
+            language: language,
+            privacy_status: privacy,
+            thumbnail_url: uploadedVideo.snippet?.thumbnails?.default?.url || null,
+            published_at: uploadedVideo.snippet?.publishedAt || new Date().toISOString(),
+            created_at: new Date().toISOString(),
+          })
+        } catch (dbError) {
+          console.error('[YouTube Upload] Database save error:', dbError)
+          // Don't fail if DB save fails, video is already on YouTube
+        }
+
+        return NextResponse.json({
+          ok: true,
+          message: 'Video uploaded successfully',
+          videoId: uploadedVideo.id,
+          videoUrl: `https://www.youtube.com/watch?v=${uploadedVideo.id}`,
+        })
+      }
+    }
+
+    return NextResponse.json({ error: 'Upload incomplete' }, { status: 500 })
   } catch (e: any) {
+    console.error('[YouTube Upload] Error:', e)
     return NextResponse.json({ error: e?.message || 'Failed to upload video' }, { status: 500 })
   }
 }
