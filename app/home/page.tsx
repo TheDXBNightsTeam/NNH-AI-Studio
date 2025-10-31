@@ -171,23 +171,23 @@ export default async function HomePage() {
             </p>
 
             <div className="flex gap-4 justify-center pt-4">
-              <Link href="/accounts">
+              <Link href="/youtube-dashboard">
                 <Button 
                   size="lg" 
                   className="gap-2 gradient-orange hover:opacity-90 transition-all duration-300 hover:scale-105 shadow-lg shadow-primary/20 hover:shadow-primary/40"
                 >
-                  Get Started
-                  <ArrowRight className="w-5 h-5" />
+                  <Play className="w-5 h-5" />
+                  YouTube Dashboard
                 </Button>
               </Link>
-              <Link href="/analytics">
+              <Link href="/dashboard">
                 <Button 
                   size="lg" 
                   variant="outline"
                   className="gap-2 border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-all"
                 >
-                  <BarChart3 className="w-5 h-5" />
-                  View Analytics
+                  <Building2 className="w-5 h-5" />
+                  GMB Dashboard
                 </Button>
               </Link>
             </div>
