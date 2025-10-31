@@ -4,6 +4,7 @@ export interface GmbAccount {
   account_id: string
   account_name: string
   email?: string
+  google_account_id?: string
   access_token?: string
   refresh_token?: string
   token_expires_at?: string
@@ -61,13 +62,21 @@ export interface GMBReview {
   id: string
   location_id: string
   user_id: string
+  gmb_account_id?: string
+  external_review_id?: string
   review_id: string
   reviewer_name: string
   rating: number
   comment?: string
+  review_text?: string
   review_reply?: string
+  reply_text?: string
+  review_date?: string
   replied_at?: string
+  reply_date?: string
+  has_reply?: boolean
   ai_suggested_reply?: string
+  ai_generated_response?: string
   ai_sentiment?: "positive" | "neutral" | "negative"
   status: "new" | "in_progress" | "responded"
   created_at: string

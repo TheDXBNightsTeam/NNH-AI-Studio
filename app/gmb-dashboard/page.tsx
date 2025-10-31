@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { MapPin, MessageSquare, Star, TrendingUp, AlertCircle, Unlink, Link2, AlertTriangle } from "lucide-react"
+import { MapPin, MessageSquare, Star, TrendingUp, AlertCircle, Unlink, Link2, AlertTriangle, RefreshCw } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton"
 import { Button } from "@/components/ui/button"
@@ -96,7 +96,9 @@ export default function GMBDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [gmbConnected, setGmbConnected] = useState(false)
+  const [gmbAccountId, setGmbAccountId] = useState<string | null>(null)
   const [disconnecting, setDisconnecting] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   // Check for mobile view
   useEffect(() => {
@@ -175,8 +177,12 @@ export default function GMBDashboard() {
           .select("id, is_active")
           .eq("user_id", authUser.id)
         
-        const hasActiveAccount = gmbAccounts?.some(acc => acc.is_active) || false
+        const activeAccount = gmbAccounts?.find(acc => acc.is_active)
+        const hasActiveAccount = !!activeAccount
         setGmbConnected(hasActiveAccount)
+        if (activeAccount) {
+          setGmbAccountId(activeAccount.id)
+        }
         
         // Fetch dashboard stats with proper error handling
         // Only show data from active GMB accounts
@@ -302,6 +308,51 @@ export default function GMBDashboard() {
     }
   }
 
+  // Handle GMB sync
+  const handleSyncGMB = async () => {
+    if (!gmbAccountId) {
+      toast.error('No GMB account found to sync')
+      return
+    }
+
+    setSyncing(true)
+    try {
+      const response = await fetch('/api/gmb/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          accountId: gmbAccountId, 
+          syncType: 'full' 
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        
+        if (data.error === 'invalid_grant') {
+          toast.error('Google authorization expired. Please reconnect your account.')
+          return
+        }
+        
+        throw new Error(data.error || 'Failed to sync data')
+      }
+
+      const data = await response.json()
+      
+      toast.success(
+        `تم المزامنة بنجاح! تم جلب ${data.counts?.locations || 0} موقع، ${data.counts?.reviews || 0} مراجعة`
+      )
+      
+      // Refresh dashboard data
+      window.location.reload()
+    } catch (error: any) {
+      console.error('Error syncing GMB:', error)
+      toast.error(error.message || 'حدث خطأ أثناء المزامنة')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   // Handle GMB connect
   const handleConnectGMB = async () => {
     try {
@@ -388,13 +439,32 @@ export default function GMBDashboard() {
                 </p>
               </div>
               
-              {/* Connection Status & Disconnect Button */}
+              {/* Connection Status, Sync & Disconnect Buttons */}
               {gmbConnected ? (
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30">
                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                     <span className="text-sm font-medium text-green-500">Connected</span>
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-primary/10 hover:bg-primary/20 text-primary border-primary/30"
+                    onClick={handleSyncGMB}
+                    disabled={syncing}
+                  >
+                    {syncing ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Syncing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Sync Data
+                      </>
+                    )}
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
