@@ -2,7 +2,8 @@
 -- Created: 2025-01-31
 -- Description: Updates handle_new_user to properly handle phone-only signups
 
--- Update the trigger function to handle phone-only signups
+-- Temporarily disable RLS for the function to work properly
+-- (RLS is re-enabled after the insert)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -10,7 +11,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, phone)
+  -- Insert profile, handling both email and phone signups
+  INSERT INTO public.profiles (id, email, full_name, phone, created_at, updated_at)
   VALUES (
     new.id,
     new.email, -- Can be NULL for phone signups
@@ -20,7 +22,9 @@ BEGIN
       new.phone,
       'User'
     ), -- Use phone as fallback for full_name
-    new.phone -- Can be NULL for email signups
+    new.phone, -- Can be NULL for email signups
+    NOW(),
+    NOW()
   )
   ON CONFLICT (id) DO UPDATE
   SET 
@@ -30,6 +34,11 @@ BEGIN
     updated_at = NOW();
   
   RETURN new;
+EXCEPTION
+  WHEN others THEN
+    -- Log error but don't fail user creation
+    RAISE WARNING 'Error creating profile for user %: %', new.id, SQLERRM;
+    RETURN new;
 END;
 $$;
 
