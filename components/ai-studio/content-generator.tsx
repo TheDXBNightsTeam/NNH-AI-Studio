@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Loader2, Sparkles, Copy, Download, RefreshCw } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { toast } from "sonner"
 
 interface ContentGeneratorProps {
   contentType: string
@@ -23,65 +24,69 @@ const tones = [
 ]
 
 const providers = [
-  { value: "openai", label: "OpenAI GPT-4" },
-  { value: "anthropic", label: "Anthropic Claude" },
   { value: "groq", label: "Groq" },
+  { value: "deepseek", label: "DeepSeek" },
+  { value: "together", label: "Together AI" },
+  { value: "openai", label: "OpenAI GPT-4" },
 ]
 
 export function ContentGenerator({ contentType }: ContentGeneratorProps) {
   const [prompt, setPrompt] = useState("")
   const [tone, setTone] = useState("professional")
-  const [provider, setProvider] = useState("openai")
+  const [provider, setProvider] = useState("groq")
   const [generating, setGenerating] = useState(false)
   const [generatedContent, setGeneratedContent] = useState("")
   const [copied, setCopied] = useState(false)
+  const [usedProvider, setUsedProvider] = useState("")
 
   const handleGenerate = async () => {
+    if (!prompt.trim()) {
+      toast.error("Please enter a prompt")
+      return
+    }
+
     setGenerating(true)
     setGeneratedContent("")
 
-    try {
-      // Simulate AI generation (in production, this would call an AI API)
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+    const generatePromise = fetch("/api/ai/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        prompt,
+        tone,
+        contentType,
+        provider,
+      }),
+    }).then(async (res) => {
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to generate content")
+      }
+      return res.json()
+    })
 
-      const content = generateMockContent(contentType, prompt, tone)
-      setGeneratedContent(content)
-    } catch (error) {
-      console.error("Error generating content:", error)
-    } finally {
-      setGenerating(false)
-    }
-  }
-
-  const generateMockContent = (type: string, userPrompt: string, selectedTone: string) => {
-    const tonePrefix =
-      selectedTone === "professional"
-        ? "We are pleased to announce"
-        : selectedTone === "friendly"
-          ? "Hey there! We're excited to share"
-          : selectedTone === "casual"
-            ? "Check this out!"
-            : selectedTone === "formal"
-              ? "It is with great pleasure that we inform you"
-              : "We're thrilled to let you know"
-
-    switch (type) {
-      case "posts":
-        return `${tonePrefix} that ${userPrompt || "we have something special for you"}! Visit us today to experience the difference. #LocalBusiness #CommunityFirst`
-      case "responses":
-        return `Thank you for your feedback! ${userPrompt || "We truly appreciate your business and look forward to serving you again soon."}`
-      case "descriptions":
-        return `${userPrompt || "Welcome to our business"} - where quality meets excellence. We pride ourselves on delivering exceptional service to our valued customers.`
-      case "faqs":
-        return `Q: ${userPrompt || "What are your hours?"}\n\nA: We're here to serve you! Our team is available during business hours to assist with all your needs. Please contact us for specific timing.`
-      default:
-        return `${tonePrefix} - ${userPrompt || "Generated content will appear here"}`
-    }
+    toast.promise(generatePromise, {
+      loading: "Generating content with AI...",
+      success: (data) => {
+        setGeneratedContent(data.content)
+        setUsedProvider(data.provider)
+        return `Content generated successfully using ${data.provider}!`
+      },
+      error: (err) => {
+        return err.message || "Failed to generate content"
+      },
+      finally: () => {
+        setGenerating(false)
+      },
+    })
   }
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedContent)
     setCopied(true)
+    toast.success("Content copied to clipboard!")
     setTimeout(() => setCopied(false), 2000)
   }
 
@@ -93,6 +98,7 @@ export function ContentGenerator({ contentType }: ContentGeneratorProps) {
     a.download = `${contentType}-${Date.now()}.txt`
     a.click()
     URL.revokeObjectURL(url)
+    toast.success("Content downloaded successfully!")
   }
 
   return (

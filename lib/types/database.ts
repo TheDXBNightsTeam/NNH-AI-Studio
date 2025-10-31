@@ -94,3 +94,15 @@ export interface ActivityLog {
   actionable: boolean
   created_at: string
 }
+
+export interface ContentGeneration {
+  id: string
+  user_id: string
+  content_type: 'posts' | 'responses' | 'descriptions' | 'faqs'
+  prompt: string
+  tone: string
+  provider: string
+  generated_content: string
+  metadata: Record<string, any>
+  created_at: string
+}

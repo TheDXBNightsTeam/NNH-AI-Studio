@@ -10,17 +10,21 @@ import { User, Bell, Key, Users, CreditCard, Loader2 } from "lucide-react"
 import { useSupabase } from "@/lib/hooks/use-supabase"
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 
 export default function SettingsPage() {
   const { user } = useSupabase()
-  const { toast } = useToast()
   const supabase = createClient()
 
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState(user?.email || "")
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [notificationPreferences, setNotificationPreferences] = useState({
+    newReviews: true,
+    aiSuggestions: true,
+    weeklyReports: false,
+  })
 
   useEffect(() => {
     async function loadProfile() {
@@ -47,25 +51,54 @@ export default function SettingsPage() {
     if (!user) return
 
     setIsSaving(true)
-    try {
-      const { error } = await supabase.from("profiles").update({ full_name: fullName }).eq("id", user.id)
+    const savePromise = supabase.from("profiles").update({ full_name: fullName }).eq("id", user.id)
 
-      if (error) throw error
+    toast.promise(savePromise, {
+      loading: "Saving profile...",
+      success: "Profile updated successfully!",
+      error: "Failed to update profile. Please try again.",
+      finally: () => {
+        setIsSaving(false)
+      },
+    })
+  }
 
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been successfully updated.",
-      })
-    } catch (error) {
-      console.error("Error saving profile:", error)
-      toast({
-        title: "Error",
-        description: "Failed to update profile. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsSaving(false)
-    }
+  const handleToggleNotification = (type: keyof typeof notificationPreferences) => {
+    setNotificationPreferences((prev) => ({
+      ...prev,
+      [type]: !prev[type],
+    }))
+    toast.success(`${type === "newReviews" ? "New Reviews" : type === "aiSuggestions" ? "AI Suggestions" : "Weekly Reports"} notifications ${!notificationPreferences[type] ? "enabled" : "disabled"}`)
+  }
+
+  const handleGenerateAPIKey = () => {
+    toast.promise(
+      new Promise((resolve) => setTimeout(resolve, 1000)),
+      {
+        loading: "Generating API key...",
+        success: "API key generated successfully! (This is a demo feature)",
+        error: "Failed to generate API key",
+      }
+    )
+  }
+
+  const handleInviteTeamMember = () => {
+    toast.promise(
+      new Promise((resolve) => setTimeout(resolve, 1000)),
+      {
+        loading: "Sending invitation...",
+        success: "Team invitation sent! (This is a demo feature)",
+        error: "Failed to send invitation",
+      }
+    )
+  }
+
+  const handleManageSubscription = () => {
+    toast.info("Redirecting to billing portal... (This is a demo feature)")
+  }
+
+  const handleChangeAvatar = () => {
+    toast.info("Avatar upload feature coming soon!")
   }
 
   return (
@@ -135,6 +168,7 @@ export default function SettingsPage() {
                 </Avatar>
                 <Button
                   variant="outline"
+                  onClick={handleChangeAvatar}
                   className="border-primary/30 text-foreground hover:bg-primary/20 bg-transparent"
                 >
                   Change Avatar
@@ -210,9 +244,10 @@ export default function SettingsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-primary/30 text-foreground hover:bg-primary/20 bg-transparent"
+                    onClick={() => handleToggleNotification("newReviews")}
+                    className={`border-primary/30 hover:bg-primary/20 bg-transparent ${notificationPreferences.newReviews ? "text-foreground" : "text-muted-foreground"}`}
                   >
-                    Enabled
+                    {notificationPreferences.newReviews ? "Enabled" : "Disabled"}
                   </Button>
                 </div>
                 <div className="flex items-center justify-between p-4 rounded-lg bg-secondary border border-primary/20">
@@ -223,9 +258,10 @@ export default function SettingsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-primary/30 text-foreground hover:bg-primary/20 bg-transparent"
+                    onClick={() => handleToggleNotification("aiSuggestions")}
+                    className={`border-primary/30 hover:bg-primary/20 bg-transparent ${notificationPreferences.aiSuggestions ? "text-foreground" : "text-muted-foreground"}`}
                   >
-                    Enabled
+                    {notificationPreferences.aiSuggestions ? "Enabled" : "Disabled"}
                   </Button>
                 </div>
                 <div className="flex items-center justify-between p-4 rounded-lg bg-secondary border border-primary/20">
@@ -236,9 +272,10 @@ export default function SettingsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-primary/30 text-muted-foreground hover:bg-primary/20 bg-transparent"
+                    onClick={() => handleToggleNotification("weeklyReports")}
+                    className={`border-primary/30 hover:bg-primary/20 bg-transparent ${notificationPreferences.weeklyReports ? "text-foreground" : "text-muted-foreground"}`}
                   >
-                    Disabled
+                    {notificationPreferences.weeklyReports ? "Enabled" : "Disabled"}
                   </Button>
                 </div>
               </div>
@@ -258,7 +295,10 @@ export default function SettingsPage() {
                 <p className="text-sm text-muted-foreground">
                   API keys allow you to integrate GMB Manager with your own applications and services.
                 </p>
-                <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white">
+                <Button
+                  onClick={handleGenerateAPIKey}
+                  className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white"
+                >
                   Generate New API Key
                 </Button>
               </div>
@@ -278,7 +318,10 @@ export default function SettingsPage() {
                 <p className="text-sm text-muted-foreground">
                   Collaborate with your team by inviting members to manage locations and reviews.
                 </p>
-                <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white">
+                <Button
+                  onClick={handleInviteTeamMember}
+                  className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white"
+                >
                   Invite Team Member
                 </Button>
               </div>
@@ -303,6 +346,7 @@ export default function SettingsPage() {
                 </div>
                 <Button
                   variant="outline"
+                  onClick={handleManageSubscription}
                   className="border-primary/30 text-foreground hover:bg-primary/20 bg-transparent"
                 >
                   Manage Subscription
