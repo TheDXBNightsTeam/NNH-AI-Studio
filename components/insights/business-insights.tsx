@@ -54,20 +54,20 @@ export function BusinessInsights() {
 
       const accountIds = accounts.map((a) => a.id)
 
-      // Get locations data
+      // Get locations data (include id field)
       const { data: locations } = await supabase
         .from("gmb_locations")
-        .select("category, rating, review_count, address, location_name, response_rate")
+        .select("id, category, rating, review_count, address, location_name, response_rate")
         .eq("user_id", user.id)
         .in("gmb_account_id", accountIds)
 
-      // Get reviews data
+      // Get reviews data  
       const locationIds = locations?.map((l: any) => l.id) || []
       const { data: reviews } =
         locationIds.length > 0
           ? await supabase
               .from("gmb_reviews")
-              .select("rating, comment_text, ai_sentiment, reply_text, created_at")
+              .select("rating, comment, ai_sentiment, review_reply, created_at")
               .eq("user_id", user.id)
               .in("location_id", locationIds)
           : { data: null }
@@ -147,7 +147,7 @@ export function BusinessInsights() {
 
       // Review sentiment insights
       if (reviews && reviews.length > 0) {
-        const negativeReviews = reviews.filter((r: any) => r.rating <= 2).length
+        const negativeReviews = reviews.filter((r: any) => r.rating && r.rating <= 2).length
         const negativePercent = ((negativeReviews / reviews.length) * 100).toFixed(1)
 
         if (parseFloat(negativePercent) > 10) {
@@ -163,6 +163,7 @@ export function BusinessInsights() {
 
         // Recent activity
         const recentReviews = reviews.filter((r: any) => {
+          if (!r.created_at) return false
           const reviewDate = new Date(r.created_at)
           const daysDiff = (Date.now() - reviewDate.getTime()) / (1000 * 60 * 60 * 24)
           return daysDiff <= 30

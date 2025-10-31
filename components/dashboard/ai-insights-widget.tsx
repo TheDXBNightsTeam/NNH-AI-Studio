@@ -52,10 +52,10 @@ export function AIInsightsWidget() {
 
       const accountIds = accounts.map((a) => a.id)
 
-      // Get locations data
+      // Get locations data (include id field)
       const { data: locations } = await supabase
         .from("gmb_locations")
-        .select("rating, review_count, response_rate")
+        .select("id, rating, review_count, response_rate")
         .eq("user_id", user.id)
         .in("gmb_account_id", accountIds)
 
@@ -65,7 +65,7 @@ export function AIInsightsWidget() {
         locationIds.length > 0
           ? await supabase
               .from("gmb_reviews")
-              .select("rating, reply_text")
+              .select("rating, review_reply")
               .eq("user_id", user.id)
               .in("location_id", locationIds)
           : { data: null }
@@ -101,7 +101,7 @@ export function AIInsightsWidget() {
 
       // Unresponded reviews
       if (reviews && reviews.length > 0) {
-        const unresponded = reviews.filter((r: any) => !r.reply_text).length
+        const unresponded = reviews.filter((r: any) => !r.review_reply).length
         if (unresponded > 0) {
           quickInsights.push({
             id: "unresponded-reviews",
