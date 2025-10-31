@@ -37,7 +37,20 @@ export function BusinessInsights() {
     try {
       const {
         data: { user },
+        error: authError
       } = await supabase.auth.getUser()
+      
+      // Handle session expiration
+      if (authError) {
+        if (authError.code === 'session_expired' || authError.message?.includes('expired')) {
+          toast.error('Your session has expired. Please log in again.')
+          window.location.href = '/auth/login'
+          return
+        }
+        console.error('Auth error:', authError)
+        return
+      }
+      
       if (!user) return
 
       // Get active GMB accounts

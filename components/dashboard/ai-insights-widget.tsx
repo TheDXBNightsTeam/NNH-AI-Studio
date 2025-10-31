@@ -32,7 +32,21 @@ export function AIInsightsWidget() {
     try {
       const {
         data: { user },
+        error: authError
       } = await supabase.auth.getUser()
+      
+      // Handle session expiration
+      if (authError) {
+        if (authError.code === 'session_expired' || authError.message?.includes('expired')) {
+          console.log('Session expired in AI insights widget')
+          setLoading(false)
+          return
+        }
+        console.error('Auth error:', authError)
+        setLoading(false)
+        return
+      }
+      
       if (!user) {
         setLoading(false)
         return
