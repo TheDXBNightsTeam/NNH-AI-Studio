@@ -621,7 +621,7 @@ export default function YoutubeDashboardPage() {
         {loading ? (
           <div className="space-y-6">
             <LoadingSkeleton type="stat" count={3} />
-            <LoadingSkeleton type="content" count={2} />
+            <LoadingSkeleton type="card" count={2} />
           </div>
         ) : !channelTitle ? (
           // Not Connected State
