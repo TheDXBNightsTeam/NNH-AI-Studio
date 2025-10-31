@@ -80,6 +80,8 @@ import {
   ExternalLink,
   Mic,
   Camera,
+  Lightbulb,
+  TrendingUp as TrendingUpIcon,
 } from "lucide-react"
 import {
   Chart as ChartJS,
@@ -841,7 +843,7 @@ export default function YoutubeDashboardPage() {
             <>
               {/* Tab Navigation */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-6 glass-strong border-primary/30">
+                <TabsList className="grid w-full grid-cols-7 glass-strong border-primary/30">
                   <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-white">
                     <LayoutGrid className="w-4 h-4 mr-2" />
                     Overview
@@ -865,6 +867,10 @@ export default function YoutubeDashboardPage() {
                   <TabsTrigger value="analytics" className="data-[state=active]:bg-primary data-[state=active]:text-white">
                     <BarChart3 className="w-4 h-4 mr-2" />
                     Analytics
+                  </TabsTrigger>
+                  <TabsTrigger value="content-ideas" className="data-[state=active]:bg-primary data-[state=active]:text-white">
+                    <Lightbulb className="w-4 h-4 mr-2" />
+                    Ideas
                   </TabsTrigger>
                 </TabsList>
 
