@@ -1965,10 +1965,12 @@ export default function YoutubeDashboardPage() {
                       </CardContent>
                     </Card>
                   </div>
-                </TabsContent>
+                </div>
+              )}
 
-                {/* Analytics Tab */}
-                <TabsContent value="analytics" className="space-y-6">
+              {/* Analytics */}
+              {activeTab === "analytics" && (
+                <div className="space-y-6">
                   <div className="grid gap-6">
                     {/* Charts Row */}
                     <div className="grid gap-6 lg:grid-cols-2">
@@ -2172,6 +2174,13 @@ export default function YoutubeDashboardPage() {
                   </div>
                 </div>
               )}
+
+              {/* Content Ideas */}
+              {activeTab === "content-ideas" && (
+                <div className="space-y-6">
+                  <div className="grid gap-6">
+                    {/* Generate Ideas Section */}
+                    <Card className="glass-strong border-primary/30 shadow-xl">
                       <CardHeader className="border-b border-primary/20">
                         <CardTitle className="flex items-center gap-2">
                           <Lightbulb className="w-5 h-5 text-primary" />
