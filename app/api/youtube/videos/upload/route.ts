@@ -136,90 +136,117 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 2: Upload video file in chunks (resumable upload)
-    const chunkSize = 256 * 1024 // 256KB chunks
     const fileBuffer = await videoFile.arrayBuffer()
-    const totalChunks = Math.ceil(fileBuffer.byteLength / chunkSize)
+    const fileSize = fileBuffer.byteLength
+    const chunkSize = Math.min(5 * 1024 * 1024, fileSize) // 5MB chunks or file size if smaller
+    
+    let uploadedBytes = 0
+    let uploadedVideo: any = null
 
-    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-      const start = chunkIndex * chunkSize
-      const end = Math.min(start + chunkSize, fileBuffer.byteLength)
-      const chunk = fileBuffer.slice(start, end)
-      const isLastChunk = chunkIndex === totalChunks - 1
+    while (uploadedBytes < fileSize) {
+      const end = Math.min(uploadedBytes + chunkSize, fileSize)
+      const chunk = fileBuffer.slice(uploadedBytes, end)
+      const isLastChunk = end >= fileSize
+
+      const chunkHeaders: Record<string, string> = {
+        'Content-Length': (end - uploadedBytes).toString(),
+        'Content-Range': `bytes ${uploadedBytes}-${end - 1}/${fileSize}`,
+      }
 
       const chunkResponse = await fetch(uploadUrl, {
         method: 'PUT',
-        headers: {
-          'Content-Length': (end - start).toString(),
-          'Content-Range': `bytes ${start}-${end - 1}/${fileBuffer.byteLength}`,
-        },
+        headers: chunkHeaders,
         body: chunk,
       })
 
-      if (!chunkResponse.ok && chunkResponse.status !== 308) {
-        // 308 is expected for partial uploads (except last chunk)
-        const errorData = await chunkResponse.text()
-        console.error('[YouTube Upload] Chunk error:', errorData)
+      if (!chunkResponse.ok) {
+        // 308 Resume Incomplete is expected for partial uploads
+        if (chunkResponse.status === 308) {
+          const rangeHeader = chunkResponse.headers.get('Range')
+          if (rangeHeader) {
+            // Extract the last uploaded byte from Range header
+            const match = rangeHeader.match(/bytes=0-(\d+)/)
+            if (match) {
+              uploadedBytes = parseInt(match[1]) + 1
+            } else {
+              uploadedBytes = end
+            }
+          } else {
+            uploadedBytes = end
+          }
+          continue
+        }
+
+        // Other errors
+        const errorData = await chunkResponse.text().catch(() => 'Unknown error')
+        console.error('[YouTube Upload] Chunk error:', chunkResponse.status, errorData)
         return NextResponse.json(
-          { error: 'Failed to upload video chunk' },
+          { error: `Failed to upload video chunk: ${errorData}` },
           { status: chunkResponse.status }
         )
       }
 
-      // Last chunk should return 200
-      if (isLastChunk && chunkResponse.status === 200) {
-        const uploadedVideo = await chunkResponse.json()
-        
-        // Step 3: Upload thumbnail if provided
-        if (thumbnailFile && uploadedVideo.id) {
-          try {
-            const thumbnailBuffer = await thumbnailFile.arrayBuffer()
-            await fetch(
-              `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${uploadedVideo.id}`,
-              {
-                method: 'POST',
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  'Content-Type': thumbnailFile.type || 'image/jpeg',
-                },
-                body: thumbnailBuffer,
-              }
-            )
-          } catch (thumbError) {
-            console.error('[YouTube Upload] Thumbnail upload error:', thumbError)
-            // Don't fail the whole upload if thumbnail fails
-          }
-        }
-
-        // Step 4: Save video metadata to database
-        try {
-          await supabase.from('youtube_videos').insert({
-            user_id: user.id,
-            video_id: uploadedVideo.id,
-            title,
-            description,
-            tags: tags,
-            category: category,
-            language: language,
-            privacy_status: privacy,
-            thumbnail_url: uploadedVideo.snippet?.thumbnails?.default?.url || null,
-            published_at: uploadedVideo.snippet?.publishedAt || new Date().toISOString(),
-            created_at: new Date().toISOString(),
-          })
-        } catch (dbError) {
-          console.error('[YouTube Upload] Database save error:', dbError)
-          // Don't fail if DB save fails, video is already on YouTube
-        }
-
-        return NextResponse.json({
-          ok: true,
-          message: 'Video uploaded successfully',
-          videoId: uploadedVideo.id,
-          videoUrl: `https://www.youtube.com/watch?v=${uploadedVideo.id}`,
-        })
+      // Status 200 means upload complete
+      if (chunkResponse.status === 200) {
+        uploadedVideo = await chunkResponse.json()
+        break
       }
     }
 
-    return NextResponse.json({ error: 'Upload incomplete' }, { status: 500 })
+    if (!uploadedVideo || !uploadedVideo.id) {
+      return NextResponse.json({ error: 'Upload incomplete or failed' }, { status: 500 })
+    }
+
+    // Step 3: Upload thumbnail if provided
+    if (thumbnailFile && uploadedVideo.id) {
+      try {
+        const thumbnailBuffer = await thumbnailFile.arrayBuffer()
+        const thumbResponse = await fetch(
+          `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${uploadedVideo.id}`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': thumbnailFile.type || 'image/jpeg',
+            },
+            body: thumbnailBuffer,
+          }
+        )
+        if (!thumbResponse.ok) {
+          console.warn('[YouTube Upload] Thumbnail upload failed, but video uploaded successfully')
+        }
+      } catch (thumbError) {
+        console.error('[YouTube Upload] Thumbnail upload error:', thumbError)
+        // Don't fail the whole upload if thumbnail fails
+      }
+    }
+
+    // Step 4: Save video metadata to database
+    try {
+      await supabase.from('youtube_videos').insert({
+        user_id: user.id,
+        video_id: uploadedVideo.id,
+        title,
+        description,
+        tags: tags,
+        category: category,
+        language: language,
+        privacy_status: privacy,
+        thumbnail_url: uploadedVideo.snippet?.thumbnails?.default?.url || null,
+        published_at: uploadedVideo.snippet?.publishedAt || new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      })
+    } catch (dbError: any) {
+      console.error('[YouTube Upload] Database save error:', dbError)
+      // Don't fail if DB save fails, video is already on YouTube
+    }
+
+    return NextResponse.json({
+      ok: true,
+      message: 'Video uploaded successfully',
+      videoId: uploadedVideo.id,
+      videoUrl: `https://www.youtube.com/watch?v=${uploadedVideo.id}`,
+    })
   } catch (e: any) {
     console.error('[YouTube Upload] Error:', e)
     return NextResponse.json({ error: e?.message || 'Failed to upload video' }, { status: 500 })
