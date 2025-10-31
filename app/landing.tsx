@@ -41,9 +41,11 @@ export default function LandingPage() {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-white" />
-                </div>
+                <img 
+                  src="/nnh-logo.png" 
+                  alt="NNH AI Studio Logo" 
+                  className="w-10 h-10 rounded-lg object-contain"
+                />
                 <span className="text-xl font-bold">NNH AI Studio</span>
               </div>
             <nav className="hidden md:flex items-center gap-8">
@@ -812,9 +814,11 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-5 gap-8 mb-8">
             <div className="space-y-4 md:col-span-2">
               <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-white" />
-                </div>
+                <img 
+                  src="/nnh-logo.png" 
+                  alt="NNH AI Studio Logo" 
+                  className="w-10 h-10 rounded-lg object-contain"
+                />
                 <span className="text-xl font-bold">NNH AI Studio</span>
               </div>
               <p className="text-sm text-muted-foreground max-w-md">
