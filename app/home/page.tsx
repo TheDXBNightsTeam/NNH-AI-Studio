@@ -180,7 +180,7 @@ export default async function HomePage() {
                   YouTube Dashboard
                 </Button>
               </Link>
-              <Link href="/dashboard">
+              <Link href="/gmb-dashboard">
                 <Button 
                   size="lg" 
                   variant="outline"
@@ -554,7 +554,7 @@ export default async function HomePage() {
               <div>
                 <h5 className="font-semibold mb-4">Support</h5>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li><Link href="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link></li>
+                  <li><Link href="/gmb-dashboard" className="hover:text-primary transition-colors">GMB Dashboard</Link></li>
                   <li><Link href="/accounts" className="hover:text-primary transition-colors">My Accounts</Link></li>
                   <li><Link href="/settings" className="hover:text-primary transition-colors">Settings</Link></li>
                   <li><Link href="/contact" className="hover:text-primary transition-colors">Contact Support</Link></li>
