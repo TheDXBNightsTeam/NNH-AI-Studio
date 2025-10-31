@@ -51,13 +51,14 @@ export default function SettingsPage() {
     if (!user) return
 
     setIsSaving(true)
-    const savePromise = supabase
-      .from("profiles")
-      .update({ full_name: fullName })
-      .eq("id", user.id)
-      .then(({ error }) => {
-        if (error) throw error
-      })
+    const savePromise = (async () => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ full_name: fullName })
+        .eq("id", user.id)
+      
+      if (error) throw error
+    })()
 
     toast.promise(savePromise, {
       loading: "Saving profile...",
