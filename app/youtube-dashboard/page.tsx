@@ -548,7 +548,7 @@ export default function YoutubeDashboardPage() {
             {/* Center - Desktop Tab Navigation */}
             <nav className="hidden lg:flex items-center">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
-                <TabsList className="grid grid-cols-5 bg-secondary/50">
+                <TabsList className="grid grid-cols-6 bg-secondary/50">
                   {tabItems.map((item) => (
                     <TabsTrigger
                       key={item.id}
@@ -603,7 +603,7 @@ export default function YoutubeDashboardPage() {
         {/* Mobile Tab Selector - Visible on Mobile Only */}
         <div className="lg:hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-3 sm:grid-cols-5 bg-secondary/50">
+            <TabsList className="grid grid-cols-3 sm:grid-cols-6 bg-secondary/50">
               {tabItems.map((item) => (
                 <TabsTrigger
                   key={item.id}
