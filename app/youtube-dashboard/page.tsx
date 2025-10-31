@@ -83,7 +83,6 @@ import {
   TrendingUp as TrendingUpIcon,
   Activity,
   Award,
-  Clock,
   Share2,
 } from "lucide-react"
 import {
@@ -206,6 +205,13 @@ export default function YoutubeDashboardPage() {
   const [generatedTags, setGeneratedTags] = useState<string[]>([])
   const [hashtagPrompt, setHashtagPrompt] = useState("")
   const [generatedHashtags, setGeneratedHashtags] = useState<string[]>([])
+  
+  // Content Ideas state
+  const [contentIdeasPrompt, setContentIdeasPrompt] = useState("")
+  const [contentIdeasCategory, setContentIdeasCategory] = useState("all")
+  const [contentIdeasLoading, setContentIdeasLoading] = useState(false)
+  const [generatedIdeas, setGeneratedIdeas] = useState<string[]>([])
+  const [savedIdeas, setSavedIdeas] = useState<Array<{ id: string; idea: string; category: string; created_at: string }>>([])
   
   // Calendar state
   const [calendarMonth, setCalendarMonth] = useState(new Date())
@@ -2279,7 +2285,7 @@ export default function YoutubeDashboardPage() {
                                 </Button>
                               </div>
                               <div className="grid gap-3 md:grid-cols-2">
-                                {generatedIdeas.map((idea, idx) => (
+                                {generatedIdeas.map((idea: string, idx: number) => (
                                   <Card key={idx} className="glass border-primary/20 hover:border-primary/40 transition-colors">
                                     <CardContent className="p-4">
                                       <div className="flex items-start justify-between gap-3">
@@ -2426,7 +2432,7 @@ export default function YoutubeDashboardPage() {
                       <CardContent className="p-6">
                         {savedIdeas.length > 0 ? (
                           <div className="grid gap-3">
-                            {savedIdeas.map((item) => (
+                            {savedIdeas.map((item: { id: string; idea: string; category: string; created_at: string }) => (
                               <Card key={item.id} className="glass border-primary/20">
                                 <CardContent className="p-4">
                                   <div className="flex items-start justify-between gap-3">
@@ -2455,7 +2461,7 @@ export default function YoutubeDashboardPage() {
                                         onClick={async () => {
                                           try {
                                             await safeDelete(`/api/youtube/composer/drafts?id=${item.id}`)
-                                            setSavedIdeas(savedIdeas.filter(i => i.id !== item.id))
+                                            setSavedIdeas(savedIdeas.filter((i: { id: string }) => i.id !== item.id))
                                             toast.success("Idea deleted")
                                           } catch (e) {
                                             toast.error("Failed to delete idea")
