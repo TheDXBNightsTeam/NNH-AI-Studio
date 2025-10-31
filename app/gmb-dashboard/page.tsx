@@ -15,12 +15,16 @@ import { ActivityFeed } from "@/components/dashboard/activity-feed"
 import { PerformanceChart } from "@/components/dashboard/performance-chart"
 import { GMBDashboardSidebar } from "@/components/dashboard/gmb-sidebar"
 import { GMBPostsSection } from "@/components/dashboard/gmb-posts-section"
+import { AIInsightsWidget } from "@/components/dashboard/ai-insights-widget"
 
 // Tab Components
 import { LocationsList } from "@/components/locations/locations-list"
 import { ReviewsList } from "@/components/reviews/reviews-list"
 import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard"
 import { GMBSettings } from "@/components/settings/gmb-settings"
+import { AIAssistant } from "@/components/ai/ai-assistant"
+import { BusinessInsights } from "@/components/insights/business-insights"
+import { BusinessRecommendations } from "@/components/recommendations/business-recommendations"
 
 interface DashboardStats {
   totalLocations: number
@@ -112,7 +116,7 @@ export default function GMBDashboard() {
       const errorParam = params.get('error')
       const connectedParam = params.get('connected')
       
-      if (tabParam && ['dashboard', 'locations', 'reviews', 'posts', 'analytics', 'settings'].includes(tabParam)) {
+      if (tabParam && ['dashboard', 'locations', 'reviews', 'posts', 'ai-assistant', 'insights', 'recommendations', 'analytics', 'settings'].includes(tabParam)) {
         setActiveTab(tabParam)
       }
       
@@ -433,6 +437,9 @@ export default function GMBDashboard() {
                 <TabsTrigger value="locations">Locations</TabsTrigger>
                 <TabsTrigger value="reviews">Reviews</TabsTrigger>
                 <TabsTrigger value="posts">Posts</TabsTrigger>
+                <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
+                <TabsTrigger value="insights">Insights</TabsTrigger>
+                <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
                 <TabsTrigger value="analytics">Analytics</TabsTrigger>
                 <TabsTrigger value="settings">Settings</TabsTrigger>
               </TabsList>
@@ -495,6 +502,17 @@ export default function GMBDashboard() {
                     icon={TrendingUp}
                   />
                 </div>
+                
+                {/* AI Insights Widget */}
+                <ErrorBoundary
+                  fallback={
+                    <div className="p-4 text-center text-muted-foreground text-sm">
+                      Failed to load AI insights
+                    </div>
+                  }
+                >
+                  <AIInsightsWidget />
+                </ErrorBoundary>
                 
                 {/* Charts and Activity */}
                 <div className="grid gap-6 md:grid-cols-2">
@@ -560,6 +578,48 @@ export default function GMBDashboard() {
                   }
                 >
                   <GMBPostsSection />
+                </ErrorBoundary>
+              </TabsContent>
+              
+              {/* AI Assistant Tab */}
+              <TabsContent value="ai-assistant" className="space-y-6 animate-in fade-in-50">
+                <ErrorBoundary
+                  fallback={
+                    <div className="p-8 text-center text-muted-foreground">
+                      <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                      <p>Failed to load AI Assistant</p>
+                    </div>
+                  }
+                >
+                  <AIAssistant />
+                </ErrorBoundary>
+              </TabsContent>
+              
+              {/* Insights Tab */}
+              <TabsContent value="insights" className="space-y-6 animate-in fade-in-50">
+                <ErrorBoundary
+                  fallback={
+                    <div className="p-8 text-center text-muted-foreground">
+                      <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                      <p>Failed to load insights</p>
+                    </div>
+                  }
+                >
+                  <BusinessInsights />
+                </ErrorBoundary>
+              </TabsContent>
+              
+              {/* Recommendations Tab */}
+              <TabsContent value="recommendations" className="space-y-6 animate-in fade-in-50">
+                <ErrorBoundary
+                  fallback={
+                    <div className="p-8 text-center text-muted-foreground">
+                      <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                      <p>Failed to load recommendations</p>
+                    </div>
+                  }
+                >
+                  <BusinessRecommendations />
                 </ErrorBoundary>
               </TabsContent>
               

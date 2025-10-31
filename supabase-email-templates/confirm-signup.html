@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="supported-color-schemes" content="dark">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <title>تأكيد التسجيل - NNH AI Studio</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { color-scheme: dark; supported-color-schemes: dark; }
+    body {
+      font-family: 'Cairo', 'Montserrat', Arial, sans-serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+      color: #ffffff;
+      line-height: 1.6;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #1a1a2e;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 149, 0, 0.2);
+    }
+    .header {
+      background: linear-gradient(135deg, #ff9500 0%, #ff6b00 100%);
+      padding: 40px 30px;
+      text-align: center;
+      position: relative;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.1)"/></svg>');
+      opacity: 0.3;
+    }
+    .logo {
+      font-size: 32px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 10px;
+      position: relative;
+      z-index: 1;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+    .header-text {
+      font-size: 18px;
+      color: rgba(255, 255, 255, 0.95);
+      position: relative;
+      z-index: 1;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .greeting {
+      font-size: 24px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .message {
+      font-size: 16px;
+      color: #e0e0e0;
+      margin-bottom: 30px;
+      text-align: center;
+      line-height: 1.8;
+    }
+    .button-container {
+      text-align: center;
+      margin: 35px 0;
+    }
+    .button {
+      display: inline-block;
+      padding: 16px 40px;
+      background: linear-gradient(135deg, #ff9500 0%, #ff6b00 100%);
+      color: #ffffff;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 16px;
+      box-shadow: 0 4px 15px rgba(255, 149, 0, 0.4);
+      transition: all 0.3s ease;
+    }
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 149, 0, 0.5);
+    }
+    .alternative-link {
+      margin-top: 25px;
+      padding: 20px;
+      background: rgba(255, 149, 0, 0.1);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 149, 0, 0.3);
+    }
+    .alternative-link-text {
+      font-size: 12px;
+      color: #b0b0b0;
+      word-break: break-all;
+      font-family: 'Courier New', monospace;
+    }
+    .footer {
+      padding: 30px;
+      background: #0f0f1e;
+      text-align: center;
+      border-top: 1px solid rgba(255, 149, 0, 0.1);
+    }
+    .footer-text {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 10px;
+    }
+    .footer-link {
+      color: #ff9500;
+      text-decoration: none;
+    }
+    .icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+      background: linear-gradient(135deg, #ff9500 0%, #ff6b00 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+    }
+    @media only screen and (max-width: 600px) {
+      .container { margin: 10px; border-radius: 12px; }
+      .header { padding: 30px 20px; }
+      .content { padding: 30px 20px; }
+      .greeting { font-size: 20px; }
+      .button { padding: 14px 30px; font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">NNH AI Studio</div>
+      <div class="header-text">Welcome to AI-Powered Platform</div>
+    </div>
+    
+    <div class="content">
+      <div class="icon">✓</div>
+      <div class="greeting">Hello {{ .Email }}!</div>
+      
+      <div class="message">
+        Thank you for signing up for NNH AI Studio!<br>
+        We just need to confirm your email address to complete your registration.<br><br>
+        Click the button below to confirm your account and start using all advanced features.
+      </div>
+      
+      <div class="button-container">
+        <a href="{{ .ConfirmationURL }}" class="button" style="display: inline-block; padding: 16px 40px; background: #ff9500; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+          Confirm Email Address
+        </a>
+      </div>
+      
+      <div class="alternative-link">
+        <div style="font-size: 12px; color: #888; margin-bottom: 8px;">Or copy and paste this link in your browser:</div>
+        <div class="alternative-link-text">{{ .ConfirmationURL }}</div>
+      </div>
+      
+      <div style="margin-top: 30px; padding: 20px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; border-left: 3px solid #ff9500;">
+        <div style="font-size: 14px; color: #b0b0b0; line-height: 1.8;">
+          <strong style="color: #ff9500;">Important Note:</strong><br>
+          This confirmation link is valid for 24 hours only. If the link expires, you can request a new one from the login page.
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <div class="footer-text">
+        If you didn't request this email, you can safely ignore it.
+      </div>
+      <div class="footer-text">
+        © 2025 NNH AI Studio. All rights reserved.
+      </div>
+      <div style="margin-top: 15px;">
+        <a href="https://nnh.ae" class="footer-link">Visit Website</a> | 
+        <a href="https://nnh.ae/support" class="footer-link">Support</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+

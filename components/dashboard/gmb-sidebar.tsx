@@ -22,7 +22,11 @@ import {
   ChevronRight,
   Home,
   Sparkles,
-  Youtube
+  Youtube,
+  Bot,
+  Lightbulb,
+  Target,
+  LayoutGrid
 } from "lucide-react"
 
 interface SidebarProps {
@@ -32,11 +36,14 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+  { id: "dashboard", label: "Dashboard", icon: LayoutGrid },
   { id: "locations", label: "Locations", icon: MapPin },
   { id: "reviews", label: "Reviews", icon: MessageSquare },
   { id: "posts", label: "Posts", icon: Sparkles },
-  { id: "analytics", label: "Analytics", icon: TrendingUp },
+  { id: "ai-assistant", label: "AI Assistant", icon: Bot },
+  { id: "insights", label: "Insights", icon: Lightbulb },
+  { id: "recommendations", label: "Recommendations", icon: Target },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "settings", label: "Settings", icon: Settings },
 ]
 
