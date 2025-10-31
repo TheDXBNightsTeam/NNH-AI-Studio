@@ -6,6 +6,19 @@ import { XIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
+// VisuallyHidden component for hiding DialogTitle when needed
+const VisuallyHidden = React.forwardRef<
+  HTMLSpanElement,
+  React.ComponentPropsWithoutRef<'span'>
+>(({ className, ...props }, ref) => (
+  <span
+    ref={ref}
+    className={cn('sr-only', className)}
+    {...props}
+  />
+))
+VisuallyHidden.displayName = 'VisuallyHidden'
+
 function Dialog({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
@@ -46,6 +59,29 @@ function DialogOverlay({
   )
 }
 
+function DialogTitle({
+  className,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Title>) {
+  return (
+    <DialogPrimitive.Title
+      data-slot="dialog-title"
+      className={cn('text-lg leading-none font-semibold', className)}
+      {...props}
+    />
+  )
+}
+
+function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="dialog-header"
+      className={cn('flex flex-col gap-2 text-center sm:text-left', className)}
+      {...props}
+    />
+  )
+}
+
 function DialogContent({
   className,
   children,
@@ -54,6 +90,22 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
+  // Check if children contains DialogTitle
+  const hasTitle = React.Children.toArray(children).some((child) => {
+    if (React.isValidElement(child)) {
+      // Check if it's DialogTitle or DialogHeader (which might contain DialogTitle)
+      if (child.type === DialogTitle) return true
+      if (child.type === DialogHeader) {
+        // Check if DialogHeader contains DialogTitle
+        return React.Children.toArray(child.props.children).some(
+          (headerChild) =>
+            React.isValidElement(headerChild) && headerChild.type === DialogTitle
+        )
+      }
+    }
+    return false
+  })
+
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -65,6 +117,11 @@ function DialogContent({
         )}
         {...props}
       >
+        {!hasTitle && (
+          <DialogPrimitive.Title asChild>
+            <VisuallyHidden>Dialog</VisuallyHidden>
+          </DialogPrimitive.Title>
+        )}
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close
@@ -80,16 +137,6 @@ function DialogContent({
   )
 }
 
-function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
-  return (
-    <div
-      data-slot="dialog-header"
-      className={cn('flex flex-col gap-2 text-center sm:text-left', className)}
-      {...props}
-    />
-  )
-}
-
 function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
@@ -98,19 +145,6 @@ function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
         'flex flex-col-reverse gap-2 sm:flex-row sm:justify-end',
         className,
       )}
-      {...props}
-    />
-  )
-}
-
-function DialogTitle({
-  className,
-  ...props
-}: React.ComponentProps<typeof DialogPrimitive.Title>) {
-  return (
-    <DialogPrimitive.Title
-      data-slot="dialog-title"
-      className={cn('text-lg leading-none font-semibold', className)}
       {...props}
     />
   )

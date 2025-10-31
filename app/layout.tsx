@@ -6,8 +6,19 @@ import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ["latin"] })
 
+const getBaseUrl = () => {
+  // Metadata is only used server-side, so we can safely use env vars
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    return process.env.NEXT_PUBLIC_BASE_URL
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  return 'https://nnh-ai-studio.com'
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://nnh-ai-studio.com'),
+  metadataBase: new URL(getBaseUrl()),
   title: "NNH AI Studio - Google My Business & YouTube Management Platform",
   description: "Manage your Google My Business locations, YouTube channel, reviews, and content with AI-powered tools",
   icons: {

@@ -101,6 +101,21 @@ export default function GMBDashboard() {
     return () => window.removeEventListener("resize", checkMobile)
   }, [])
 
+  // Handle URL parameters for tab navigation
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const tabParam = params.get('tab')
+      if (tabParam && ['dashboard', 'locations', 'reviews', 'posts', 'analytics', 'settings'].includes(tabParam)) {
+        setActiveTab(tabParam)
+        // Remove the tab param from URL without reloading
+        const newUrl = new URL(window.location.href)
+        newUrl.searchParams.delete('tab')
+        window.history.replaceState({}, '', newUrl.toString())
+      }
+    }
+  }, [])
+
   // Fetch user and dashboard stats
   useEffect(() => {
     const fetchDashboardData = async () => {

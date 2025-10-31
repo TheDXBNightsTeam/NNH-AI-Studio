@@ -20,11 +20,47 @@ export function ReviewSentimentChart() {
           return
         }
 
-        const { data: reviews } = await supabase
+        const { data: reviews, error: queryError } = await supabase
           .from("gmb_reviews")
-          .select("ai_sentiment, created_at")
+          .select("ai_sentiment, created_at, rating")
           .eq("user_id", user.id)
           .order("created_at", { ascending: true })
+
+        if (queryError) {
+          console.error("Error fetching reviews for sentiment:", queryError)
+          // If ai_sentiment column doesn't exist, use rating as fallback
+          const { data: reviewsFallback } = await supabase
+            .from("gmb_reviews")
+            .select("rating, created_at")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: true })
+
+          if (reviewsFallback) {
+            const monthlyData: Record<string, { positive: number; neutral: number; negative: number }> = {}
+            reviewsFallback.forEach((review) => {
+              const date = new Date(review.created_at)
+              const monthKey = date.toLocaleDateString("en-US", { month: "short" })
+
+              if (!monthlyData[monthKey]) {
+                monthlyData[monthKey] = { positive: 0, neutral: 0, negative: 0 }
+              }
+
+              // Use rating as sentiment proxy: 4-5 = positive, 3 = neutral, 1-2 = negative
+              if (review.rating >= 4) monthlyData[monthKey].positive++
+              else if (review.rating === 3) monthlyData[monthKey].neutral++
+              else if (review.rating <= 2) monthlyData[monthKey].negative++
+            })
+
+            const chartData = Object.entries(monthlyData).map(([month, counts]) => ({
+              month,
+              ...counts,
+            }))
+
+            setData(chartData.slice(-6))
+          }
+          setIsLoading(false)
+          return
+        }
 
         if (reviews) {
           // Group by month and sentiment
