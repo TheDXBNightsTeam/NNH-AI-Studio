@@ -272,9 +272,9 @@ export default function GMBDashboardPage() {
       <GMBDashboardSidebar activeTab={activeTab} setActiveTab={setActiveTab} user={user} />
       
       {/* Main Content Area */}
-      <div className="flex-1 lg:ml-60 transition-all duration-300">
+      <div className="flex-1 lg:ml-[240px] transition-all duration-300">
         {/* Header Bar */}
-        <header className="sticky top-0 z-20 border-b border-primary/20 bg-card/80 backdrop-blur-md">
+        <header className="sticky top-0 z-20 border-b border-primary/30 bg-card/90 backdrop-blur-md">
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex-1">
@@ -374,7 +374,7 @@ export default function GMBDashboardPage() {
         </header>
 
         {/* Main Content */}
-        <main className="px-4 sm:px-6 lg:px-8 py-6">
+        <main className="p-4 sm:p-6">
         {/* Render content based on active tab */}
         {activeTab === "dashboard" && (
           <div className="space-y-6">

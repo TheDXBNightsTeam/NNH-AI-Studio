@@ -50,7 +50,12 @@ export function GMBDashboardSidebar({ activeTab, setActiveTab, user }: SidebarPr
   // Check if mobile and load collapsed state from localStorage
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024)
+      const isMobileView = window.innerWidth < 1024
+      setIsMobile(isMobileView)
+      // Reset collapsed state when switching to mobile
+      if (isMobileView) {
+        setCollapsed(false)
+      }
     }
     
     // Load collapsed state from localStorage (desktop only)
@@ -64,11 +69,14 @@ export function GMBDashboardSidebar({ activeTab, setActiveTab, user }: SidebarPr
     return () => window.removeEventListener("resize", checkMobile)
   }, [])
 
-  // Save collapsed state to localStorage
+  // Save collapsed state to localStorage (desktop only)
   const toggleCollapsed = () => {
     const newState = !collapsed
     setCollapsed(newState)
-    localStorage.setItem("gmb-sidebar-collapsed", JSON.stringify(newState))
+    // Only save to localStorage on desktop
+    if (!isMobile) {
+      localStorage.setItem("gmb-sidebar-collapsed", JSON.stringify(newState))
+    }
   }
 
   const handleSignOut = async () => {
@@ -84,7 +92,7 @@ export function GMBDashboardSidebar({ activeTab, setActiveTab, user }: SidebarPr
   const sidebarContent = (
     <>
       {/* Header with Logo */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-primary/20">
+      <div className="h-16 flex items-center justify-between px-4 border-b border-primary/30">
         <Link href="/home" className="flex items-center gap-3">
           <Image
             src="/nnh-logo.png"
@@ -140,8 +148,8 @@ export function GMBDashboardSidebar({ activeTab, setActiveTab, user }: SidebarPr
               className={cn(
                 "w-full justify-start gap-3 relative transition-all duration-200",
                 activeTab === item.id
-                  ? "bg-primary/15 text-primary hover:bg-primary/20"
-                  : "text-muted-foreground hover:text-foreground hover:bg-primary/5",
+                  ? "bg-primary/15 text-primary hover:bg-primary/25"
+                  : "text-muted-foreground hover:text-foreground hover:bg-primary/10",
                 collapsed && !isMobile && "justify-center px-2"
               )}
             >
@@ -160,7 +168,7 @@ export function GMBDashboardSidebar({ activeTab, setActiveTab, user }: SidebarPr
         ))}
 
         {/* Quick Links */}
-        <div className={cn("pt-4 mt-4 border-t border-primary/10", collapsed && !isMobile && "border-t-0")}>
+        <div className={cn("pt-4 mt-4 border-t border-primary/20", collapsed && !isMobile && "border-t-0")}>
           <Link href="/home">
             <Button
               variant="ghost"
@@ -189,7 +197,7 @@ export function GMBDashboardSidebar({ activeTab, setActiveTab, user }: SidebarPr
       </nav>
 
       {/* User Profile Section */}
-      <div className="border-t border-primary/20 p-3">
+      <div className="border-t border-primary/30 p-3">
         <div className={cn(
           "flex items-center gap-3 mb-2",
           collapsed && !isMobile && "justify-center"
