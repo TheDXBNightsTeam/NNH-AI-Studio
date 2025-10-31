@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { MapPin, MessageSquare, Star, TrendingUp, AlertCircle } from "lucide-react"
+import { MapPin, MessageSquare, Star, TrendingUp, AlertCircle, Unlink, Link2, AlertTriangle } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton"
+import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 
 // Dashboard Components
@@ -90,6 +91,8 @@ export default function GMBDashboard() {
   })
   const [error, setError] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [gmbConnected, setGmbConnected] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
 
   // Check for mobile view
   useEffect(() => {
@@ -162,6 +165,15 @@ export default function GMBDashboard() {
         
         setUser(authUser)
         
+        // Check GMB connection status
+        const { data: gmbAccounts } = await supabase
+          .from("gmb_accounts")
+          .select("id, is_active")
+          .eq("user_id", authUser.id)
+        
+        const hasActiveAccount = gmbAccounts?.some(acc => acc.is_active) || false
+        setGmbConnected(hasActiveAccount)
+        
         // Fetch dashboard stats with proper error handling
         // Only show data from active GMB accounts
         try {
@@ -185,23 +197,25 @@ export default function GMBDashboard() {
             return
           }
 
-          const [locationsRes, reviewsRes] = await Promise.allSettled([
-            supabase
-              .from("gmb_locations")
-              .select("id")
-              .eq("user_id", authUser.id)
-              .in("gmb_account_id", activeAccountIds),
-            supabase
-              .from("gmb_reviews")
-              .select("rating, reply_text, location_id")
-              .eq("user_id", authUser.id),
-          ])
+          // First get active location IDs
+          const { data: activeLocationsData } = await supabase
+            .from("gmb_locations")
+            .select("id")
+            .eq("user_id", authUser.id)
+            .in("gmb_account_id", activeAccountIds)
 
-          // Filter reviews by active locations
-          let activeLocationIds: string[] = []
-          if (locationsRes.status === 'fulfilled' && !locationsRes.value.error) {
-            activeLocationIds = (locationsRes.value.data || []).map(loc => loc.id)
-          }
+          const activeLocationIds = activeLocationsData?.map(loc => loc.id) || []
+
+          const [locationsRes, reviewsRes] = await Promise.allSettled([
+            Promise.resolve({ data: activeLocationsData || [], error: null }),
+            activeLocationIds.length > 0
+              ? supabase
+                  .from("gmb_reviews")
+                  .select("rating, reply_text, location_id")
+                  .eq("user_id", authUser.id)
+                  .in("location_id", activeLocationIds)
+              : Promise.resolve({ data: [], error: null }),
+          ])
           
           let locations: any[] = []
           let reviews: any[] = []
@@ -252,6 +266,59 @@ export default function GMBDashboard() {
     
     fetchDashboardData()
   }, [router, supabase])
+
+  // Handle GMB disconnect
+  const handleDisconnectGMB = async () => {
+    if (!confirm('هل أنت متأكد أنك تريد قطع الاتصال بـ Google My Business؟ ستتوقف المزامنة ولكن لن يتم حذف البيانات الحالية.')) {
+      return
+    }
+
+    setDisconnecting(true)
+    try {
+      const response = await fetch('/api/gmb/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to disconnect')
+      }
+
+      toast.success('تم قطع الاتصال بـ Google My Business بنجاح')
+      setGmbConnected(false)
+      // Refresh dashboard data
+      window.location.reload()
+    } catch (error: any) {
+      console.error('Error disconnecting GMB:', error)
+      toast.error(error.message || 'حدث خطأ أثناء قطع الاتصال')
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  // Handle GMB connect
+  const handleConnectGMB = async () => {
+    try {
+      const response = await fetch('/api/gmb/create-auth-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create auth URL')
+      }
+
+      // Redirect to Google OAuth
+      window.location.href = data.authUrl || data.url
+    } catch (error: any) {
+      console.error('Error connecting GMB:', error)
+      toast.error(error.message || 'حدث خطأ أثناء الاتصال')
+    }
+  }
 
   // Show loading state
   if (loading) {
@@ -307,12 +374,54 @@ export default function GMBDashboard() {
         <div className="p-4 md:p-8 max-w-7xl mx-auto">
           {/* Page Title */}
           <div className="mb-8 animate-in slide-in-from-top">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">
-              <span className="text-primary">GMB</span> Dashboard
-            </h1>
-            <p className="text-muted-foreground">
-              Manage your Google Business Profile locations and engagement
-            </p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold mb-2">
+                  <span className="text-primary">GMB</span> Dashboard
+                </h1>
+                <p className="text-muted-foreground">
+                  Manage your Google Business Profile locations and engagement
+                </p>
+              </div>
+              
+              {/* Connection Status & Disconnect Button */}
+              {gmbConnected ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-sm font-medium text-green-500">Connected</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/30"
+                    onClick={handleDisconnectGMB}
+                    disabled={disconnecting}
+                  >
+                    {disconnecting ? (
+                      <>
+                        <AlertCircle className="h-4 w-4 mr-2 animate-spin" />
+                        Disconnecting...
+                      </>
+                    ) : (
+                      <>
+                        <Unlink className="h-4 w-4 mr-2" />
+                        Disconnect
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white"
+                  onClick={handleConnectGMB}
+                >
+                  <Link2 className="h-4 w-4 mr-2" />
+                  Connect GMB
+                </Button>
+              )}
+            </div>
           </div>
           
           {/* Tab Content */}
@@ -330,6 +439,27 @@ export default function GMBDashboard() {
               
               {/* Dashboard Tab */}
               <TabsContent value="dashboard" className="space-y-6 animate-in fade-in-50">
+                {/* Connection Status Alert */}
+                {!gmbConnected && (
+                  <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30 flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-foreground mb-1">Google My Business غير متصل</h3>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        قم بالاتصال بحساب Google My Business الخاص بك لمزامنة المواقع والمراجعات تلقائياً.
+                      </p>
+                      <Button
+                        size="sm"
+                        className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white"
+                        onClick={handleConnectGMB}
+                      >
+                        <Link2 className="h-4 w-4 mr-2" />
+                        Connect Google My Business
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                
                 {/* Stats Cards */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                   <StatCard
