@@ -8,7 +8,7 @@ import { ReviewsList } from "@/components/reviews/reviews-list"
 import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard"
 import { GMBSettings } from "@/components/settings/gmb-settings"
 import { GMBDashboardSidebar } from "@/components/dashboard/gmb-sidebar"
-import { MapPin, MessageSquare, Star, TrendingUp, AlertCircle, Users, Bell, Check, CheckCheck, Trash2, Info, CheckCircle, AlertTriangle, Sparkles, Calendar, Image as ImageIcon, Loader2, Send, Timer, Wand2, Upload, X } from "lucide-react"
+import { MapPin, MessageSquare, Star, TrendingUp, AlertCircle, Users, Bell, Check, CheckCheck, Trash2, Info, CheckCircle, AlertTriangle, Sparkles, Calendar, Image as ImageIcon, Loader2, Send, Timer, Wand2, Upload, X, Edit, Clock, FileText, Tag, Gift, CalendarClock, Link2, ExternalLink } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton"
 import Link from "next/link"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -43,6 +43,8 @@ function GMBPostsSection() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
+  // Post form state
+  const [postType, setPostType] = useState<'whats_new' | 'event' | 'offer'>('whats_new')
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
   const [mediaUrl, setMediaUrl] = useState("")
@@ -52,8 +54,27 @@ function GMBPostsSection() {
   const [ctaUrl, setCtaUrl] = useState("")
   const [schedule, setSchedule] = useState<string>("")
   const [genLoading, setGenLoading] = useState(false)
+  const [aiGenerated, setAiGenerated] = useState(false)
+  
+  // Event-specific fields
+  const [eventTitle, setEventTitle] = useState("")
+  const [eventStartDate, setEventStartDate] = useState("")
+  const [eventEndDate, setEventEndDate] = useState("")
+  
+  // Offer-specific fields
+  const [offerTitle, setOfferTitle] = useState("")
+  const [couponCode, setCouponCode] = useState("")
+  const [redeemUrl, setRedeemUrl] = useState("")
+  const [terms, setTerms] = useState("")
+  
+  // Posts list state
   const [posts, setPosts] = useState<any[]>([])
   const [listLoading, setListLoading] = useState(true)
+  const [postTypeFilter, setPostTypeFilter] = useState<'all' | 'whats_new' | 'event' | 'offer'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'scheduled' | 'draft'>('all')
+  const [isDragging, setIsDragging] = useState(false)
+  
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
   // Templates
   const templates = [
@@ -61,6 +82,16 @@ function GMBPostsSection() {
     { id: 'event', label: 'Event', content: '📅 Join us for our upcoming event! Mark your calendars and be part of something special.' },
     { id: 'update', label: 'Update', content: '📢 Important update: We have news to share with our valued customers. Stay informed!' },
     { id: 'holiday', label: 'Holiday', content: '🎄 Season\'s Greetings! Wishing you joy and happiness. Special holiday hours in effect.' }
+  ]
+  
+  // CTA Options with icons
+  const ctaOptions = [
+    { value: 'BOOK', label: 'Book', icon: Calendar },
+    { value: 'ORDER', label: 'Order', icon: Send },
+    { value: 'SHOP', label: 'Shop', icon: ImageIcon },
+    { value: 'LEARN_MORE', label: 'Learn More', icon: Info },
+    { value: 'SIGN_UP', label: 'Sign Up', icon: Users },
+    { value: 'CALL', label: 'Call', icon: MessageSquare }
   ]
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,14 +127,21 @@ function GMBPostsSection() {
   const handleGenerate = async () => {
     try {
       setGenLoading(true)
+      const prompt = postType === 'event' ? 
+        `Create an event post for: ${eventTitle || content}` :
+        postType === 'offer' ?
+        `Create an offer post for: ${offerTitle || content}` :
+        content || title
+      
       const res = await fetch('/api/ai/generate-post', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform: 'gmb', prompt: content || title, tone: 'friendly' })
+        body: JSON.stringify({ platform: 'gmb', prompt, tone: 'friendly' })
       })
       const j = await res.json()
       if (j?.title) setTitle(j.title)
       if (j?.description) setContent(j.description)
+      setAiGenerated(true)
     } catch (e:any) {
       toast.error(e.message)
     } finally {
@@ -149,20 +187,36 @@ function GMBPostsSection() {
         if (url) uploadedMediaUrl = url
       }
       
+      // Build post data based on type
+      const postData: any = {
+        title: title || undefined,
+        content,
+        mediaUrl: uploadedMediaUrl || undefined,
+        callToAction: cta || undefined,
+        callToActionUrl: ctaUrl || undefined,
+        scheduledAt: schedule || undefined,
+        postType,
+        aiGenerated,
+      }
+      
+      // Add type-specific fields
+      if (postType === 'event') {
+        postData.eventTitle = eventTitle
+        postData.eventStartDate = eventStartDate
+        postData.eventEndDate = eventEndDate
+      } else if (postType === 'offer') {
+        postData.offerTitle = offerTitle
+        postData.couponCode = couponCode
+        postData.redeemUrl = redeemUrl
+        postData.terms = terms
+      }
+      
       // Save post for each selected location
       const savePromises = selectedLocations.map(locationId =>
         fetch("/api/gmb/posts/create", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            locationId,
-            title: title || undefined,
-            content,
-            mediaUrl: uploadedMediaUrl || undefined,
-            callToAction: cta || undefined,
-            callToActionUrl: ctaUrl || undefined,
-            scheduledAt: schedule || undefined,
-          }),
+          body: JSON.stringify({ ...postData, locationId }),
         })
       )
       
@@ -171,7 +225,7 @@ function GMBPostsSection() {
       
       const successful = responses.filter(r => r.ok).length
       if (successful > 0) {
-        toast.success(`Post saved for ${successful} location(s)`)
+        toast.success(`Post saved as draft for ${successful} location(s)`)
         // Return the first post ID for publishing
         return results.find(r => r.post?.id)?.post?.id
       } else {
@@ -213,6 +267,14 @@ function GMBPostsSection() {
       setCtaUrl("")
       setSchedule("")
       setSelectedLocations([])
+      setEventTitle("")
+      setEventStartDate("")
+      setEventEndDate("")
+      setOfferTitle("")
+      setCouponCode("")
+      setRedeemUrl("")
+      setTerms("")
+      setAiGenerated(false)
       // refresh list
       const r = await fetch('/api/gmb/posts/list'); const jj = await r.json(); if (r.ok) setPosts(jj.items||[])
     } catch (e:any) {
@@ -235,39 +297,121 @@ function GMBPostsSection() {
       toast.error(e.message)
     }
   }
+  
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+  
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+  
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    
+    const files = e.dataTransfer.files
+    if (files && files[0]) {
+      const file = files[0]
+      if (file.type.startsWith('image/')) {
+        setImageFile(file)
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setImagePreview(reader.result as string)
+        }
+        reader.readAsDataURL(file)
+      }
+    }
+  }
+  
+  // Filter posts
+  const filteredPosts = posts.filter(post => {
+    if (postTypeFilter !== 'all' && post.postType !== postTypeFilter) return false
+    if (statusFilter !== 'all' && post.status !== statusFilter) return false
+    return true
+  })
 
   return (
     <div className="space-y-6">
       <Tabs defaultValue="create" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="create">Create Post</TabsTrigger>
-          <TabsTrigger value="templates">Templates</TabsTrigger>
-          <TabsTrigger value="history">Post History</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 glass-strong border-primary/30">
+          <TabsTrigger value="create" className="data-[state=active]:bg-primary data-[state=active]:text-white">
+            <Wand2 className="w-4 h-4 mr-2" />
+            Create Post
+          </TabsTrigger>
+          <TabsTrigger value="manager" className="data-[state=active]:bg-primary data-[state=active]:text-white">
+            <FileText className="w-4 h-4 mr-2" />
+            Posts Manager
+          </TabsTrigger>
+          <TabsTrigger value="templates" className="data-[state=active]:bg-primary data-[state=active]:text-white">
+            <Tag className="w-4 h-4 mr-2" />
+            Templates
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="create" className="space-y-4">
-          <Card className="border border-primary/20 glass-strong">
-            <CardHeader>
-              <CardTitle>Create GMB Post</CardTitle>
+          <Card className="glass-strong border-primary/30 shadow-xl">
+            <CardHeader className="border-b border-primary/20">
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <Sparkles className="w-6 h-6 text-primary" />
+                Create GMB Post
+              </CardTitle>
               <CardDescription>Create and publish posts to your Business Profile locations</CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4">
+            <CardContent className="p-6 space-y-6">
+              {/* Post Type Selector */}
+              <div className="grid gap-3">
+                <label className="text-sm font-medium text-primary">Post Type</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { value: 'whats_new', label: "What's New", icon: Sparkles },
+                    { value: 'event', label: 'Event', icon: Calendar },
+                    { value: 'offer', label: 'Offer', icon: Gift }
+                  ].map((type) => (
+                    <button
+                      key={type.value}
+                      onClick={() => setPostType(type.value as any)}
+                      className={cn(
+                        "flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all duration-200 hover-lift",
+                        postType === type.value
+                          ? "border-primary bg-primary/10 shadow-lg glow-orange"
+                          : "border-primary/20 hover:border-primary/50 glass"
+                      )}
+                    >
+                      <type.icon className={cn(
+                        "w-8 h-8",
+                        postType === type.value ? "text-primary" : "text-muted-foreground"
+                      )} />
+                      <span className={cn(
+                        "font-medium",
+                        postType === type.value ? "text-primary" : "text-muted-foreground"
+                      )}>
+                        {type.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Location Multi-Select */}
-              <div className="grid gap-2">
-                <label className="text-sm text-muted-foreground">Select Locations</label>
-                <div className="border rounded-lg p-3 space-y-2">
+              <div className="grid gap-3">
+                <label className="text-sm font-medium text-primary">Select Locations</label>
+                <div className="glass rounded-lg p-4 space-y-3 border border-primary/20">
                   {loading ? (
                     <div className="text-sm text-muted-foreground">Loading locations...</div>
                   ) : locations.length === 0 ? (
                     <div className="text-sm text-muted-foreground">No locations found</div>
                   ) : (
                     <>
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 pb-2 border-b border-primary/10">
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={() => setSelectedLocations(locations.map(l => l.id))}
+                          className="hover:bg-primary hover:text-white transition-colors"
                         >
                           Select All
                         </Button>
@@ -276,10 +420,11 @@ function GMBPostsSection() {
                           variant="outline"
                           size="sm"
                           onClick={() => setSelectedLocations([])}
+                          className="hover:bg-primary hover:text-white transition-colors"
                         >
                           Clear All
                         </Button>
-                        <Badge variant="secondary">
+                        <Badge variant="outline" className="ml-auto border-primary text-primary">
                           {selectedLocations.length} selected
                         </Badge>
                       </div>
@@ -288,7 +433,7 @@ function GMBPostsSection() {
                           {locations.map((location) => (
                             <label
                               key={location.id}
-                              className="flex items-center gap-2 p-1 hover:bg-secondary/50 rounded cursor-pointer"
+                              className="flex items-center gap-3 p-2 hover:bg-primary/10 rounded-md cursor-pointer transition-colors"
                             >
                               <input
                                 type="checkbox"
@@ -300,7 +445,7 @@ function GMBPostsSection() {
                                     setSelectedLocations(selectedLocations.filter(id => id !== location.id))
                                   }
                                 }}
-                                className="rounded border-gray-300"
+                                className="rounded border-primary/50 text-primary focus:ring-primary"
                               />
                               <span className="text-sm">{location.location_name}</span>
                             </label>
@@ -312,48 +457,182 @@ function GMBPostsSection() {
                 </div>
               </div>
 
-              {/* Title */}
-              <div className="grid gap-2">
-                <label className="text-sm text-muted-foreground">Title (optional)</label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Post title" />
-              </div>
-
-              {/* Content */}
-              <div className="grid gap-2">
-                <label className="text-sm text-muted-foreground">Content *</label>
-                <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={4} placeholder="What would you like to share?" />
-                <div className="flex gap-2">
-                  <Button type="button" onClick={handleGenerate} variant="outline" className="gap-2" disabled={genLoading}>
-                    {genLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Generate with AI
-                  </Button>
-                </div>
-              </div>
-
-              {/* Image Upload */}
-              <div className="grid gap-2">
-                <label className="text-sm text-muted-foreground">Image</label>
-                <div className="space-y-2">
-                  <div className="flex gap-2">
+              {/* Dynamic Form Fields Based on Post Type */}
+              {postType === 'whats_new' && (
+                <>
+                  <div className="grid gap-3">
+                    <label className="text-sm font-medium text-primary">Summary</label>
+                    <div className="relative">
+                      <Textarea
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        rows={5}
+                        maxLength={1500}
+                        placeholder="What would you like to share with your customers?"
+                        className="resize-none border-primary/30 focus:border-primary glass"
+                      />
+                      <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                        {content.length}/1500
+                      </div>
+                    </div>
+                    {aiGenerated && (
+                      <Badge variant="outline" className="w-fit border-primary text-primary">
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        Generated by AI
+                      </Badge>
+                    )}
+                  </div>
+                </>
+              )}
+              
+              {postType === 'event' && (
+                <>
+                  <div className="grid gap-3">
+                    <label className="text-sm font-medium text-primary">Event Title</label>
                     <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      id="image-upload"
+                      value={eventTitle}
+                      onChange={(e) => setEventTitle(e.target.value)}
+                      placeholder="Enter event name"
+                      className="border-primary/30 focus:border-primary glass"
                     />
-                    <label htmlFor="image-upload">
-                      <Button type="button" variant="outline" asChild>
-                        <div>
-                          <Upload className="w-4 h-4 mr-2" />
-                          Choose Image
-                        </div>
-                      </Button>
-                    </label>
-                    {imagePreview && (
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-3">
+                      <label className="text-sm font-medium text-primary">Start Date & Time</label>
+                      <Input
+                        type="datetime-local"
+                        value={eventStartDate}
+                        onChange={(e) => setEventStartDate(e.target.value)}
+                        className="border-primary/30 focus:border-primary glass"
+                      />
+                    </div>
+                    <div className="grid gap-3">
+                      <label className="text-sm font-medium text-primary">End Date & Time</label>
+                      <Input
+                        type="datetime-local"
+                        value={eventEndDate}
+                        onChange={(e) => setEventEndDate(e.target.value)}
+                        className="border-primary/30 focus:border-primary glass"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-3">
+                    <label className="text-sm font-medium text-primary">Event Summary</label>
+                    <Textarea
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      rows={4}
+                      placeholder="Describe your event"
+                      className="resize-none border-primary/30 focus:border-primary glass"
+                    />
+                  </div>
+                </>
+              )}
+              
+              {postType === 'offer' && (
+                <>
+                  <div className="grid gap-3">
+                    <label className="text-sm font-medium text-primary">Offer Title</label>
+                    <Input
+                      value={offerTitle}
+                      onChange={(e) => setOfferTitle(e.target.value)}
+                      placeholder="e.g., 20% Off Summer Sale"
+                      className="border-primary/30 focus:border-primary glass"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-3">
+                      <label className="text-sm font-medium text-primary">Coupon Code</label>
+                      <Input
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        placeholder="e.g., SUMMER20"
+                        className="border-primary/30 focus:border-primary glass"
+                      />
+                    </div>
+                    <div className="grid gap-3">
+                      <label className="text-sm font-medium text-primary">Redeem URL</label>
+                      <Input
+                        value={redeemUrl}
+                        onChange={(e) => setRedeemUrl(e.target.value)}
+                        placeholder="https://example.com/offer"
+                        className="border-primary/30 focus:border-primary glass"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-3">
+                    <label className="text-sm font-medium text-primary">Terms & Conditions</label>
+                    <Textarea
+                      value={terms}
+                      onChange={(e) => setTerms(e.target.value)}
+                      rows={3}
+                      placeholder="Enter offer terms and conditions"
+                      className="resize-none border-primary/30 focus:border-primary glass"
+                    />
+                  </div>
+                  <div className="grid gap-3">
+                    <label className="text-sm font-medium text-primary">Offer Description</label>
+                    <Textarea
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      rows={3}
+                      placeholder="Describe your offer"
+                      className="resize-none border-primary/30 focus:border-primary glass"
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* AI Generation Button */}
+              <div className="flex justify-center">
+                <Button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={genLoading}
+                  className="gap-2 bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-600/90 text-white shadow-lg hover-glow"
+                >
+                  {genLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  Generate with AI
+                </Button>
+              </div>
+
+              {/* Image Upload with Drag & Drop */}
+              <div className="grid gap-3">
+                <label className="text-sm font-medium text-primary">Image/Video</label>
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={cn(
+                    "relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200",
+                    isDragging
+                      ? "border-primary bg-primary/10 glow-orange"
+                      : "border-primary/30 hover:border-primary/50 glass"
+                  )}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  {imagePreview ? (
+                    <div className="relative">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="max-h-64 mx-auto rounded-lg shadow-lg"
+                      />
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="destructive"
                         size="icon"
+                        className="absolute top-2 right-2"
                         onClick={() => {
                           setImageFile(null)
                           setImagePreview("")
@@ -361,159 +640,253 @@ function GMBPostsSection() {
                       >
                         <X className="w-4 h-4" />
                       </Button>
-                    )}
-                  </div>
-                  {imagePreview && (
-                    <div className="relative w-full h-48 rounded-lg overflow-hidden border border-primary/20">
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <Upload className="w-12 h-12 mx-auto text-primary" />
+                      <div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="hover:bg-primary hover:text-white transition-colors"
+                        >
+                          Choose File
+                        </Button>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        or drag and drop your image/video here
+                      </p>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Call to Action */}
-              <div className="grid gap-2 md:grid-cols-2">
-                <div className="grid gap-2">
-                  <label className="text-sm text-muted-foreground">Call to Action</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-3">
+                  <label className="text-sm font-medium text-primary">Call to Action</label>
                   <Select onValueChange={setCta} value={cta}>
-                    <SelectTrigger>
+                    <SelectTrigger className="border-primary/30 glass">
                       <SelectValue placeholder="Select CTA" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="BOOK">Book</SelectItem>
-                      <SelectItem value="ORDER">Order Online</SelectItem>
-                      <SelectItem value="SHOP">Shop</SelectItem>
-                      <SelectItem value="LEARN_MORE">Learn More</SelectItem>
-                      <SelectItem value="SIGN_UP">Sign Up</SelectItem>
-                      <SelectItem value="CALL">Call</SelectItem>
+                      {ctaOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          <div className="flex items-center gap-2">
+                            <option.icon className="w-4 h-4" />
+                            {option.label}
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 {cta && (
-                  <div className="grid gap-2">
-                    <label className="text-sm text-muted-foreground">CTA URL</label>
-                    <Input value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} placeholder="https://example.com" />
+                  <div className="grid gap-3">
+                    <label className="text-sm font-medium text-primary">Action URL</label>
+                    <Input
+                      value={ctaUrl}
+                      onChange={(e) => setCtaUrl(e.target.value)}
+                      placeholder="https://example.com"
+                      className="border-primary/30 focus:border-primary glass"
+                    />
                   </div>
                 )}
               </div>
 
               {/* Schedule */}
-              <div className="grid gap-2">
-                <label className="text-sm text-muted-foreground">Schedule (optional)</label>
-                <Input type="datetime-local" value={schedule} onChange={(e) => setSchedule(e.target.value)} />
+              <div className="grid gap-3">
+                <label className="text-sm font-medium text-primary">Schedule (optional)</label>
+                <Input
+                  type="datetime-local"
+                  value={schedule}
+                  onChange={(e) => setSchedule(e.target.value)}
+                  className="border-primary/30 focus:border-primary glass"
+                />
               </div>
 
               {/* Actions */}
-              <div className="flex gap-3 pt-2">
-                <Button onClick={handleSave} disabled={selectedLocations.length === 0 || !content.trim() || saving} variant="outline" className="gap-2">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Save Draft
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={handleSave}
+                  disabled={selectedLocations.length === 0 || !content.trim() || saving}
+                  variant="outline"
+                  className="flex-1 gap-2 hover:bg-primary hover:text-white transition-colors"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Clock className="w-4 h-4" />}
+                  Save as Draft
                 </Button>
-                <Button onClick={handlePublish} disabled={selectedLocations.length === 0 || !content.trim() || saving} className="gap-2 gradient-orange">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Publish Now
+                <Button
+                  onClick={handlePublish}
+                  disabled={selectedLocations.length === 0 || !content.trim() || saving}
+                  className="flex-1 gap-2 bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-600/90 text-white shadow-lg hover-glow"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  Publish Now
                 </Button>
               </div>
             </CardContent>
           </Card>
-
-          {/* Preview */}
-          {(title || content || imagePreview) && (
-            <Card className="border border-primary/20">
-              <CardHeader>
-                <CardTitle className="text-base">Preview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {imagePreview && (
-                    <div className="w-full h-48 rounded-lg overflow-hidden">
-                      <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                    </div>
-                  )}
-                  {title && <h3 className="font-semibold text-lg">{title}</h3>}
-                  {content && <p className="text-muted-foreground whitespace-pre-wrap">{content}</p>}
-                  {cta && (
-                    <Button variant="outline" size="sm" className="mt-2">
-                      {cta.replace('_', ' ')}
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
-        <TabsContent value="templates" className="space-y-4">
-          <Card className="border border-primary/20 glass-strong">
-            <CardHeader>
-              <CardTitle>Post Templates</CardTitle>
-              <CardDescription>Use pre-made templates to quickly create posts</CardDescription>
+        <TabsContent value="manager" className="space-y-4">
+          <Card className="glass-strong border-primary/30 shadow-xl">
+            <CardHeader className="border-b border-primary/20">
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <FileText className="w-6 h-6 text-primary" />
+                Posts Manager
+              </CardTitle>
+              <CardDescription>View and manage all your posts</CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4">
-              {templates.map((template) => (
-                <div key={template.id} className="p-4 border rounded-lg hover:bg-secondary/50 transition-colors">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h4 className="font-semibold mb-1">{template.label}</h4>
-                      <p className="text-sm text-muted-foreground">{template.content}</p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setContent(template.content)}
-                    >
-                      Use Template
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
+            <CardContent className="p-6">
+              {/* Filters */}
+              <div className="flex gap-4 mb-6 p-4 glass rounded-lg">
+                <Select value={postTypeFilter} onValueChange={(value: any) => setPostTypeFilter(value)}>
+                  <SelectTrigger className="w-48 border-primary/30 glass">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Posts</SelectItem>
+                    <SelectItem value="whats_new">What's New</SelectItem>
+                    <SelectItem value="event">Event</SelectItem>
+                    <SelectItem value="offer">Offer</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+                  <SelectTrigger className="w-48 border-primary/30 glass">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="published">Published</SelectItem>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-        <TabsContent value="history" className="space-y-4">
-          <Card className="border border-primary/20 glass-strong">
-            <CardHeader>
-              <CardTitle>Post History</CardTitle>
-              <CardDescription>View and manage your previous posts</CardDescription>
-            </CardHeader>
-            <CardContent>
+              {/* Posts List */}
               {listLoading ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                  Loading posts...
+                <div className="text-center py-8">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-primary" />
+                  <p className="text-muted-foreground">Loading posts...</p>
                 </div>
-              ) : posts.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">No posts yet</div>
+              ) : filteredPosts.length === 0 ? (
+                <div className="text-center py-12 glass rounded-lg">
+                  <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-muted-foreground">No posts found</p>
+                </div>
               ) : (
                 <div className="space-y-4">
-                  {posts.map((post) => (
-                    <div key={post.id} className="p-4 border rounded-lg">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          {post.title && <h4 className="font-semibold mb-1">{post.title}</h4>}
-                          <p className="text-sm text-muted-foreground line-clamp-2">{post.content}</p>
-                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                            <span>{new Date(post.created_at).toLocaleDateString()}</span>
-                            <Badge variant={post.status === 'published' ? 'default' : 'secondary'}>
+                  {filteredPosts.map((post) => (
+                    <div
+                      key={post.id}
+                      className="p-5 glass rounded-lg border border-primary/20 hover:border-primary/40 transition-all duration-200 hover-lift"
+                    >
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1 space-y-2">
+                          {post.title && (
+                            <h4 className="font-semibold text-lg flex items-center gap-2">
+                              {post.title}
+                              {post.aiGenerated && (
+                                <Badge variant="outline" className="text-xs border-primary text-primary">
+                                  <Sparkles className="w-3 h-3 mr-1" />
+                                  Generated by AI
+                                </Badge>
+                              )}
+                            </h4>
+                          )}
+                          <p className="text-sm text-muted-foreground line-clamp-3">{post.content}</p>
+                          <div className="flex items-center gap-4 text-xs">
+                            <Badge
+                              variant={post.status === 'published' ? 'default' : 'outline'}
+                              className={cn(
+                                post.status === 'published' && "bg-green-600 text-white",
+                                post.status === 'scheduled' && "border-yellow-600 text-yellow-600",
+                                post.status === 'draft' && "border-gray-500 text-gray-500"
+                              )}
+                            >
+                              {post.status === 'published' && <CheckCircle className="w-3 h-3 mr-1" />}
+                              {post.status === 'scheduled' && <Clock className="w-3 h-3 mr-1" />}
+                              {post.status === 'draft' && <FileText className="w-3 h-3 mr-1" />}
                               {post.status}
                             </Badge>
+                            <span className="text-muted-foreground flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {new Date(post.created_at).toLocaleDateString()}
+                            </span>
+                            {post.postType && (
+                              <Badge variant="outline" className="border-primary/50 text-primary">
+                                {post.postType === 'whats_new' && "What's New"}
+                                {post.postType === 'event' && "Event"}
+                                {post.postType === 'offer' && "Offer"}
+                              </Badge>
+                            )}
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeletePost(post.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="hover:bg-primary hover:text-white transition-colors"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeletePost(post.id)}
+                            className="hover:bg-destructive hover:text-white transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="templates" className="space-y-4">
+          <Card className="glass-strong border-primary/30 shadow-xl">
+            <CardHeader className="border-b border-primary/20">
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <Tag className="w-6 h-6 text-primary" />
+                Post Templates
+              </CardTitle>
+              <CardDescription>Use pre-made templates to quickly create posts</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid gap-4">
+                {templates.map((template) => (
+                  <div
+                    key={template.id}
+                    className="p-5 glass rounded-lg border border-primary/20 hover:border-primary/40 transition-all duration-200 hover-lift"
+                  >
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-lg mb-2">{template.label}</h4>
+                        <p className="text-sm text-muted-foreground">{template.content}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setContent(template.content)
+                          toast.success("Template applied")
+                        }}
+                        className="hover:bg-primary hover:text-white transition-colors"
+                      >
+                        Use Template
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -567,332 +940,188 @@ export default function GMBDashboardPage() {
       await fetch('/api/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notificationId: id })
+        body: JSON.stringify({ id, action: 'read' })
       })
-      fetchNotifications()
+      // Update local state
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
+      setUnreadCount(prev => Math.max(0, prev - 1))
     } catch (e) {
-      console.error('Failed to mark as read:', e)
+      console.error('Failed to mark notification as read:', e)
     }
   }
 
-  const markAllNotificationsAsRead = async () => {
-    try {
-      await fetch('/api/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markAllAsRead: true })
-      })
-      fetchNotifications()
-    } catch (e) {
-      console.error('Failed to mark all as read:', e)
-    }
-  }
-
-  const deleteNotification = async (id: string) => {
-    try {
-      await fetch(`/api/notifications?id=${id}`, { method: 'DELETE' })
-      fetchNotifications()
-    } catch (e) {
-      console.error('Failed to delete notification:', e)
-    }
-  }
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'review': return <AlertCircle className="w-4 h-4 text-blue-500" />
-      case 'success': return <CheckCircle className="w-4 h-4 text-green-500" />
-      case 'error': return <AlertTriangle className="w-4 h-4 text-red-500" />
-      case 'warning': return <AlertTriangle className="w-4 h-4 text-yellow-500" />
-      default: return <Info className="w-4 h-4 text-primary" />
-    }
-  }
-
+  // Fetch dashboard stats
   useEffect(() => {
-    async function fetchDashboardData() {
+    async function loadData() {
       try {
-        setLoading(true)
-        setError(null)
-
-        const {
-          data: { user: authUser },
-        } = await supabase.auth.getUser()
-
-        if (!authUser) {
-          router.push("/auth/login")
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          router.push('/auth/login')
           return
         }
+        setUser(user)
 
-        setUser(authUser)
+        // Fetch stats from database
+        const { data: locations } = await supabase
+          .from('gmb_locations')
+          .select('*')
+          .eq('user_id', user.id)
 
-        const { data: locations, error: locationsError } = await supabase
-          .from("gmb_locations")
-          .select("*")
-          .eq("user_id", authUser.id)
+        const { data: reviews } = await supabase
+          .from('gmb_reviews')
+          .select('*')
+          .eq('user_id', user.id)
 
-        const { data: reviews, error: reviewsError } = await supabase
-          .from("gmb_reviews")
-          .select("*")
-          .eq("user_id", authUser.id)
-
-        if (locationsError || reviewsError) {
-          throw new Error(locationsError?.message || reviewsError?.message || "Failed to fetch data")
-        }
-
-        const totalLocations = locations?.length || 0
-        const totalReviews = reviews?.length || 0
-        const averageRating =
-          reviews && reviews.length > 0
-            ? (reviews.reduce((acc, r) => acc + (r.rating || 0), 0) / reviews.length).toFixed(1)
+        if (locations && reviews) {
+          const totalReviews = reviews.length
+          const averageRating = reviews.length > 0
+            ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1)
             : "0.0"
+          const repliedReviews = reviews.filter(r => r.reply_text).length
+          const responseRate = reviews.length > 0
+            ? Math.round((repliedReviews / reviews.length) * 100)
+            : 0
 
-        const respondedReviews = reviews?.filter((r) => r.status === "responded").length || 0
-        const responseRate = totalReviews > 0 ? Math.round((respondedReviews / totalReviews) * 100) : 0
-
-        setStats({
-          totalLocations,
-          totalReviews,
-          averageRating,
-          responseRate,
-        })
+          setStats({
+            totalLocations: locations.length,
+            totalReviews,
+            averageRating,
+            responseRate
+          })
+        }
       } catch (err) {
-        console.error("Dashboard data fetch error:", err)
-        setError(err instanceof Error ? err.message : "Failed to load dashboard data")
+        console.error('Error loading data:', err)
+        setError('Failed to load dashboard data')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchDashboardData()
+    loadData()
   }, [])
 
-  const renderDashboardContent = () => {
-    if (error) {
-      return (
-        <Card className="bg-card border-red-500/30">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 text-red-500">
-              <AlertCircle className="w-6 h-6" />
-              <div>
-                <p className="font-semibold">Failed to load dashboard data</p>
-                <p className="text-sm text-muted-foreground mt-1">{error}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )
-    }
-
-    return (
-      <>
-        {/* Stats Grid */}
-        {loading ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <LoadingSkeleton type="stat" count={4} />
-          </div>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              title="Total Locations"
-              value={stats?.totalLocations || 0}
-              change="+2 this month"
-              changeType="positive"
-              icon={MapPin}
-              index={0}
-            />
-            <StatCard
-              title="Total Reviews"
-              value={stats?.totalReviews || 0}
-              change="+12 this week"
-              changeType="positive"
-              icon={MessageSquare}
-              index={1}
-            />
-            <StatCard
-              title="Average Rating"
-              value={stats?.averageRating || "0.0"}
-              change="+0.2 from last month"
-              changeType="positive"
-              icon={Star}
-              index={2}
-            />
-            <StatCard
-              title="Response Rate"
-              value={`${stats?.responseRate || 0}%`}
-              change="+5% this month"
-              changeType="positive"
-              icon={TrendingUp}
-              index={3}
-            />
-          </div>
-        )}
-
-        {/* Empty State - No GMB Account Connected */}
-        {!loading && stats?.totalLocations === 0 && (
-          <Card className="bg-card border-primary/30">
-            <CardContent className="p-12">
-              <div className="flex flex-col items-center justify-center text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
-                  <Users className="w-8 h-8 text-primary" />
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-semibold text-foreground">No Google My Business Account Connected</h3>
-                  <p className="text-muted-foreground max-w-md">
-                    Connect your Google My Business account to start managing your locations, reviews, and content.
-                  </p>
-                </div>
-                <Button size="lg" className="mt-4" asChild>
-                  <Link href="/accounts">
-                    <Users className="mr-2 h-5 w-5" />
-                    Connect Account
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Charts and Activity */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          <PerformanceChart />
-          <ActivityFeed />
-        </div>
-      </>
-    )
-  }
+  if (loading) return <LoadingSkeleton />
+  if (error) return <div className="text-red-500">Error: {error}</div>
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <GMBDashboardSidebar activeTab={activeTab} setActiveTab={setActiveTab} user={user} />
+    <div className="flex">
+      <GMBDashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} />
       
-      {/* Main Content Area */}
-      <div className="flex-1 lg:ml-[240px] transition-all duration-300">
-        {/* Header Bar */}
-        <header className="sticky top-0 z-20 border-b border-primary/30 bg-card/90 backdrop-blur-md">
-          <div className="px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex-1">
-                <h2 className="text-lg font-semibold text-foreground lg:hidden">GMB Dashboard</h2>
-              </div>
-
-              {/* Notifications */}
-              <div className="flex items-center gap-3">
-                <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
-                      <Bell className="h-5 w-5" />
-                      {unreadCount > 0 && (
-                        <span className="absolute top-1 right-1 h-5 w-5 rounded-full bg-primary text-[10px] font-bold text-white flex items-center justify-center">
-                          {unreadCount > 9 ? '9+' : unreadCount}
-                        </span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80 md:w-96 p-0" align="end">
-                    <div className="border-b border-primary/20 p-4 flex items-center justify-between">
-                      <h3 className="font-semibold">Notifications</h3>
-                      {unreadCount > 0 && (
-                        <Button variant="ghost" size="sm" onClick={markAllNotificationsAsRead} className="text-xs">
-                          <CheckCheck className="w-3 h-3 mr-1" />
-                          Mark all read
-                        </Button>
-                      )}
-                    </div>
-                    <ScrollArea className="h-[400px]">
-                      {notificationsLoading ? (
-                        <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
-                      ) : notifications.length === 0 ? (
-                        <div className="p-8 text-center">
-                          <Bell className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
-                          <p className="text-sm text-muted-foreground">No notifications yet</p>
-                        </div>
-                      ) : (
-                        <div className="divide-y divide-primary/10">
-                          {notifications.map((notif: any) => (
-                            <div
-                              key={notif.id}
-                              className={cn(
-                                "p-4 hover:bg-primary/5 transition-colors",
-                                !notif.read && "bg-primary/5"
-                              )}
-                            >
-                              <div className="flex gap-3">
-                                <div className="mt-1">{getNotificationIcon(notif.type)}</div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1">
-                                      <p className="text-sm font-medium">{notif.title}</p>
-                                      <p className="text-xs text-muted-foreground mt-1">{notif.message}</p>
-                                      <p className="text-xs text-muted-foreground/70 mt-1">
-                                        {new Date(notif.created_at).toLocaleString()}
-                                      </p>
-                                    </div>
-                                    <div className="flex gap-1">
-                                      {!notif.read && (
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6"
-                                          onClick={() => markNotificationAsRead(notif.id)}
-                                        >
-                                          <Check className="w-3 h-3" />
-                                        </Button>
-                                      )}
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6"
-                                        onClick={() => deleteNotification(notif.id)}
-                                      >
-                                        <Trash2 className="w-3 h-3" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  {notif.link && (
-                                    <Link href={notif.link} className="text-xs text-primary hover:underline mt-1 inline-block">
-                                      View details →
-                                    </Link>
-                                  )}
-                                </div>
+      <main className="flex-1 p-8 overflow-auto">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-between items-start mb-8">
+            <div>
+              <h1 className="text-4xl font-bold mb-2 gradient-text-orange">GMB Dashboard</h1>
+              <p className="text-muted-foreground">Manage your Google Business Profile</p>
+            </div>
+            
+            {/* Notifications */}
+            <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="relative glass-strong border-primary/30">
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-5 w-5 bg-primary text-white text-xs rounded-full flex items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 glass-strong border-primary/30" align="end">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-primary/20 pb-3">
+                    <h3 className="font-semibold">Notifications</h3>
+                    <Badge variant="outline" className="border-primary text-primary">
+                      {unreadCount} unread
+                    </Badge>
+                  </div>
+                  <ScrollArea className="h-[400px]">
+                    {notificationsLoading ? (
+                      <div className="text-center py-4">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                      </div>
+                    ) : notifications.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-4">No notifications</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {notifications.map((notif) => (
+                          <div
+                            key={notif.id}
+                            onClick={() => !notif.read && markNotificationAsRead(notif.id)}
+                            className={cn(
+                              "p-3 rounded-lg cursor-pointer transition-all hover:bg-primary/10",
+                              !notif.read ? "bg-primary/5 border-l-2 border-primary" : ""
+                            )}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="p-2 rounded-full bg-primary/10">
+                                {notif.type === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
+                                {notif.type === 'error' && <AlertTriangle className="h-4 w-4 text-red-500" />}
+                                {notif.type === 'info' && <Info className="h-4 w-4 text-blue-500" />}
+                                {!notif.type && <Bell className="h-4 w-4 text-primary" />}
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">{notif.title}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{notif.message}</p>
+                                <p className="text-xs text-muted-foreground mt-2">
+                                  {new Date(notif.created_at).toLocaleString()}
+                                </p>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </ScrollArea>
-                  </PopoverContent>
-                </Popover>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {activeTab === "dashboard" && (
+            <div className="space-y-6">
+              {/* Stats Cards */}
+              <div className="grid gap-6 md:grid-cols-4">
+                <StatCard
+                  title="Total Locations"
+                  value={stats?.totalLocations.toString() || "0"}
+                  icon={<MapPin className="h-4 w-4" />}
+                  trend="+12% from last month"
+                />
+                <StatCard
+                  title="Total Reviews"
+                  value={stats?.totalReviews.toString() || "0"}
+                  icon={<MessageSquare className="h-4 w-4" />}
+                  trend="+8% from last month"
+                />
+                <StatCard
+                  title="Average Rating"
+                  value={stats?.averageRating || "0.0"}
+                  icon={<Star className="h-4 w-4" />}
+                  trend="+0.2 from last month"
+                />
+                <StatCard
+                  title="Response Rate"
+                  value={`${stats?.responseRate || 0}%`}
+                  icon={<TrendingUp className="h-4 w-4" />}
+                  trend="+5% from last month"
+                />
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <PerformanceChart />
+                <ActivityFeed />
               </div>
             </div>
-          </div>
-        </header>
+          )}
 
-        {/* Main Content */}
-        <main className="p-4 sm:p-6">
-        {/* Render content based on active tab */}
-        {activeTab === "dashboard" && (
-          <div className="space-y-6">
-            {/* Page Header */}
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-              <p className="text-muted-foreground mt-1">Welcome back! Here's your GMB overview.</p>
-            </div>
-            {/* Dashboard Content */}
-            {renderDashboardContent()}
-          </div>
-        )}
-
-        {activeTab === "locations" && <LocationsList />}
-        
-        {activeTab === "reviews" && <ReviewsList />}
-        
-        {activeTab === "posts" && <GMBPostsSection />}
-        
-        {activeTab === "analytics" && <AnalyticsDashboard />}
-        
-        {activeTab === "settings" && <GMBSettings />}
+          {activeTab === "posts" && <GMBPostsSection />}
+          {activeTab === "locations" && <LocationsList />}
+          {activeTab === "reviews" && <ReviewsList />}
+          {activeTab === "analytics" && <AnalyticsDashboard />}
+          {activeTab === "settings" && <GMBSettings />}
+        </div>
       </main>
-    </div>
     </div>
   )
 }
