@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton"
+import { YoutubeDashboardSidebar } from "@/components/dashboard/youtube-sidebar"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,15 +12,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import Link from "next/link"
 import { toast } from "sonner"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 import { cn } from "@/lib/utils"
 import {
   Youtube,
@@ -27,7 +25,6 @@ import {
   Eye,
   Video,
   RefreshCw,
-  LogOut,
   Download,
   ThumbsUp,
   Calendar,
@@ -38,8 +35,6 @@ import {
   Search,
   Trash2,
   Save,
-  Menu,
-  Home,
   LayoutGrid,
   Play,
   FileVideo,
@@ -52,6 +47,7 @@ import {
   Info,
   CheckCircle,
   AlertTriangle,
+  LogOut,
 } from "lucide-react"
 import {
   Chart as ChartJS,
@@ -86,15 +82,6 @@ type YTComment = { id: string; author: string; text: string; likes: number; publ
 type YTAnalytics = { lastUpdated: string; months: string[]; viewsPerMonth: number[]; videosPerMonth: number[]; totalViews: number; totalVideos: number }
 type Draft = { id: string; title: string; description: string; hashtags: string; created_at: string }
 
-const tabItems = [
-  { id: "overview", label: "Overview", icon: LayoutGrid },
-  { id: "videos", label: "Videos", icon: FileVideo },
-  { id: "posts", label: "Posts", icon: Sparkles },
-  { id: "comments", label: "Comments", icon: MessageCircle },
-  { id: "composer", label: "Composer", icon: Wand2 },
-  { id: "settings", label: "Settings", icon: SettingsIcon },
-]
-
 export default function YoutubeDashboardPage() {
   const supabase = createClient()
   const router = useRouter()
@@ -104,7 +91,6 @@ export default function YoutubeDashboardPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
   const [user, setUser] = useState<any>(null)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
   
   // Notifications state
@@ -264,16 +250,6 @@ export default function YoutubeDashboardPage() {
     } finally {
       setDisconnecting(false)
     }
-  }
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push("/auth/login")
-  }
-
-  const getInitials = (email?: string) => {
-    if (!email) return "U"
-    return email.charAt(0).toUpperCase()
   }
 
   // Fetch notifications
@@ -545,108 +521,20 @@ export default function YoutubeDashboardPage() {
     }
   }
 
-  // Mobile Navigation Menu
-  const MobileNav = () => (
-    <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="lg:hidden text-muted-foreground hover:text-foreground">
-          <Menu className="h-6 w-6" />
-          <span className="sr-only">Toggle menu</span>
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="left" className="w-72 bg-card border-primary/30">
-        <SheetHeader className="border-b border-primary/30 pb-4 mb-4">
-          <SheetTitle className="flex items-center gap-3">
-            <Youtube className="h-6 w-6 text-red-500" />
-            <span className="text-lg font-bold gradient-text">YouTube Dashboard</span>
-          </SheetTitle>
-        </SheetHeader>
-        <nav className="flex flex-col space-y-2">
-          <Link href="/home" onClick={() => setMobileMenuOpen(false)}>
-            <Button variant="ghost" className="w-full justify-start gap-3 hover:bg-primary/10">
-              <Home className="h-5 w-5" />
-              Home
-            </Button>
-          </Link>
-          {tabItems.map((item) => (
-            <Button
-              key={item.id}
-              variant="ghost"
-              onClick={() => {
-                setActiveTab(item.id)
-                setMobileMenuOpen(false)
-              }}
-              className={cn(
-                "w-full justify-start gap-3",
-                activeTab === item.id ? "bg-primary/20 text-primary" : "hover:bg-primary/10"
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              {item.label}
-            </Button>
-          ))}
-          <Link href="/gmb-dashboard" onClick={() => setMobileMenuOpen(false)}>
-            <Button variant="ghost" className="w-full justify-start gap-3 hover:bg-primary/10">
-              <TrendingUp className="h-5 w-5" />
-              GMB Dashboard
-            </Button>
-          </Link>
-          <div className="pt-4 mt-4 border-t border-primary/30">
-            <Button
-              onClick={handleSignOut}
-              variant="ghost"
-              className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground hover:bg-secondary"
-            >
-              <LogOut className="h-5 w-5" />
-              Sign Out
-            </Button>
-          </div>
-        </nav>
-      </SheetContent>
-    </Sheet>
-  )
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 border-b border-primary/30 bg-card/95 backdrop-blur-sm">
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
-            {/* Left side - Logo and Title */}
-            <div className="flex items-center gap-4">
-              <MobileNav />
-              <Link href="/home" className="flex items-center gap-3">
-                <Image 
-                  src="/nnh-logo.png" 
-                  alt="NNH Logo" 
-                  width={40} 
-                  height={40}
-                  className="object-contain"
-                />
-                <div className="hidden sm:block">
-                  <h1 className="text-lg font-bold gradient-text">NNH - AI Studio</h1>
-                  <p className="text-xs text-muted-foreground">YouTube Dashboard</p>
-                </div>
-              </Link>
-            </div>
-
-            {/* Center - Desktop Tab Navigation */}
-            <nav className="hidden lg:flex items-center">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
-                <TabsList className="grid grid-cols-6 bg-secondary/50">
-                  {tabItems.map((item) => (
-                    <TabsTrigger
-                      key={item.id}
-                      value={item.id}
-                      className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {item.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-            </nav>
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar */}
+      <YoutubeDashboardSidebar activeTab={activeTab} setActiveTab={setActiveTab} user={user} />
+      
+      {/* Main Content Area */}
+      <div className="flex-1 lg:ml-60 transition-all duration-300">
+        {/* Header Bar */}
+        <header className="sticky top-0 z-20 border-b border-primary/20 bg-card/80 backdrop-blur-md">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-foreground lg:hidden">YouTube Dashboard</h2>
+              </div>
 
             {/* Right side - User Menu */}
             <div className="flex items-center gap-3">
@@ -735,58 +623,13 @@ export default function YoutubeDashboardPage() {
                   </ScrollArea>
                 </PopoverContent>
               </Popover>
-              <Link href="/home" className="hidden sm:block">
-                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-                  <Home className="h-4 w-4" />
-                  Home
-                </Button>
-              </Link>
-              <Link href="/gmb-dashboard" className="hidden sm:block">
-                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-                  <TrendingUp className="h-4 w-4" />
-                  GMB
-                </Button>
-              </Link>
-              <div className="hidden sm:flex items-center gap-2">
-                <Avatar className="h-8 w-8 border-2 border-primary/30">
-                  <AvatarFallback className="bg-primary/20 text-primary font-semibold">
-                    {getInitials(user?.email)}
-                  </AvatarFallback>
-                </Avatar>
-                <Button
-                  onClick={handleSignOut}
-                  variant="ghost"
-                  size="sm"
-                  className="gap-2 text-muted-foreground hover:text-foreground"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span className="hidden md:inline">Sign Out</span>
-                </Button>
-              </div>
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {/* Mobile Tab Selector - Visible on Mobile Only */}
-        <div className="lg:hidden">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-3 sm:grid-cols-6 bg-secondary/50">
-              {tabItems.map((item) => (
-                <TabsTrigger
-                  key={item.id}
-                  value={item.id}
-                  className="text-xs sm:text-sm"
-                >
-                  <span className="hidden sm:inline">{item.label}</span>
-                  <item.icon className="h-4 w-4 sm:hidden" />
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
+      <main className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
         {/* Loading State */}
         {loading ? (
@@ -1348,6 +1191,7 @@ export default function YoutubeDashboardPage() {
           </div>
         )}
       </main>
+      </div>
     </div>
   )
 }
