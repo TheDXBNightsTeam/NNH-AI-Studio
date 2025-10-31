@@ -2546,27 +2546,40 @@ export default function YoutubeDashboardPage() {
 
                         {/* Filtered Videos */}
                         <div className="space-y-3">
-                          <h3 className="text-lg font-semibold mb-4">
-                            {videoAnalyticsFilter === 'top' ? 'Top Performing Videos' :
-                             videoAnalyticsFilter === 'recent' ? 'Recent Videos' :
-                             'All Videos'} ({videos.length})
-                          </h3>
-                          <ScrollArea className="h-[500px]">
-                            {(() => {
-                              let filteredVids = [...videos]
-                              if (videoAnalyticsFilter === 'top') {
-                                filteredVids.sort((a, b) => b.views - a.views)
-                                filteredVids = filteredVids.slice(0, 10)
-                              } else if (videoAnalyticsFilter === 'recent') {
-                                filteredVids.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
-                                filteredVids = filteredVids.slice(0, 10)
-                              }
-                              return filteredVids.map((video) => {
+                          {(() => {
+                            let filteredVids = [...videos]
+                            if (videoAnalyticsFilter === 'top') {
+                              filteredVids.sort((a, b) => b.views - a.views)
+                              filteredVids = filteredVids.slice(0, 10)
+                            } else if (videoAnalyticsFilter === 'recent') {
+                              filteredVids.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+                              filteredVids = filteredVids.slice(0, 10)
+                            }
+                            return (
+                              <>
+                                <h3 className="text-lg font-semibold mb-4">
+                                  {videoAnalyticsFilter === 'top' ? 'Top Performing Videos' :
+                                   videoAnalyticsFilter === 'recent' ? 'Recent Videos' :
+                                   'All Videos'} ({filteredVids.length})
+                                </h3>
+                                <ScrollArea className="h-[500px]">
+                                  {filteredVids.length === 0 ? (
+                                    <div className="text-center py-12 text-muted-foreground">
+                                      <Video className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                      <p className="text-sm">No videos available</p>
+                                      <p className="text-xs mt-1">Connect your YouTube channel to see analytics</p>
+                                    </div>
+                                  ) : (
+                                    filteredVids.map((video) => {
                                 const videoComments = comments.filter(c => c.videoUrl === video.url)
                                 const engagementRate = video.views > 0 
                                   ? ((videoComments.length / video.views) * 100).toFixed(2)
                                   : '0.00'
-                                const daysSincePublished = Math.floor((new Date().getTime() - new Date(video.publishedAt).getTime()) / (1000 * 60 * 60 * 24))
+                                const publishedDate = new Date(video.publishedAt)
+                                const now = new Date()
+                                const daysSincePublished = publishedDate && !isNaN(publishedDate.getTime())
+                                  ? Math.max(1, Math.floor((now.getTime() - publishedDate.getTime()) / (1000 * 60 * 60 * 24)))
+                                  : 1
                                 const viewsPerDay = daysSincePublished > 0 
                                   ? Math.round(video.views / daysSincePublished)
                                   : video.views
@@ -2612,9 +2625,11 @@ export default function YoutubeDashboardPage() {
                                               <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                                                 <span className="flex items-center gap-1">
                                                   <Calendar className="w-3 h-3" />
-                                                  {new Date(video.publishedAt).toLocaleDateString()}
+                                                  {publishedDate && !isNaN(publishedDate.getTime()) 
+                                                    ? publishedDate.toLocaleDateString()
+                                                    : 'Invalid date'}
                                                 </span>
-                                                <span>{daysSincePublished} days ago</span>
+                                                <span>{daysSincePublished} {daysSincePublished === 1 ? 'day' : 'days'} ago</span>
                                               </div>
                                             </div>
                                             <Button
@@ -2694,10 +2709,13 @@ export default function YoutubeDashboardPage() {
                                       </div>
                                     </CardContent>
                                   </Card>
-                                )
-                              })
-                            })()}
-                          </ScrollArea>
+                                    )
+                                  })
+                                  )}
+                                </ScrollArea>
+                              </>
+                            )
+                          })()}
                         </div>
                       </CardContent>
                     </Card>
