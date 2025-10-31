@@ -1440,6 +1440,10 @@ export default function YoutubeDashboardPage() {
                   </Card>
                 </div>
               )}
+
+              {/* Calendar */}
+              {activeTab === "calendar" && (
+                <div className="space-y-6">
                   <div className="grid gap-6 lg:grid-cols-3">
                     {/* Calendar */}
                     <Card className="lg:col-span-2 glass-strong border-primary/30 shadow-xl">
@@ -2168,9 +2172,6 @@ export default function YoutubeDashboardPage() {
                   </div>
                 </div>
               )}
-                  <div className="grid gap-6">
-                    {/* Generate Ideas Section */}
-                    <Card className="glass-strong border-primary/30 shadow-xl">
                       <CardHeader className="border-b border-primary/20">
                         <CardTitle className="flex items-center gap-2">
                           <Lightbulb className="w-5 h-5 text-primary" />
