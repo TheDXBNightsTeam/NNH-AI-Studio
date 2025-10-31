@@ -1926,38 +1926,77 @@ export default function YoutubeDashboardPage() {
                 {/* Analytics Tab */}
                 <TabsContent value="analytics" className="space-y-6">
                   <div className="grid gap-6">
-                    {/* Views Chart */}
-                    <Card className="glass-strong border-primary/30 shadow-xl">
-                      <CardHeader className="border-b border-primary/20">
-                        <CardTitle className="flex items-center gap-2">
-                          <BarChart3 className="w-5 h-5 text-primary" />
-                          Channel Analytics
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-6">
-                        <div className="h-[400px]">
-                          {viewsChartData ? (
-                            <Line data={viewsChartData} options={chartOptions} />
-                          ) : (
-                            <div className="flex items-center justify-center h-full text-muted-foreground">
-                              <div className="text-center">
-                                <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                                <p>No analytics data available</p>
+                    {/* Charts Row */}
+                    <div className="grid gap-6 lg:grid-cols-2">
+                      {/* Views Chart */}
+                      <Card className="glass-strong border-primary/30 shadow-xl">
+                        <CardHeader className="border-b border-primary/20">
+                          <CardTitle className="flex items-center gap-2">
+                            <Eye className="w-5 h-5 text-primary" />
+                            Views Over Time (Last 12 Months)
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                          <div className="h-[350px]">
+                            {viewsChartData ? (
+                              <Line data={viewsChartData} options={chartOptions} />
+                            ) : (
+                              <div className="flex items-center justify-center h-full text-muted-foreground">
+                                <div className="text-center">
+                                  <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                  <p>No analytics data available</p>
+                                </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Videos Per Month Chart */}
+                      <Card className="glass-strong border-primary/30 shadow-xl">
+                        <CardHeader className="border-b border-primary/20">
+                          <CardTitle className="flex items-center gap-2">
+                            <Video className="w-5 h-5 text-primary" />
+                            Videos Published Per Month
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                          <div className="h-[350px]">
+                            {analytics ? (
+                              <Bar data={{
+                                labels: analytics.months.map((m: string) => m.slice(0, 7)),
+                                datasets: [{
+                                  label: "Videos",
+                                  data: analytics.videosPerMonth,
+                                  backgroundColor: "rgba(255,107,0,0.7)",
+                                  borderColor: "#FF6B00",
+                                  borderWidth: 2,
+                                }]
+                              }} options={chartOptions} />
+                            ) : (
+                              <div className="flex items-center justify-center h-full text-muted-foreground">
+                                <div className="text-center">
+                                  <Video className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                  <p>No data available</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
 
                     {/* Key Metrics */}
-                    <div className="grid gap-6 md:grid-cols-3">
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                       <Card className="glass-strong border-primary/30">
                         <CardContent className="p-6">
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm text-muted-foreground">Total Views</p>
                               <p className="text-2xl font-bold">{analytics?.totalViews.toLocaleString() || '0'}</p>
+                              {analytics && analytics.totalViews > 0 && (
+                                <p className="text-xs text-muted-foreground mt-1">All time</p>
+                              )}
                             </div>
                             <TrendingUp className="w-8 h-8 text-green-500" />
                           </div>
@@ -1970,8 +2009,30 @@ export default function YoutubeDashboardPage() {
                             <div>
                               <p className="text-sm text-muted-foreground">Total Videos</p>
                               <p className="text-2xl font-bold">{analytics?.totalVideos || '0'}</p>
+                              {analytics && analytics.totalVideos > 0 && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Avg: {Math.round((analytics.totalViews || 0) / (analytics.totalVideos || 1)).toLocaleString()} views/video
+                                </p>
+                              )}
                             </div>
                             <Video className="w-8 h-8 text-primary" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="glass-strong border-primary/30">
+                        <CardContent className="p-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Total Comments</p>
+                              <p className="text-2xl font-bold">{comments.length.toLocaleString()}</p>
+                              {analytics && analytics.totalVideos > 0 && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {Math.round((comments.length / analytics.totalVideos) * 10) / 10} per video
+                                </p>
+                              )}
+                            </div>
+                            <MessageSquare className="w-8 h-8 text-blue-500" />
                           </div>
                         </CardContent>
                       </Card>
@@ -1981,10 +2042,86 @@ export default function YoutubeDashboardPage() {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm text-muted-foreground">Engagement Rate</p>
-                              <p className="text-2xl font-bold">4.2%</p>
+                              <p className="text-2xl font-bold">
+                                {analytics && analytics.totalViews > 0
+                                  ? ((comments.length / analytics.totalViews) * 100).toFixed(2)
+                                  : '0.00'}%
+                              </p>
+                              {analytics && analytics.totalViews > 0 && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Comments/Views ratio
+                                </p>
+                              )}
                             </div>
-                            <MessageSquare className="w-8 h-8 text-blue-500" />
+                            <ThumbsUp className="w-8 h-8 text-yellow-500" />
                           </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Additional Stats */}
+                    <div className="grid gap-6 md:grid-cols-3">
+                      <Card className="glass-strong border-primary/30">
+                        <CardHeader className="border-b border-primary/20 pb-3">
+                          <CardTitle className="text-sm font-medium">Average Views Per Video</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                          <p className="text-3xl font-bold">
+                            {analytics && analytics.totalVideos > 0
+                              ? Math.round((analytics.totalViews || 0) / analytics.totalVideos).toLocaleString()
+                              : '0'}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Total views divided by total videos
+                          </p>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="glass-strong border-primary/30">
+                        <CardHeader className="border-b border-primary/20 pb-3">
+                          <CardTitle className="text-sm font-medium">Channel Status</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${channelTitle ? 'bg-green-500' : 'bg-red-500'}`} />
+                            <p className="text-lg font-semibold">
+                              {channelTitle ? 'Connected' : 'Not Connected'}
+                            </p>
+                          </div>
+                          {channelTitle && (
+                            <p className="text-xs text-muted-foreground mt-2 truncate">
+                              {channelTitle}
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      <Card className="glass-strong border-primary/30">
+                        <CardHeader className="border-b border-primary/20 pb-3">
+                          <CardTitle className="text-sm font-medium">Last Updated</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                          <p className="text-sm font-semibold">
+                            {analytics?.lastUpdated
+                              ? new Date(analytics.lastUpdated).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              : 'Never'}
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRefresh}
+                            disabled={refreshing}
+                            className="mt-3 w-full hover:bg-primary hover:text-white"
+                          >
+                            <RefreshCw className={cn("w-4 h-4 mr-2", refreshing && "animate-spin")} />
+                            Refresh Data
+                          </Button>
                         </CardContent>
                       </Card>
                     </div>
