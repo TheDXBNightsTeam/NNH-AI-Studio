@@ -832,26 +832,34 @@ export default function YoutubeDashboardPage() {
                     <StatCard
                       title="Subscribers"
                       value={stats.subs.toLocaleString()}
-                      icon={<Users className="h-4 w-4" />}
-                      trend={channelTitle ? "Active" : "Inactive"}
+                      icon={Users}
+                      change={channelTitle ? "Active" : "Inactive"}
+                      changeType={channelTitle ? "positive" : "neutral"}
+                      index={0}
                     />
                     <StatCard
                       title="Total Views"
                       value={stats.views.toLocaleString()}
-                      icon={<Eye className="h-4 w-4" />}
-                      trend="+12% from last month"
+                      icon={Eye}
+                      change="+12% from last month"
+                      changeType="positive"
+                      index={1}
                     />
                     <StatCard
                       title="Total Videos"
                       value={stats.videos.toLocaleString()}
-                      icon={<Video className="h-4 w-4" />}
-                      trend="2 new this week"
+                      icon={Video}
+                      change="2 new this week"
+                      changeType="positive"
+                      index={2}
                     />
                     <StatCard
                       title="Channel Status"
                       value={channelTitle ? "Connected" : "Not Connected"}
-                      icon={<Youtube className="h-4 w-4" />}
-                      trend={channelEmail || ""}
+                      icon={Youtube}
+                      change={channelEmail || ""}
+                      changeType={channelTitle ? "positive" : "neutral"}
+                      index={3}
                     />
                   </div>
 
