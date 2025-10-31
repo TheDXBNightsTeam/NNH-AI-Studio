@@ -1005,7 +1005,7 @@ export default function GMBDashboardPage() {
 
   return (
     <div className="flex">
-      <GMBDashboardSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <GMBDashboardSidebar activeTab={activeTab} setActiveTab={setActiveTab} user={user} />
       
       <main className="flex-1 p-8 overflow-auto">
         <div className="max-w-7xl mx-auto">
@@ -1085,26 +1085,34 @@ export default function GMBDashboardPage() {
                 <StatCard
                   title="Total Locations"
                   value={stats?.totalLocations.toString() || "0"}
-                  icon={<MapPin className="h-4 w-4" />}
-                  trend="+12% from last month"
+                  icon={MapPin}
+                  change="+12% from last month"
+                  changeType="positive"
+                  index={0}
                 />
                 <StatCard
                   title="Total Reviews"
                   value={stats?.totalReviews.toString() || "0"}
-                  icon={<MessageSquare className="h-4 w-4" />}
-                  trend="+8% from last month"
+                  icon={MessageSquare}
+                  change="+8% from last month"
+                  changeType="positive"
+                  index={1}
                 />
                 <StatCard
                   title="Average Rating"
                   value={stats?.averageRating || "0.0"}
-                  icon={<Star className="h-4 w-4" />}
-                  trend="+0.2 from last month"
+                  icon={Star}
+                  change="+0.2 from last month"
+                  changeType="positive"
+                  index={2}
                 />
                 <StatCard
                   title="Response Rate"
                   value={`${stats?.responseRate || 0}%`}
-                  icon={<TrendingUp className="h-4 w-4" />}
-                  trend="+5% from last month"
+                  icon={TrendingUp}
+                  change="+5% from last month"
+                  changeType="positive"
+                  index={3}
                 />
               </div>
 
