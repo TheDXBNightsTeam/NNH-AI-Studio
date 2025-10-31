@@ -222,6 +222,11 @@ export default function YoutubeDashboardPage() {
   const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<string | null>(null)
   const [videoAnalyticsFilter, setVideoAnalyticsFilter] = useState<'all' | 'top' | 'recent'>('all')
   
+  // Comments state
+  const [commentSearch, setCommentSearch] = useState("")
+  const [commentFilter, setCommentFilter] = useState<'all' | 'recent' | 'mostLiked'>('all')
+  const [selectedVideoForComments, setSelectedVideoForComments] = useState<string | null>(null)
+  
   // Video Manager state
   const [videoSearch, setVideoSearch] = useState("")
   const [videoFilter, setVideoFilter] = useState<'all' | 'published' | 'scheduled' | 'draft'>('all')
@@ -872,7 +877,7 @@ export default function YoutubeDashboardPage() {
             <>
               {/* Tab Navigation */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-8 glass-strong border-primary/30">
+                <TabsList className="grid w-full grid-cols-9 glass-strong border-primary/30">
                   <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-white">
                     <LayoutGrid className="w-4 h-4 mr-2" />
                     Overview
@@ -904,6 +909,10 @@ export default function YoutubeDashboardPage() {
                   <TabsTrigger value="video-analytics" className="data-[state=active]:bg-primary data-[state=active]:text-white">
                     <Activity className="w-4 h-4 mr-2" />
                     Video Analytics
+                  </TabsTrigger>
+                  <TabsTrigger value="comments" className="data-[state=active]:bg-primary data-[state=active]:text-white">
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Comments
                   </TabsTrigger>
                 </TabsList>
 
@@ -2808,6 +2817,232 @@ export default function YoutubeDashboardPage() {
                         </CardContent>
                       </Card>
                     </div>
+                  </div>
+                </TabsContent>
+
+                {/* Comments Tab */}
+                <TabsContent value="comments" className="space-y-6">
+                  <div className="grid gap-6">
+                    {/* Stats and Filters */}
+                    <Card className="glass-strong border-primary/30 shadow-xl">
+                      <CardHeader className="border-b border-primary/20">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <CardTitle className="flex items-center gap-2">
+                            <MessageSquare className="w-5 h-5 text-primary" />
+                            Comments Management ({comments.length})
+                          </CardTitle>
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <Select value={commentFilter} onValueChange={(value: any) => setCommentFilter(value)}>
+                              <SelectTrigger className="w-full sm:w-48 border-primary/30 glass">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Comments</SelectItem>
+                                <SelectItem value="recent">Recent</SelectItem>
+                                <SelectItem value="mostLiked">Most Liked</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Select value={selectedVideoForComments || "all"} onValueChange={(value: string) => setSelectedVideoForComments(value === "all" ? null : value)}>
+                              <SelectTrigger className="w-full sm:w-48 border-primary/30 glass">
+                                <SelectValue placeholder="Filter by video" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Videos</SelectItem>
+                                {videos.map((v) => (
+                                  <SelectItem key={v.id} value={v.url}>
+                                    {v.title.length > 30 ? v.title.slice(0, 30) + '...' : v.title}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                const csvContent = [
+                                  ['Author', 'Comment', 'Likes', 'Published Date', 'Video URL'].join(','),
+                                  ...filteredComments.map((c: YTComment) => [
+                                    `"${c.author}"`,
+                                    `"${c.text.replace(/"/g, '""')}"`,
+                                    c.likes,
+                                    c.publishedAt,
+                                    c.videoUrl
+                                  ].join(','))
+                                ].join('\n')
+                                const blob = new Blob([csvContent], { type: 'text/csv' })
+                                const url = URL.createObjectURL(blob)
+                                const a = document.createElement('a')
+                                a.href = url
+                                a.download = `youtube-comments-${new Date().toISOString().split('T')[0]}.csv`
+                                a.click()
+                                URL.revokeObjectURL(url)
+                                toast.success("Comments exported to CSV!")
+                              }}
+                              className="hover:bg-primary hover:text-white"
+                            >
+                              <Download className="w-4 h-4 mr-2" />
+                              Export CSV
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-6">
+                        {/* Search */}
+                        <div className="mb-6">
+                          <Input
+                            placeholder="Search comments by author or text..."
+                            value={commentSearch}
+                            onChange={(e) => setCommentSearch(e.target.value)}
+                            className="border-primary/30 focus:border-primary glass"
+                          />
+                        </div>
+
+                        {/* Stats */}
+                        <div className="grid gap-4 md:grid-cols-4 mb-6">
+                          <div className="p-4 rounded-lg glass border border-primary/20">
+                            <div className="flex items-center gap-2 mb-2">
+                              <MessageSquare className="w-4 h-4 text-primary" />
+                              <span className="text-sm text-muted-foreground">Total Comments</span>
+                            </div>
+                            <p className="text-2xl font-bold">{comments.length}</p>
+                          </div>
+                          <div className="p-4 rounded-lg glass border border-primary/20">
+                            <div className="flex items-center gap-2 mb-2">
+                              <ThumbsUp className="w-4 h-4 text-primary" />
+                              <span className="text-sm text-muted-foreground">Total Likes</span>
+                            </div>
+                            <p className="text-2xl font-bold">
+                              {comments.reduce((sum, c) => sum + c.likes, 0).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="p-4 rounded-lg glass border border-primary/20">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Users className="w-4 h-4 text-primary" />
+                              <span className="text-sm text-muted-foreground">Unique Authors</span>
+                            </div>
+                            <p className="text-2xl font-bold">
+                              {new Set(comments.map(c => c.author)).size}
+                            </p>
+                          </div>
+                          <div className="p-4 rounded-lg glass border border-primary/20">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Video className="w-4 h-4 text-primary" />
+                              <span className="text-sm text-muted-foreground">Avg Comments/Video</span>
+                            </div>
+                            <p className="text-2xl font-bold">
+                              {videos.length > 0
+                                ? Math.round(comments.length / videos.length)
+                                : '0'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Comments List */}
+                        <div className="space-y-3">
+                          <h3 className="text-lg font-semibold mb-4">
+                            {filteredComments.length} Comment{filteredComments.length !== 1 ? 's' : ''}
+                          </h3>
+                          <ScrollArea className="h-[500px]">
+                            {filteredComments.length === 0 ? (
+                              <div className="text-center py-12 text-muted-foreground">
+                                <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                <p className="text-sm">No comments found</p>
+                                <p className="text-xs mt-1">
+                                  {commentSearch || selectedVideoForComments || commentFilter !== 'all'
+                                    ? 'Try adjusting your filters'
+                                    : 'No comments available for your videos'}
+                                </p>
+                              </div>
+                            ) : (
+                              filteredComments.map((comment: YTComment) => {
+                                const video = videos.find(v => v.url === comment.videoUrl)
+                                const commentDate = new Date(comment.publishedAt)
+                                const daysAgo = Math.floor((new Date().getTime() - commentDate.getTime()) / (1000 * 60 * 60 * 24))
+                                
+                                return (
+                                  <Card
+                                    key={comment.id}
+                                    className="glass border-primary/20 hover:border-primary/40 transition-all mb-3"
+                                  >
+                                    <CardContent className="p-4">
+                                      <div className="flex gap-4">
+                                        <div className="flex-shrink-0">
+                                          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                                            <MessageSquare className="w-5 h-5 text-primary" />
+                                          </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-start justify-between gap-3 mb-2">
+                                            <div className="flex-1">
+                                              <div className="flex items-center gap-2 mb-1">
+                                                <h4 className="font-semibold text-primary">{comment.author}</h4>
+                                                {comment.likes > 0 && (
+                                                  <Badge variant="outline" className="border-primary/30 text-xs">
+                                                    <ThumbsUp className="w-3 h-3 mr-1" />
+                                                    {comment.likes}
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                              <p className="text-sm text-foreground whitespace-pre-wrap break-words">
+                                                {comment.text}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          
+                                          <div className="flex items-center justify-between mt-3 pt-3 border-t border-primary/10">
+                                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                              <span className="flex items-center gap-1">
+                                                <Calendar className="w-3 h-3" />
+                                                {commentDate.toLocaleDateString('en-US', {
+                                                  year: 'numeric',
+                                                  month: 'short',
+                                                  day: 'numeric'
+                                                })}
+                                              </span>
+                                              <span>{daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo} days ago`}</span>
+                                              {video && (
+                                                <span className="flex items-center gap-1">
+                                                  <Video className="w-3 h-3" />
+                                                  <span className="max-w-[200px] truncate">{video.title}</span>
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="flex gap-2">
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 hover:bg-primary hover:text-white"
+                                                onClick={() => {
+                                                  window.open(comment.videoUrl, '_blank')
+                                                }}
+                                                title="Open video"
+                                              >
+                                                <ExternalLink className="w-4 h-4" />
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 hover:bg-green-500 hover:text-white"
+                                                onClick={() => {
+                                                  navigator.clipboard.writeText(comment.text)
+                                                  toast.success("Comment copied to clipboard!")
+                                                }}
+                                                title="Copy comment"
+                                              >
+                                                <Copy className="w-4 h-4" />
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                )
+                              })
+                            )}
+                          </ScrollArea>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
                 </TabsContent>
               </Tabs>
