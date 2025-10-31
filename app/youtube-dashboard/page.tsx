@@ -476,49 +476,92 @@ export default function YoutubeDashboardPage() {
 
   // AI Generation handlers
   const generateScript = async () => {
+    if (!scriptPrompt.trim()) return
     setGenLoading(true)
-    // Simulate AI generation
-    setTimeout(() => {
-      setGeneratedScript("This is a generated script based on your prompt...")
-      setGenLoading(false)
+    try {
+      const res = await safePost("/api/youtube/composer/generate", {
+        prompt: scriptPrompt,
+        tone: "professional"
+      })
+      setGeneratedScript(res.description || "Script generated successfully")
       toast.success("Script generated!")
-    }, 2000)
+    } catch (e: any) {
+      toast.error(e.message || "Failed to generate script")
+    } finally {
+      setGenLoading(false)
+    }
   }
   
   const generateSEOTitle = async () => {
+    if (!seoTitle.trim()) return
     setGenLoading(true)
-    setTimeout(() => {
-      setGeneratedSeoTitle("SEO Optimized Title for Maximum Views")
-      setGenLoading(false)
+    try {
+      const res = await safePost("/api/youtube/composer/generate", {
+        prompt: `Generate an SEO-optimized YouTube title for: ${seoTitle}`,
+        tone: "neutral"
+      })
+      setGeneratedSeoTitle(res.title || "SEO Optimized Title")
       toast.success("SEO title generated!")
-    }, 1500)
+    } catch (e: any) {
+      toast.error(e.message || "Failed to generate SEO title")
+    } finally {
+      setGenLoading(false)
+    }
   }
   
   const generateDescription = async () => {
+    if (!descPrompt.trim()) return
     setGenLoading(true)
-    setTimeout(() => {
-      setGeneratedDesc("This is an AI-generated description optimized for YouTube search...")
-      setGenLoading(false)
+    try {
+      const res = await safePost("/api/youtube/composer/generate", {
+        prompt: `Generate a YouTube video description for: ${descPrompt}`,
+        tone: "professional"
+      })
+      setGeneratedDesc(res.description || "Description generated")
       toast.success("Description generated!")
-    }, 1500)
+    } catch (e: any) {
+      toast.error(e.message || "Failed to generate description")
+    } finally {
+      setGenLoading(false)
+    }
   }
   
   const generateTags = async () => {
+    if (!tagPrompt.trim()) return
     setGenLoading(true)
-    setTimeout(() => {
-      setGeneratedTags(['ai', 'technology', 'tutorial', 'guide', 'youtube'])
-      setGenLoading(false)
+    try {
+      const res = await safePost("/api/youtube/composer/generate", {
+        prompt: `Generate YouTube tags for: ${tagPrompt}`,
+        tone: "neutral"
+      })
+      const tagsStr = res.hashtags || ""
+      const tagsArray = tagsStr.split(',').map(t => t.trim().replace(/^#/, '')).filter(Boolean)
+      setGeneratedTags(tagsArray.length > 0 ? tagsArray : ['youtube', 'video', 'content'])
       toast.success("Tags generated!")
-    }, 1500)
+    } catch (e: any) {
+      toast.error(e.message || "Failed to generate tags")
+    } finally {
+      setGenLoading(false)
+    }
   }
   
   const generateHashtags = async () => {
+    if (!hashtagPrompt.trim()) return
     setGenLoading(true)
-    setTimeout(() => {
-      setGeneratedHashtags(['#AI', '#Technology', '#Tutorial', '#YouTubeTips', '#ContentCreation'])
-      setGenLoading(false)
+    try {
+      const res = await safePost("/api/youtube/composer/generate", {
+        prompt: `Generate YouTube hashtags for: ${hashtagPrompt}`,
+        tone: "energetic"
+      })
+      const hashtagsStr = res.hashtags || ""
+      const hashtagsArray = hashtagsStr.split(',').map(h => h.trim().startsWith('#') ? h.trim() : `#${h.trim()}`).filter(Boolean)
+      setGeneratedHashtags(hashtagsArray.length > 0 ? hashtagsArray : ['#YouTube', '#Content'])
       toast.success("Hashtags generated!")
-    }, 1500)
+    } catch (e: any) {
+      toast.error(e.message || "Failed to generate hashtags")
+    } finally {
+      setGenLoading(false)
+    }
   }
 
   // Calendar helpers
