@@ -187,17 +187,19 @@ async function fetchReviews(
   locationResource: string,
   pageToken?: string
 ): Promise<{ reviews: any[]; nextPageToken?: string }> {
+  console.log('[GMB Sync] Fetching reviews for location:', locationResource);
+  
   const url = new URL(`${GBP_V4_BASE}/${locationResource}/reviews`);
   url.searchParams.set('pageSize', '50');
-  url.searchParams.set('alt', 'json');
   if (pageToken) {
     url.searchParams.set('pageToken', pageToken);
   }
 
+  console.log('[GMB Sync] Reviews URL:', url.toString());
+
   const response = await fetch(url.toString(), {
     headers: { 
       Authorization: `Bearer ${accessToken}`,
-      Accept: 'application/json',
     },
   });
 
@@ -218,13 +220,14 @@ async function fetchReviews(
       // Not JSON, try to read as text for debugging
       try {
         const errorText = await response.text();
-        console.error('[GMB Sync] Non-JSON error response:', errorText.substring(0, 200));
+        console.error('[GMB Sync] Non-JSON error response for reviews. Status:', response.status, response.statusText);
+        console.error('[GMB Sync] Response preview:', errorText.substring(0, 500));
       } catch (e) {
-        // Ignore text parsing errors
+        console.error('[GMB Sync] Failed to read error text:', e);
       }
     }
     
-    console.error('[GMB Sync] Failed to fetch reviews for location:', locationResource, errorData);
+    console.error('[GMB Sync] Failed to fetch reviews for location:', locationResource);
     // Don't throw error for reviews, just return empty array
     return { reviews: [], nextPageToken: undefined };
   }
@@ -250,17 +253,19 @@ async function fetchMedia(
   locationResource: string,
   pageToken?: string
 ): Promise<{ media: any[]; nextPageToken?: string }> {
+  console.log('[GMB Sync] Fetching media for location:', locationResource);
+  
   const url = new URL(`${GBP_V4_BASE}/${locationResource}/media`);
   url.searchParams.set('pageSize', '50');
-  url.searchParams.set('alt', 'json');
   if (pageToken) {
     url.searchParams.set('pageToken', pageToken);
   }
 
+  console.log('[GMB Sync] Media URL:', url.toString());
+
   const response = await fetch(url.toString(), {
     headers: { 
       Authorization: `Bearer ${accessToken}`,
-      Accept: 'application/json',
     },
   });
 
@@ -281,13 +286,14 @@ async function fetchMedia(
       // Not JSON, try to read as text for debugging
       try {
         const errorText = await response.text();
-        console.error('[GMB Sync] Non-JSON error response:', errorText.substring(0, 200));
+        console.error('[GMB Sync] Non-JSON error response for media. Status:', response.status, response.statusText);
+        console.error('[GMB Sync] Response preview:', errorText.substring(0, 500));
       } catch (e) {
-        // Ignore text parsing errors
+        console.error('[GMB Sync] Failed to read error text:', e);
       }
     }
     
-    console.error('[GMB Sync] Failed to fetch media for location:', locationResource, errorData);
+    console.error('[GMB Sync] Failed to fetch media for location:', locationResource);
     // Don't throw error for media, just return empty array
     return { media: [], nextPageToken: undefined };
   }
