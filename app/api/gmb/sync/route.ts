@@ -189,6 +189,14 @@ async function fetchReviews(
 ): Promise<{ reviews: any[]; nextPageToken?: string }> {
   console.log('[GMB Sync] Fetching reviews for location:', locationResource);
   
+  // Validate locationResource format
+  // Should be: accounts/{accountId}/locations/{locationId}
+  if (!locationResource || !locationResource.startsWith('accounts/')) {
+    console.error('[GMB Sync] Invalid location resource format:', locationResource);
+    console.error('[GMB Sync] Expected format: accounts/{accountId}/locations/{locationId}');
+    return { reviews: [], nextPageToken: undefined };
+  }
+  
   const url = new URL(`${GBP_V4_BASE}/${locationResource}/reviews`);
   url.searchParams.set('pageSize', '50');
   if (pageToken) {
@@ -212,6 +220,7 @@ async function fetchReviews(
     if (contentType && contentType.includes('application/json')) {
       try {
         errorData = await response.json();
+        console.error('[GMB Sync] JSON error response:', JSON.stringify(errorData));
       } catch (e) {
         // Failed to parse JSON, continue with empty object
         console.error('[GMB Sync] Failed to parse error response as JSON');
@@ -255,6 +264,14 @@ async function fetchMedia(
 ): Promise<{ media: any[]; nextPageToken?: string }> {
   console.log('[GMB Sync] Fetching media for location:', locationResource);
   
+  // Validate locationResource format
+  // Should be: accounts/{accountId}/locations/{locationId}
+  if (!locationResource || !locationResource.startsWith('accounts/')) {
+    console.error('[GMB Sync] Invalid location resource format:', locationResource);
+    console.error('[GMB Sync] Expected format: accounts/{accountId}/locations/{locationId}');
+    return { media: [], nextPageToken: undefined };
+  }
+  
   const url = new URL(`${GBP_V4_BASE}/${locationResource}/media`);
   url.searchParams.set('pageSize', '50');
   if (pageToken) {
@@ -278,6 +295,7 @@ async function fetchMedia(
     if (contentType && contentType.includes('application/json')) {
       try {
         errorData = await response.json();
+        console.error('[GMB Sync] JSON error response:', JSON.stringify(errorData));
       } catch (e) {
         // Failed to parse JSON, continue with empty object
         console.error('[GMB Sync] Failed to parse error response as JSON');
