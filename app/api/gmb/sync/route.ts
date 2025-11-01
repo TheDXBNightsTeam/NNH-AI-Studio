@@ -14,6 +14,28 @@ const chunks = <T>(array: T[], size = 100): T[][] => {
   );
 };
 
+// Helper function to build full location resource name
+function buildLocationResourceName(accountId: string, locationId: string): string {
+  // Clean location_id from any existing prefix
+  const cleanLocationId = locationId.replace(/^(accounts\/.*\/)?locations\//, '');
+  
+  // If accountId starts with "accounts/", use it directly, otherwise add prefix
+  const accountResource = accountId.startsWith('accounts/') ? accountId : `accounts/${accountId}`;
+  
+  return `${accountResource}/locations/${cleanLocationId}`;
+}
+
+// Helper function to parse location resource name
+function parseLocationResourceName(resourceName: string): { accountId: string; locationId: string } | null {
+  const match = resourceName.match(/accounts\/([^\/]+)\/locations\/(.+)/);
+  if (!match) return null;
+  
+  return {
+    accountId: match[1],
+    locationId: match[2]
+  };
+}
+
 // Refresh Google access token
 async function refreshAccessToken(refreshToken: string): Promise<{
   access_token: string;
@@ -509,15 +531,23 @@ export async function POST(request: NextRequest) {
       console.log(`[GMB Sync API] Processing ${dbLocations.length} locations for reviews/media sync`);
       
       for (const location of dbLocations) {
-        // Log what we're using for the API call
-        console.log(`[GMB Sync API] Processing location ${location.id} with location_id: ${location.location_id}`);
+        // Build the full location resource name
+        let fullLocationName = location.location_id;
+        
+        // If location_id doesn't start with 'accounts/', we need to build it
+        if (!fullLocationName.startsWith('accounts/')) {
+          fullLocationName = buildLocationResourceName(account.account_id, location.location_id);
+          console.log(`[GMB Sync API] Built location resource: ${location.location_id} → ${fullLocationName}`);
+        } else {
+          console.log(`[GMB Sync API] Using full location resource: ${fullLocationName}`);
+        }
         
         // Fetch reviews
         let reviewsNextPageToken: string | undefined = undefined;
         do {
           const { reviews, nextPageToken } = await fetchReviews(
             accessToken,
-            location.location_id,
+            fullLocationName,
             reviewsNextPageToken
           );
           
@@ -559,7 +589,7 @@ export async function POST(request: NextRequest) {
         do {
           const { media, nextPageToken } = await fetchMedia(
             accessToken,
-            location.location_id,
+            fullLocationName,
             mediaNextPageToken
           );
           
