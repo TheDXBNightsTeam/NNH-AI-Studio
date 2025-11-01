@@ -445,6 +445,12 @@ export async function POST(request: NextRequest) {
       );
       
       if (locations.length > 0) {
+        // Log the first location to check format
+        console.log('[GMB Sync API] Sample location from Google API:', {
+          name: locations[0].name,
+          title: locations[0].title
+        });
+        
         const locationRows = locations.map((location) => {
           const address = location.storefrontAddress;
           const addressStr = address
@@ -500,7 +506,12 @@ export async function POST(request: NextRequest) {
       .eq('gmb_account_id', accountId);
       
     if (dbLocations && Array.isArray(dbLocations)) {
+      console.log(`[GMB Sync API] Processing ${dbLocations.length} locations for reviews/media sync`);
+      
       for (const location of dbLocations) {
+        // Log what we're using for the API call
+        console.log(`[GMB Sync API] Processing location ${location.id} with location_id: ${location.location_id}`);
+        
         // Fetch reviews
         let reviewsNextPageToken: string | undefined = undefined;
         do {
