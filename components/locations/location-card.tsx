@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { EditLocationDialog } from "./edit-location-dialog"
 import { LocationAttributesDialog } from "./location-attributes-dialog"
 import { GoogleUpdatedInfo } from "./google-updated-info"
+import { LocationPerformanceWidget } from "./location-performance-widget"
 
 interface LocationCardProps {
   location: GMBLocation
@@ -302,6 +303,11 @@ export function LocationCard({ location, index }: LocationCardProps) {
                 <div className="text-2xl font-bold text-primary">{(location.response_rate ?? 0).toFixed(0)}%</div>
                 <div className="text-xs text-muted-foreground">Response</div>
               </div>
+            </div>
+
+            {/* Performance Metrics Widget */}
+            <div className="mb-4">
+              <LocationPerformanceWidget locationId={location.id} compact />
             </div>
 
             {/* Quick Links from Metadata */}
