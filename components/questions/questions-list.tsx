@@ -47,7 +47,6 @@ export function QuestionsList() {
   const [answerText, setAnswerText] = useState<{ [key: string]: string }>({})
   const [editingId, setEditingId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState<string | null>(null)
-  const [seedingData, setSeedingData] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -139,29 +138,6 @@ export function QuestionsList() {
     }
   }
 
-  const handleSeedData = async () => {
-    setSeedingData(true)
-    try {
-      const response = await fetch('/api/gmb/questions/seed', {
-        method: 'POST'
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error?.message || 'Failed to create sample data')
-      }
-
-      toast.success(data.data?.message || "Sample questions created successfully")
-      fetchQuestions()
-    } catch (err: any) {
-      console.error("Error creating sample data:", err)
-      toast.error(err.message || "Failed to create sample data")
-    } finally {
-      setSeedingData(false)
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -241,23 +217,6 @@ export function QuestionsList() {
                     'No draft answers saved.' :
                     'Customer questions will appear here when they ask about your business locations.'}
                 </p>
-                {activeTab === 'all' && counts.total === 0 && (
-                  <Button
-                    onClick={handleSeedData}
-                    disabled={seedingData}
-                    className="mt-4"
-                    variant="outline"
-                  >
-                    {seedingData ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Creating Sample Data...
-                      </>
-                    ) : (
-                      'Create Sample Questions'
-                    )}
-                  </Button>
-                )}
               </CardContent>
             </Card>
           ) : (
