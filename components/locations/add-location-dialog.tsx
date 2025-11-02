@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Loader2, Search } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { SearchGoogleLocationsDialog } from "./search-google-locations-dialog"
 
 interface AddLocationDialogProps {
   open?: boolean
