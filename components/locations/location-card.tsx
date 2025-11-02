@@ -5,10 +5,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { motion } from "framer-motion"
-import { Eye, MessageSquare, MapPin, Phone, Globe, Sparkles, Maximize2, ExternalLink, Clock, Info, AlertCircle, CheckCircle2, Utensils, MessageCircle } from "lucide-react"
+import { Eye, MessageSquare, MapPin, Phone, Globe, Sparkles, Maximize2, ExternalLink, Clock, Info, AlertCircle, CheckCircle2, Utensils, MessageCircle, Edit } from "lucide-react"
 import type { GMBLocation } from "@/lib/types/database"
 import Link from "next/link"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { EditLocationDialog } from "./edit-location-dialog"
 
 interface LocationCardProps {
   location: GMBLocation
@@ -17,6 +18,7 @@ interface LocationCardProps {
 
 export function LocationCard({ location, index }: LocationCardProps) {
   const [mapOpen, setMapOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   
   // Extract metadata
   const metadata = (location.metadata as any) || {}
@@ -350,10 +352,10 @@ export function LocationCard({ location, index }: LocationCardProps) {
                 size="sm"
                 variant="ghost"
                 className="flex-1 bg-secondary hover:bg-primary/20 border border-primary/30 text-foreground"
-                onClick={() => setMapOpen(true)}
+                onClick={() => setEditOpen(true)}
               >
-                <MapPin className="w-4 h-4 mr-2" />
-                Map
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
               </Button>
             </div>
           </CardContent>
@@ -420,6 +422,17 @@ export function LocationCard({ location, index }: LocationCardProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Location Dialog */}
+      <EditLocationDialog
+        location={location}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSuccess={() => {
+          // Refresh the page or update location data
+          window.location.reload()
+        }}
+      />
     </>
   )
 }
