@@ -1,0 +1,180 @@
+"use client"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Search, TrendingUp } from "lucide-react"
+import { useEffect, useState } from "react"
+import { createClient } from "@/lib/supabase/client"
+import { Skeleton } from "@/components/ui/skeleton"
+
+interface SearchKeyword {
+  search_keyword: string
+  impressions_count: number
+  month_year: string
+}
+
+export function SearchKeywords() {
+  const [keywords, setKeywords] = useState<SearchKeyword[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const supabase = createClient()
+
+  useEffect(() => {
+    async function fetchKeywords() {
+      try {
+        // Get current user first
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          setIsLoading(false)
+          return
+        }
+
+        // Get active account IDs
+        const { data: accounts } = await supabase
+          .from("gmb_accounts")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+
+        const accountIds = accounts?.map(acc => acc.id) || []
+        if (accountIds.length === 0) {
+          setIsLoading(false)
+          return
+        }
+
+        // Get locations
+        const { data: locations } = await supabase
+          .from("gmb_locations")
+          .select("id")
+          .eq("user_id", user.id)
+          .in("gmb_account_id", accountIds)
+
+        const locationIds = locations?.map(loc => loc.id) || []
+
+        // Get search keywords (last 3 months, top 10 by impressions)
+        const threeMonthsAgo = new Date()
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+
+        const { data: searchKeywords } = locationIds.length > 0
+          ? await supabase
+              .from("gmb_search_keywords")
+              .select("search_keyword, impressions_count, month_year")
+              .eq("user_id", user.id)
+              .in("location_id", locationIds)
+              .gte("month_year", threeMonthsAgo.toISOString().split('T')[0])
+              .order("impressions_count", { ascending: false })
+              .limit(20)
+          : { data: [] }
+
+        // Aggregate keywords by summing impressions across months
+        const keywordMap = new Map<string, number>()
+        if (searchKeywords) {
+          searchKeywords.forEach((kw) => {
+            const current = keywordMap.get(kw.search_keyword) || 0
+            keywordMap.set(kw.search_keyword, current + (parseInt(kw.impressions_count) || 0))
+          })
+        }
+
+        // Convert to array and sort
+        const aggregated = Array.from(keywordMap.entries())
+          .map(([search_keyword, impressions_count]) => ({
+            search_keyword,
+            impressions_count,
+            month_year: new Date().toISOString().split('T')[0],
+          }))
+          .sort((a, b) => b.impressions_count - a.impressions_count)
+          .slice(0, 10) // Top 10
+
+        setKeywords(aggregated)
+      } catch (error) {
+        console.error("Error fetching search keywords:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchKeywords()
+
+    const channel = supabase
+      .channel("search-keywords")
+      .on("postgres_changes", { event: "*", schema: "public", table: "gmb_search_keywords" }, fetchKeywords)
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [supabase])
+
+  if (isLoading) {
+    return (
+      <Card className="bg-card border-primary/30">
+        <CardHeader>
+          <CardTitle className="text-foreground flex items-center gap-2">
+            <Search className="h-5 w-5 text-primary" />
+            Top Search Keywords
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (keywords.length === 0) {
+    return (
+      <Card className="bg-card border-primary/30">
+        <CardHeader>
+          <CardTitle className="text-foreground flex items-center gap-2">
+            <Search className="h-5 w-5 text-primary" />
+            Top Search Keywords
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No search keywords data available yet</p>
+            <p className="text-sm mt-2">Data will appear after syncing with Google</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="bg-card border-primary/30">
+      <CardHeader>
+        <CardTitle className="text-foreground flex items-center gap-2">
+          <Search className="h-5 w-5 text-primary" />
+          Top Search Keywords
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {keywords.map((keyword, index) => (
+            <div
+              key={keyword.search_keyword}
+              className="flex items-center justify-between p-3 rounded-lg bg-secondary border border-primary/20 hover:border-primary/40 transition-all"
+            >
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-bold text-sm shrink-0">
+                  {index + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground truncate">{keyword.search_keyword}</p>
+                </div>
+              </div>
+              <Badge className="bg-green-500/20 text-green-500 border-green-500/30 flex items-center gap-1 ml-2">
+                <TrendingUp className="w-3 h-3" />
+                {keyword.impressions_count.toLocaleString()}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
