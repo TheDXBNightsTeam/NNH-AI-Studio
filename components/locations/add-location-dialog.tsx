@@ -36,9 +36,31 @@ export function AddLocationDialog({ open: externalOpen, onOpenChange }: AddLocat
     phone: "",
     website: "",
     category: "",
+    categoryId: "",
   })
+  const [categories, setCategories] = useState<any[]>([])
+  const [loadingCategories, setLoadingCategories] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    fetchCategories()
+  }, [])
+
+  const fetchCategories = async () => {
+    setLoadingCategories(true)
+    try {
+      const response = await fetch('/api/gmb/categories?regionCode=US&languageCode=en&view=FULL&pageSize=100')
+      if (response.ok) {
+        const data = await response.json()
+        setCategories(data.categories || [])
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+    } finally {
+      setLoadingCategories(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -148,13 +170,29 @@ export function AddLocationDialog({ open: externalOpen, onOpenChange }: AddLocat
                 <Label htmlFor="category" className="text-foreground">
                   Category
                 </Label>
-                <Input
-                  id="category"
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="bg-secondary border-primary/30 text-foreground"
-                  placeholder="Restaurant"
-                />
+                <Select
+                  value={formData.categoryId}
+                  onValueChange={(value) => {
+                    const selected = categories.find(cat => cat.name === value)
+                    setFormData({
+                      ...formData,
+                      category: selected?.displayName || selected?.name || "",
+                      categoryId: value,
+                    })
+                  }}
+                  disabled={loadingCategories}
+                >
+                  <SelectTrigger className="w-full bg-secondary border-primary/30 text-foreground">
+                    <SelectValue placeholder={loadingCategories ? "Loading..." : "Select category..."} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {categories.slice(0, 100).map((category) => (
+                      <SelectItem key={category.name} value={category.name}>
+                        {category.displayName || category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="space-y-2">
