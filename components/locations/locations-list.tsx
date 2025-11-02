@@ -4,8 +4,9 @@ import { useState, useEffect } from "react"
 import { LocationCard } from "./location-card"
 import { LocationFilters } from "./location-filters"
 import { AddLocationDialog } from "./add-location-dialog"
+import { LocationsMapView } from "./locations-map-view"
 import { Button } from "@/components/ui/button"
-import { Plus, MapPin } from "lucide-react"
+import { Plus, MapPin, BarChart3, TrendingUp, Eye, MousePointerClick } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent } from "@/components/ui/card"
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton"
@@ -15,7 +16,14 @@ export function LocationsList() {
   const [locations, setLocations] = useState<GMBLocation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [viewMode, setViewMode] = useState<"grid" | "list" | "map">("grid")
+  const [overviewStats, setOverviewStats] = useState({
+    totalImpressions: 0,
+    totalClicks: 0,
+    avgRating: 0,
+    totalReviews: 0,
+  })
+  const [selectedLocation, setSelectedLocation] = useState<GMBLocation | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterRating, setFilterRating] = useState("all")
   const [filterStatus, setFilterStatus] = useState("all")
@@ -210,6 +218,61 @@ export function LocationsList() {
 
     fetchLocations()
   }, [])
+
+  // Fetch overview stats
+  useEffect(() => {
+    async function fetchOverviewStats() {
+      if (locations.length === 0) return
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+        // Get location IDs
+        const locationIds = locations.map(loc => loc.id)
+
+        // Get performance metrics
+        const { data: metrics } = await supabase
+          .from("gmb_performance_metrics")
+          .select("metric_type, metric_value, location_id")
+          .eq("user_id", user.id)
+          .in("location_id", locationIds)
+          .gte("metric_date", thirtyDaysAgo.toISOString().split('T')[0])
+
+        // Calculate totals
+        const totalImpressions = metrics
+          ?.filter(m => m.metric_type === 'QUERIES_DIRECT' || m.metric_type === 'QUERIES_INDIRECT')
+          .reduce((sum, m) => sum + (m.metric_value || 0), 0) || 0
+
+        const totalClicks = metrics
+          ?.filter(m => m.metric_type === 'ACTIONS_WEBSITE' || m.metric_type === 'ACTIONS_PHONE' || m.metric_type === 'ACTIONS_DRIVING_DIRECTIONS')
+          .reduce((sum, m) => sum + (m.metric_value || 0), 0) || 0
+
+        // Calculate average rating
+        const ratings = locations.map(loc => loc.rating || 0).filter(r => r > 0)
+        const avgRating = ratings.length > 0 
+          ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length 
+          : 0
+
+        // Total reviews
+        const totalReviews = locations.reduce((sum, loc) => sum + (loc.review_count || 0), 0)
+
+        setOverviewStats({
+          totalImpressions,
+          totalClicks,
+          avgRating,
+          totalReviews,
+        })
+      } catch (error) {
+        console.error("Error fetching overview stats:", error)
+      }
+    }
+
+    fetchOverviewStats()
+  }, [locations, supabase])
 
   // Filter locations based on search and filters
   const filteredLocations = locations.filter((location) => {

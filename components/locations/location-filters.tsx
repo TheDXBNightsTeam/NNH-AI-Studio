@@ -3,11 +3,11 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, SlidersHorizontal, Grid3x3, List } from "lucide-react"
+import { Search, SlidersHorizontal, Grid3x3, List, Map } from "lucide-react"
 
 interface LocationFiltersProps {
-  viewMode: "grid" | "list"
-  onViewModeChange: (mode: "grid" | "list") => void
+  viewMode: "grid" | "list" | "map"
+  onViewModeChange: (mode: "grid" | "list" | "map") => void
   searchQuery: string
   onSearchChange: (query: string) => void
   filterRating: string
@@ -50,6 +50,7 @@ export function LocationFilters({
                 ? "bg-gradient-to-r from-primary to-accent text-white"
                 : "border-primary/30 text-muted-foreground hover:text-foreground"
             }
+            title="Grid View"
           >
             <Grid3x3 className="h-4 w-4" />
           </Button>
@@ -62,8 +63,22 @@ export function LocationFilters({
                 ? "bg-gradient-to-r from-primary to-accent text-white"
                 : "border-primary/30 text-muted-foreground hover:text-foreground"
             }
+            title="List View"
           >
             <List className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewMode === "map" ? "default" : "outline"}
+            size="icon"
+            onClick={() => onViewModeChange("map")}
+            className={
+              viewMode === "map"
+                ? "bg-gradient-to-r from-primary to-accent text-white"
+                : "border-primary/30 text-muted-foreground hover:text-foreground"
+            }
+            title="Map View"
+          >
+            <Map className="h-4 w-4" />
           </Button>
         </div>
       </div>
