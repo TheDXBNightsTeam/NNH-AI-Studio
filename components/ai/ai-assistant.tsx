@@ -62,10 +62,10 @@ export function AIAssistant() {
 
       const accountIds = accounts.map((a) => a.id)
 
-      // Get locations data
+      // Get locations data - filter by active accounts only
       const { data: locations, error: locationsError } = await supabase
         .from("gmb_locations")
-        .select("id, category, rating, review_count, address, location_name")
+        .select("id, category, rating, address, location_name")
         .eq("user_id", user.id)
         .in("gmb_account_id", accountIds)
       
@@ -77,6 +77,19 @@ export function AIAssistant() {
             type: "warning",
             title: "Error Loading Data",
             message: "Failed to load location data. Please try refreshing the page.",
+          },
+        ])
+        setAnalyzing(false)
+        return
+      }
+
+      if (!locations || locations.length === 0) {
+        setAiTips([
+          {
+            id: "no-locations",
+            type: "warning",
+            title: "No Locations Found",
+            message: "No locations found for your active GMB accounts. Please sync your locations first.",
           },
         ])
         setAnalyzing(false)
