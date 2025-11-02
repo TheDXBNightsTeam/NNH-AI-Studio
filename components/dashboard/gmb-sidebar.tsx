@@ -26,7 +26,9 @@ import {
   Bot,
   Lightbulb,
   Target,
-  LayoutGrid
+  LayoutGrid,
+  HelpCircle,
+  Tags
 } from "lucide-react"
 
 interface SidebarProps {
@@ -39,6 +41,8 @@ const navItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutGrid },
   { id: "locations", label: "Locations", icon: MapPin },
   { id: "reviews", label: "Reviews", icon: MessageSquare },
+  { id: "questions", label: "Questions & Answers", icon: HelpCircle },
+  { id: "attributes", label: "Attributes", icon: Tags },
   { id: "posts", label: "Posts", icon: Sparkles },
   { id: "ai-assistant", label: "AI Assistant", icon: Bot },
   { id: "recommendations", label: "Recommendations", icon: Target },

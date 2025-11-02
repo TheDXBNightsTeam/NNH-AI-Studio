@@ -25,6 +25,8 @@ import { GMBSettings } from "@/components/settings/gmb-settings"
 import { AIAssistant } from "@/components/ai/ai-assistant"
 import { BusinessInsights } from "@/components/insights/business-insights"
 import { BusinessRecommendations } from "@/components/recommendations/business-recommendations"
+import { QuestionsList } from "@/components/questions/questions-list"
+import { AttributesManager } from "@/components/attributes/attributes-manager"
 
 interface DashboardStats {
   totalLocations: number
@@ -120,7 +122,7 @@ export default function GMBDashboard() {
       const errorParam = params.get('error')
       const connectedParam = params.get('connected')
       
-      if (tabParam && ['dashboard', 'locations', 'reviews', 'posts', 'ai-assistant', 'recommendations', 'analytics', 'settings'].includes(tabParam)) {
+      if (tabParam && ['dashboard', 'locations', 'reviews', 'questions', 'attributes', 'posts', 'ai-assistant', 'recommendations', 'analytics', 'settings'].includes(tabParam)) {
         setActiveTab(tabParam)
       }
       
@@ -538,6 +540,8 @@ export default function GMBDashboard() {
                 <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
                 <TabsTrigger value="locations">Locations</TabsTrigger>
                 <TabsTrigger value="reviews">Reviews</TabsTrigger>
+                <TabsTrigger value="questions">Questions & Answers</TabsTrigger>
+                <TabsTrigger value="attributes">Attributes</TabsTrigger>
                 <TabsTrigger value="posts">Posts</TabsTrigger>
                 <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
                 <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
