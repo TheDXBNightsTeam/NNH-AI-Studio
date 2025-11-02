@@ -351,25 +351,204 @@ export function EditLocationDialog({ location, open, onOpenChange, onSuccess }: 
           </TabsContent>
 
           <TabsContent value="hours" className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label className="text-foreground flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                Business Hours
-              </Label>
-              <p className="text-xs text-muted-foreground mb-4">
-                Business hours editing will be available in the next update. For now, hours are synced from Google Business Profile.
-              </p>
-              {businessHours.length > 0 && (
-                <div className="space-y-2">
-                  {businessHours.map((period: any, idx: number) => (
-                    <div key={idx} className="p-3 rounded-lg bg-secondary border border-primary/20">
-                      <p className="text-sm text-foreground">
-                        {period.openDay} - {period.closeDay}: {period.openTime?.hours || 0}:{String(period.openTime?.minutes || 0).padStart(2, '0')} - {period.closeTime?.hours || 0}:{String(period.closeTime?.minutes || 0).padStart(2, '0')}
-                      </p>
+            <div className="space-y-4">
+              {/* Regular Hours */}
+              <div className="space-y-2">
+                <Label className="text-foreground flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Regular Business Hours
+                </Label>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Regular operating hours. Editing regular hours requires full time period configuration and will be available in a future update.
+                </p>
+                {businessHours.length > 0 && (
+                  <div className="space-y-2">
+                    {businessHours.map((period: any, idx: number) => (
+                      <div key={idx} className="p-3 rounded-lg bg-secondary border border-primary/20">
+                        <p className="text-sm text-foreground">
+                          {period.openDay} - {period.closeDay}: {period.openTime?.hours || 0}:{String(period.openTime?.minutes || 0).padStart(2, '0')} - {period.closeTime?.hours || 0}:{String(period.closeTime?.minutes || 0).padStart(2, '0')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Special Hours */}
+              <div className="space-y-2">
+                <Label className="text-foreground">Special Hours (Holidays, etc.)</Label>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Hours that differ from regular hours for specific dates (e.g., holidays, special events)
+                </p>
+                
+                {specialHours.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    {specialHours.map((period: any, idx: number) => (
+                      <div key={idx} className="p-3 rounded-lg bg-secondary border border-primary/20 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-foreground font-medium">
+                            {period.closed ? 'Closed' : `${period.openTime?.hours || 0}:${String(period.openTime?.minutes || 0).padStart(2, '0')} - ${period.closeTime?.hours || 0}:${String(period.closeTime?.minutes || 0).padStart(2, '0')}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {period.startDate} {period.endDate && period.endDate !== period.startDate ? `to ${period.endDate}` : ''}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setSpecialHours(specialHours.filter((_, i) => i !== idx))}
+                          className="h-8 w-8 p-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="p-4 rounded-lg bg-secondary border border-primary/20 space-y-3">
+                  <Label className="text-foreground">Add Special Hour Period</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">Start Date</Label>
+                      <Input
+                        type="date"
+                        value={newSpecialHour.startDate}
+                        onChange={(e) => setNewSpecialHour({ ...newSpecialHour, startDate: e.target.value })}
+                        className="bg-card border-primary/30 text-foreground"
+                      />
                     </div>
-                  ))}
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">End Date (optional)</Label>
+                      <Input
+                        type="date"
+                        value={newSpecialHour.endDate}
+                        onChange={(e) => setNewSpecialHour({ ...newSpecialHour, endDate: e.target.value })}
+                        className="bg-card border-primary/30 text-foreground"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={newSpecialHour.closed}
+                      onChange={(e) => setNewSpecialHour({ ...newSpecialHour, closed: e.target.checked })}
+                      className="rounded border-primary/30"
+                    />
+                    <Label className="text-sm text-foreground cursor-pointer">Closed on this date</Label>
+                  </div>
+                  {!newSpecialHour.closed && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Open Time</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            min="0"
+                            max="23"
+                            value={newSpecialHour.openTime.hours}
+                            onChange={(e) => setNewSpecialHour({
+                              ...newSpecialHour,
+                              openTime: { ...newSpecialHour.openTime, hours: parseInt(e.target.value) || 0 }
+                            })}
+                            className="bg-card border-primary/30 text-foreground"
+                            placeholder="Hour"
+                          />
+                          <Input
+                            type="number"
+                            min="0"
+                            max="59"
+                            value={newSpecialHour.openTime.minutes}
+                            onChange={(e) => setNewSpecialHour({
+                              ...newSpecialHour,
+                              openTime: { ...newSpecialHour.openTime, minutes: parseInt(e.target.value) || 0 }
+                            })}
+                            className="bg-card border-primary/30 text-foreground"
+                            placeholder="Min"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Close Time</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            min="0"
+                            max="23"
+                            value={newSpecialHour.closeTime.hours}
+                            onChange={(e) => setNewSpecialHour({
+                              ...newSpecialHour,
+                              closeTime: { ...newSpecialHour.closeTime, hours: parseInt(e.target.value) || 0 }
+                            })}
+                            className="bg-card border-primary/30 text-foreground"
+                            placeholder="Hour"
+                          />
+                          <Input
+                            type="number"
+                            min="0"
+                            max="59"
+                            value={newSpecialHour.closeTime.minutes}
+                            onChange={(e) => setNewSpecialHour({
+                              ...newSpecialHour,
+                              closeTime: { ...newSpecialHour.closeTime, minutes: parseInt(e.target.value) || 0 }
+                            })}
+                            className="bg-card border-primary/30 text-foreground"
+                            placeholder="Min"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      if (newSpecialHour.startDate) {
+                        const period: any = {
+                          startDate: {
+                            year: parseInt(newSpecialHour.startDate.split('-')[0]),
+                            month: parseInt(newSpecialHour.startDate.split('-')[1]),
+                            day: parseInt(newSpecialHour.startDate.split('-')[2]),
+                          },
+                          closed: newSpecialHour.closed,
+                        }
+                        if (newSpecialHour.endDate && newSpecialHour.endDate !== newSpecialHour.startDate) {
+                          period.endDate = {
+                            year: parseInt(newSpecialHour.endDate.split('-')[0]),
+                            month: parseInt(newSpecialHour.endDate.split('-')[1]),
+                            day: parseInt(newSpecialHour.endDate.split('-')[2]),
+                          }
+                        }
+                        if (!newSpecialHour.closed) {
+                          period.openTime = {
+                            hours: newSpecialHour.openTime.hours,
+                            minutes: newSpecialHour.openTime.minutes,
+                          }
+                          period.closeTime = {
+                            hours: newSpecialHour.closeTime.hours,
+                            minutes: newSpecialHour.closeTime.minutes,
+                          }
+                        }
+                        setSpecialHours([...specialHours, period])
+                        setNewSpecialHour({
+                          startDate: "",
+                          endDate: "",
+                          closed: false,
+                          openTime: { hours: 9, minutes: 0 },
+                          closeTime: { hours: 17, minutes: 0 },
+                        })
+                      }
+                    }}
+                    disabled={!newSpecialHour.startDate}
+                    className="w-full border-primary/30"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Special Hour
+                  </Button>
                 </div>
-              )}
+              </div>
             </div>
           </TabsContent>
 
