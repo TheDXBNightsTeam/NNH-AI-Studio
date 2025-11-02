@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   console.log('[Scheduled Sync] Starting scheduled sync process...');
 
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Get current time to determine which schedules to run
     const now = new Date();
@@ -213,7 +213,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
