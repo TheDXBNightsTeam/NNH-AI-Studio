@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import { Loader2, Settings } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 import type { GMBLocation } from "@/lib/types/database"
 
 interface Attribute {
@@ -50,84 +51,108 @@ export function LocationAttributesDialog({
     }
   }, [location, open])
 
+  // Helper function to build full location resource name
+  const buildLocationResource = async (): Promise<string | null> => {
+    if (!location) return null
+
+    let locationResource = location.location_id
+    
+    // If already in full format (accounts/.../locations/...), return it
+    if (locationResource.startsWith('accounts/')) {
+      return locationResource
+    }
+
+    // Try to extract from metadata
+    const metadata = (location.metadata as any) || {}
+    if (metadata.name && metadata.name.startsWith('accounts/')) {
+      return metadata.name
+    }
+
+    // Need to fetch account_id to build full resource
+    try {
+      // Fetch account directly using gmb_account_id from location
+      const supabase = createClient()
+      
+      const { data: account } = await supabase
+        .from('gmb_accounts')
+        .select('account_id')
+        .eq('id', location.gmb_account_id)
+        .single()
+      
+      if (account?.account_id) {
+        // Extract location number from location_id
+        const locationMatch = locationResource.match(/locations\/(.+)$/)
+        const locationNumber = locationMatch ? locationMatch[1] : locationResource.replace(/^(locations\/|accounts\/.*\/locations\/)/, '')
+        return `accounts/${account.account_id}/locations/${locationNumber}`
+      }
+    } catch (err) {
+      console.error('Error building location resource:', err)
+    }
+
+    return null
+  }
+
   const fetchAvailableAttributes = async () => {
     if (!location) return
 
     setLoadingAttributes(true)
     try {
-      // Get location resource name - ensure it's in the correct format
-      let locationResource = location.location_id
+      // Try to build full location resource
+      let locationResource = await buildLocationResource()
       
-      // If location_id doesn't start with 'accounts/', it might be just the ID
-      // Try to build the full resource name from metadata or use categoryName as fallback
-      if (!locationResource.startsWith('accounts/')) {
-        // If we have location_id that looks like locations/{id}, try to get account
-        const metadata = (location.metadata as any) || {}
-        
-        // Try to extract from metadata if available
-        if (metadata.name && metadata.name.startsWith('accounts/')) {
-          locationResource = metadata.name
-        } else {
-          // Fallback: use categoryName if available, or showAll
-          const categoryName = location.category || undefined
+      // Strategy 1: Try with parent (location resource)
+      if (locationResource) {
+        try {
+          const response = await fetch(`/api/gmb/attributes?parent=${encodeURIComponent(locationResource)}`)
           
-          if (categoryName) {
-            const response = await fetch(`/api/gmb/attributes?categoryName=${encodeURIComponent(categoryName)}`)
-            
-            if (!response.ok) {
-              const errorData = await response.json().catch(() => ({}))
-              console.error('Attributes API error:', errorData)
-              throw new Error(errorData.error || 'Failed to fetch available attributes')
-            }
-
-            const data = await response.json()
-            setAvailableAttributes(data.attributeMetadata || [])
-            return
-          } else {
-            // Last resort: try showAll
-            const response = await fetch(`/api/gmb/attributes?showAll=true`)
-            
-            if (!response.ok) {
-              const errorData = await response.json().catch(() => ({}))
-              console.error('Attributes API error:', errorData)
-              throw new Error(errorData.error || 'Failed to fetch available attributes')
-            }
-
+          if (response.ok) {
             const data = await response.json()
             setAvailableAttributes(data.attributeMetadata || [])
             return
           }
-        }
-      }
-
-      // Fetch available attributes metadata using parent
-      const response = await fetch(`/api/gmb/attributes?parent=${encodeURIComponent(locationResource)}`)
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('Attributes API error:', {
-          status: response.status,
-          error: errorData,
-          locationResource
-        })
-        
-        // Try fallback to categoryName if parent fails
-        if (location.category) {
-          console.log('Trying fallback with categoryName:', location.category)
-          const fallbackResponse = await fetch(`/api/gmb/attributes?categoryName=${encodeURIComponent(location.category)}`)
           
-          if (fallbackResponse.ok) {
-            const fallbackData = await fallbackResponse.json()
-            setAvailableAttributes(fallbackData.attributeMetadata || [])
-            return
-          }
+          // If parent fails, log but continue to fallbacks
+          const errorData = await response.json().catch(() => ({}))
+          console.warn('[Attributes] Parent method failed:', {
+            status: response.status,
+            error: errorData,
+            locationResource
+          })
+        } catch (err) {
+          console.warn('[Attributes] Parent method error:', err)
         }
-        
-        throw new Error(errorData.error || `Failed to fetch available attributes (${response.status})`)
       }
 
-      const data = await response.json()
-      setAvailableAttributes(data.attributeMetadata || [])
+      // Strategy 2: Fallback to categoryName (more reliable)
+      if (location.category) {
+        console.log('[Attributes] Trying categoryName method:', location.category)
+        const categoryResponse = await fetch(`/api/gmb/attributes?categoryName=${encodeURIComponent(location.category)}`)
+        
+        if (categoryResponse.ok) {
+          const categoryData = await categoryResponse.json()
+          setAvailableAttributes(categoryData.attributeMetadata || [])
+          return
+        }
+        
+        console.warn('[Attributes] CategoryName method failed')
+      }
+
+      // Strategy 3: Last resort - use showAll
+      console.log('[Attributes] Trying showAll method')
+      const showAllResponse = await fetch(`/api/gmb/attributes?showAll=true`)
+      
+      if (showAllResponse.ok) {
+        const showAllData = await showAllResponse.json()
+        setAvailableAttributes(showAllData.attributeMetadata || [])
+        return
+      }
+
+      // All methods failed
+      const errorData = await showAllResponse.json().catch(() => ({}))
+      throw new Error(
+        errorData.error || 
+        `Failed to fetch attributes. Location format may be invalid. Please try syncing again.`
+      )
     } catch (error: any) {
       console.error('Error fetching available attributes:', error)
       toast.error(error.message || 'Failed to load available attributes')
