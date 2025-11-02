@@ -549,6 +549,75 @@ export function EditLocationDialog({ location, open, onOpenChange, onSuccess }: 
                   </Button>
                 </div>
               </div>
+
+              {/* More Hours */}
+              <div className="space-y-2 mt-6">
+                <Label className="text-foreground">More Hours (Additional Hours Types)</Label>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Additional hours for different departments or customer types (e.g., delivery hours, drive-through hours)
+                </p>
+                
+                {moreHours.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    {moreHours.map((moreHour: any, idx: number) => (
+                      <div key={idx} className="p-3 rounded-lg bg-secondary border border-primary/20 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-foreground font-medium">
+                            {moreHour.hoursTypeId || `Hours Type ${idx + 1}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {moreHour.periods?.length || 0} periods
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setMoreHours(moreHours.filter((_, i) => i !== idx))}
+                          className="h-8 w-8 p-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="p-4 rounded-lg bg-secondary border border-primary/20 space-y-3">
+                  <Label className="text-foreground">Add More Hours Type</Label>
+                  <Input
+                    placeholder="Hours Type ID"
+                    value={newMoreHours.hoursTypeId}
+                    onChange={(e) => setNewMoreHours({ ...newMoreHours, hoursTypeId: e.target.value })}
+                    className="bg-card border-primary/30 text-foreground"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Note: Hours Type ID should match available types for your business category.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      if (newMoreHours.hoursTypeId) {
+                        setMoreHours([
+                          ...moreHours,
+                          {
+                            hoursTypeId: newMoreHours.hoursTypeId,
+                            periods: [],
+                          },
+                        ])
+                        setNewMoreHours({ hoursTypeId: "", periods: [] })
+                      }
+                    }}
+                    disabled={!newMoreHours.hoursTypeId}
+                    className="w-full border-primary/30"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add More Hours
+                  </Button>
+                </div>
+              </div>
             </div>
           </TabsContent>
 
