@@ -395,16 +395,72 @@ export function LocationsList() {
         </Card>
       )}
 
-      {/* Locations Grid/List */}
+      {/* Overview Stats Bar */}
+      {filteredLocations.length > 0 && viewMode !== "map" && (
+        <Card className="bg-card/50 border-primary/30">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/20">
+                  <Eye className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Impressions</p>
+                  <p className="text-lg font-semibold text-foreground">{overviewStats.totalImpressions.toLocaleString()}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/20">
+                  <MousePointerClick className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Clicks</p>
+                  <p className="text-lg font-semibold text-foreground">{overviewStats.totalClicks.toLocaleString()}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/20">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Avg Rating</p>
+                  <p className="text-lg font-semibold text-foreground">{overviewStats.avgRating.toFixed(1)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/20">
+                  <MapPin className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Locations</p>
+                  <p className="text-lg font-semibold text-foreground">{filteredLocations.length}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Locations Grid/List/Map */}
       {filteredLocations.length > 0 && (
-        <div className={viewMode === "grid" 
-          ? "grid gap-6 md:grid-cols-2 lg:grid-cols-3" 
-          : "space-y-4"
-        }>
-          {filteredLocations.map((location, index) => (
-            <LocationCard key={location.id} location={location} index={index} />
-          ))}
-        </div>
+        <>
+          {viewMode === "map" ? (
+            <LocationsMapView 
+              locations={filteredLocations}
+              selectedLocation={selectedLocation}
+              onLocationSelect={setSelectedLocation}
+            />
+          ) : (
+            <div className={viewMode === "grid" 
+              ? "grid gap-6 md:grid-cols-2 lg:grid-cols-3" 
+              : "space-y-4"
+            }>
+              {filteredLocations.map((location, index) => (
+                <LocationCard key={location.id} location={location} index={index} />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Add Location Dialog */}
