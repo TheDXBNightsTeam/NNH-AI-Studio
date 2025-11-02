@@ -151,7 +151,8 @@ export function AIAssistant() {
         const avgRating = validRatings.length > 0 
           ? validRatings.reduce((sum, loc) => sum + (loc.rating || 0), 0) / validRatings.length 
           : 0
-        const totalReviews = locations.reduce((sum, loc) => sum + (loc.review_count || 0), 0)
+        // Calculate total reviews from reviews array instead of review_count field
+        const totalReviews = reviews && Array.isArray(reviews) ? reviews.length : 0
 
         // Rating insights
         if (avgRating < 4.0) {
