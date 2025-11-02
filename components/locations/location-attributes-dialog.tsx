@@ -56,9 +56,11 @@ export function LocationAttributesDialog({
     if (!location) return null
 
     let locationResource = location.location_id
+    console.log('[Attributes] Initial location_id:', locationResource)
     
     // If already in full format (accounts/.../locations/...), return it
     if (locationResource.startsWith('accounts/')) {
+      console.log('[Attributes] Already in full format, returning:', locationResource)
       return locationResource
     }
 
@@ -80,10 +82,17 @@ export function LocationAttributesDialog({
         .single()
       
       if (account?.account_id) {
+        console.log('[Attributes] Fetched account.account_id:', account.account_id)
         // Extract location number from location_id
         const locationMatch = locationResource.match(/locations\/(.+)$/)
         const locationNumber = locationMatch ? locationMatch[1] : locationResource.replace(/^(locations\/|accounts\/.*\/locations\/)/, '')
-        return `accounts/${account.account_id}/locations/${locationNumber}`
+        // account.account_id might already include 'accounts/' prefix
+        const accountId = account.account_id.startsWith('accounts/') 
+          ? account.account_id 
+          : `accounts/${account.account_id}`
+        const finalResource = `${accountId}/locations/${locationNumber}`
+        console.log('[Attributes] Built final resource:', finalResource)
+        return finalResource
       }
     } catch (err) {
       console.error('Error building location resource:', err)
@@ -141,9 +150,9 @@ export function LocationAttributesDialog({
         console.warn('[Attributes] CategoryName method failed')
       }
 
-      // Strategy 3: Last resort - use showAll
+      // Strategy 3: Last resort - use showAll with default regionCode
       console.log('[Attributes] Trying showAll method')
-      const showAllResponse = await fetch(`/api/gmb/attributes?showAll=true`)
+      const showAllResponse = await fetch(`/api/gmb/attributes?showAll=true&regionCode=US`)
       
       if (showAllResponse.ok) {
         const showAllData = await showAllResponse.json()
