@@ -229,7 +229,9 @@ export function GMBPostsSection() {
             throw new Error(errorData.error || 'Failed to fetch posts')
           }
           const data = await res.json()
-          setPosts(data.items || [])
+          // Handle both direct response and wrapped response
+          const items = data.data?.items || data.items || []
+          setPosts(items)
         } catch (error) {
           console.error('Failed to fetch posts:', error)
           toast.error('Failed to load posts')
@@ -404,7 +406,9 @@ export function GMBPostsSection() {
         throw new Error(errorData.error || 'Failed to fetch posts')
       }
       const data = await res.json()
-      setPosts(data.items || [])
+      // Handle both direct response and wrapped response
+      const items = data.data?.items || data.items || []
+      setPosts(items)
     } catch (error) {
       console.error('Failed to refresh posts:', error)
       setPosts([])

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { errorResponse, successResponse } from '@/lib/utils/api-response'
 
 export const dynamic = 'force-dynamic'
 
@@ -7,7 +8,9 @@ export async function GET() {
   try {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (authError || !user) {
+      return errorResponse('UNAUTHORIZED', 'Authentication required', 401)
+    }
 
     // Try to select all columns, but handle missing columns gracefully
     let selectColumns = 'id, location_id, title, content, status, scheduled_at, published_at, created_at'
@@ -36,14 +39,16 @@ export async function GET() {
         
         if (fallbackError) {
           console.error('[GMB Posts API] Database error:', fallbackError)
-          return NextResponse.json({ 
-            error: 'Database schema mismatch. Please run the migration: 20251031_gmb_posts.sql',
-            details: fallbackError.message 
-          }, { status: 500 })
+          return errorResponse(
+            'DATABASE_ERROR',
+            'Database schema mismatch. Please run the migration: 20251031_gmb_posts.sql',
+            500,
+            fallbackError.message
+          )
         }
         
         // Return data with default values for missing columns
-        return NextResponse.json({ 
+        return successResponse({ 
           items: (fallbackData || []).map((post: any) => ({
             ...post,
             post_type: 'whats_new',
@@ -53,13 +58,13 @@ export async function GET() {
       }
       
       console.error('[GMB Posts API] Database error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return errorResponse('DATABASE_ERROR', 'Failed to fetch posts', 500, error.message)
     }
     
-    return NextResponse.json({ items: data || [] })
+    return successResponse({ items: data || [] })
   } catch (e:any) {
     console.error('[GMB Posts API] Unexpected error:', e)
-    return NextResponse.json({ error: e.message || 'Failed to list posts' }, { status: 500 })
+    return errorResponse('INTERNAL_ERROR', 'Failed to list posts', 500)
   }
 }
 
