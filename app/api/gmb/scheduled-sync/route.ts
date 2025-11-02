@@ -132,11 +132,11 @@ export async function GET(request: NextRequest) {
     // Sync each account by importing and calling the sync function directly
     const syncResults = [];
     for (const accountId of accountsToSync) {
-      try {
-        // Get the account to find its user_id
-        const account = accounts.find(a => a.id === accountId);
-        if (!account) continue;
+      // Get the account to find its user_id (before try-catch so it's available in catch)
+      const account = accounts.find(a => a.id === accountId);
+      if (!account) continue;
 
+      try {
         console.log(`[Scheduled Sync] Syncing account ${account.account_name} (${accountId})`);
 
         // Create a mock request object for the sync endpoint
@@ -177,7 +177,7 @@ export async function GET(request: NextRequest) {
         console.error(`[Scheduled Sync] Error syncing account ${accountId}:`, error);
         syncResults.push({
           accountId,
-          accountName: account.account_name,
+          accountName: account.account_name || 'Unknown',
           status: 'error',
           error: error.message,
         });
