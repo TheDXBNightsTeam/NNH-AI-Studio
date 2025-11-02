@@ -235,7 +235,7 @@ async function fetchReviews(
         : `accounts/${accountResource}`;
       
       fullLocationResource = `${cleanAccountResource}/locations/${locationId}`;
-      console.log('[GMB Sync API] Built location resource:', locationResource, '→', fullLocationResource);
+      console.log('[GMB Sync API] Built location resource:', locationResource, '?', fullLocationResource);
     } else {
       console.warn('[GMB Sync] Location resource missing accounts/ prefix and no accountResource provided:', locationResource);
       return { reviews: [], nextPageToken: undefined };
@@ -364,7 +364,7 @@ async function fetchMedia(
         : `accounts/${accountResource}`;
       
       fullLocationResource = `${cleanAccountResource}/locations/${locationId}`;
-      console.log('[GMB Sync] Built media location resource:', locationResource, '→', fullLocationResource);
+      console.log('[GMB Sync] Built media location resource:', locationResource, '?', fullLocationResource);
     } else {
       console.warn('[GMB Sync] Location resource missing accounts/ prefix and no accountResource provided:', locationResource);
       return { media: [], nextPageToken: undefined };
@@ -796,6 +796,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get user_id from account for cron requests (where user might be null)
+    const userId = user?.id || account.user_id;
+    if (!userId) {
+      console.error('[GMB Sync API] Cannot determine user_id');
+      return NextResponse.json(
+        { error: 'Cannot determine user_id' },
+        { status: 400 }
+      );
+    }
+
     // Get Google account resource name if not stored
     let accountResource = account.account_id;
     if (!accountResource) {
@@ -904,7 +914,7 @@ export async function POST(request: NextRequest) {
 
           return {
             gmb_account_id: accountId,
-            user_id: user.id,
+            user_id: userId,
             location_id: location.name,
             location_name: location.title || 'Unnamed Location',
             address: addressStr,
@@ -964,7 +974,7 @@ export async function POST(request: NextRequest) {
             // Assume it's just the ID number
             fullLocationName = `${account.account_id}/locations/${fullLocationName}`;
           }
-          console.log(`[GMB Sync API] Built location resource: ${location.location_id} → ${fullLocationName}`);
+          console.log(`[GMB Sync API] Built location resource: ${location.location_id} ? ${fullLocationName}`);
         } else {
           console.log(`[GMB Sync API] Using full location resource: ${fullLocationName}`);
         }
@@ -988,7 +998,7 @@ export async function POST(request: NextRequest) {
           if (reviews.length > 0) {
             const reviewRows = reviews.map((review) => ({
               gmb_account_id: accountId,
-              user_id: user.id,
+              user_id: userId,
               location_id: location.id,  // Use UUID id, not location_id (resource name)
               external_review_id: review.name,
               reviewer_name: review.reviewer?.displayName || null,
@@ -1032,7 +1042,7 @@ export async function POST(request: NextRequest) {
             const mediaRows = media.map((item) => ({
               gmb_account_id: accountId,
               location_id: location.id,  // Use UUID id, not location_id (resource name)
-              user_id: user.id,
+              user_id: userId,
               external_media_id: item.name || item.mediaId || null,
               type: item.mediaFormat || item.type || null,
               url: item.googleUrl || item.sourceUrl || null,
@@ -1110,7 +1120,7 @@ export async function POST(request: NextRequest) {
             const metricRows = metrics.map((metric) => ({
               gmb_account_id: accountId,
               location_id: location.id, // Use UUID id, not location_id
-              user_id: user.id,
+              user_id: userId,
               metric_type: metric.metric_type,
               metric_date: metric.metric_date,
               metric_value: metric.metric_value,
@@ -1158,7 +1168,7 @@ export async function POST(request: NextRequest) {
               const keywordRows = keywords.map((keyword) => ({
                 gmb_account_id: accountId,
                 location_id: location.id, // Use UUID id
-                user_id: user.id,
+                user_id: userId,
                 search_keyword: keyword.search_keyword,
                 month_year: keyword.month_year,
                 impressions_count: keyword.impressions_count,

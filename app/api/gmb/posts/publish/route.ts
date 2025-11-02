@@ -69,16 +69,31 @@ export async function POST(request: NextRequest) {
     // Refresh token if expired
     const isExpired = account.token_expires_at ? new Date(account.token_expires_at) < new Date() : false
     if ((!accessToken || isExpired) && account.refresh_token) {
-      const refreshed = await refreshGoogleToken(account.refresh_token)
-      if (refreshed?.access_token) {
-        accessToken = refreshed.access_token
-        const expiresAt = new Date()
-        if (refreshed.expires_in) expiresAt.setSeconds(expiresAt.getSeconds() + refreshed.expires_in)
-        await supabase
-          .from('gmb_accounts')
-          .update({ access_token: accessToken, token_expires_at: expiresAt.toISOString() })
-          .eq('id', account.id)
-          .eq('user_id', user.id)
+      try {
+        const refreshed = await refreshGoogleToken(account.refresh_token)
+        if (refreshed?.access_token) {
+          accessToken = refreshed.access_token
+          const expiresAt = new Date()
+          if (refreshed.expires_in) expiresAt.setSeconds(expiresAt.getSeconds() + refreshed.expires_in)
+          await supabase
+            .from('gmb_accounts')
+            .update({ access_token: accessToken, token_expires_at: expiresAt.toISOString() })
+            .eq('id', account.id)
+            .eq('user_id', user.id)
+        } else {
+          console.error('[GMB Publish] Token refresh failed - no access token returned')
+          return NextResponse.json({ 
+            error: 'Token refresh failed. Please reconnect your Google account.',
+            code: 'TOKEN_REFRESH_FAILED'
+          }, { status: 401 })
+        }
+      } catch (refreshError: any) {
+        console.error('[GMB Publish] Token refresh error:', refreshError)
+        return NextResponse.json({ 
+          error: 'Failed to refresh access token. Please reconnect your Google account.',
+          code: 'TOKEN_REFRESH_ERROR',
+          details: refreshError.message
+        }, { status: 401 })
       }
     }
 
