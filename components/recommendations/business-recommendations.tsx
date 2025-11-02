@@ -80,6 +80,42 @@ export function BusinessRecommendations() {
               .in("location_id", locationIds)
           : { data: null }
 
+      // Get performance metrics (last 30 days vs previous 30 days)
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      const sixtyDaysAgo = new Date()
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
+
+      const { data: currentMetrics } = locationIds.length > 0
+        ? await supabase
+            .from("gmb_performance_metrics")
+            .select("metric_type, metric_value, location_id")
+            .eq("user_id", user.id)
+            .in("location_id", locationIds)
+            .gte("metric_date", thirtyDaysAgo.toISOString().split('T')[0])
+        : { data: null }
+
+      const { data: previousMetrics } = locationIds.length > 0
+        ? await supabase
+            .from("gmb_performance_metrics")
+            .select("metric_type, metric_value, location_id")
+            .eq("user_id", user.id)
+            .in("location_id", locationIds)
+            .gte("metric_date", sixtyDaysAgo.toISOString().split('T')[0])
+            .lt("metric_date", thirtyDaysAgo.toISOString().split('T')[0])
+        : { data: null }
+
+      // Get search keywords
+      const { data: searchKeywords } = locationIds.length > 0
+        ? await supabase
+            .from("gmb_search_keywords")
+            .select("search_keyword, impressions_count")
+            .eq("user_id", user.id)
+            .in("location_id", locationIds)
+            .order("impressions_count", { ascending: false })
+            .limit(20)
+        : { data: null }
+
       const generatedRecommendations: Recommendation[] = []
 
       // Post recommendations
@@ -180,6 +216,137 @@ export function BusinessRecommendations() {
         }
       }
 
+      // Performance metrics recommendations
+      if (currentMetrics && previousMetrics) {
+        // Calculate total impressions
+        const currentImpressions = currentMetrics
+          .filter((m: any) => m.metric_type === 'QUERIES_DIRECT' || m.metric_type === 'QUERIES_INDIRECT')
+          .reduce((sum: number, m: any) => sum + (m.metric_value || 0), 0)
+        
+        const previousImpressions = previousMetrics
+          .filter((m: any) => m.metric_type === 'QUERIES_DIRECT' || m.metric_type === 'QUERIES_INDIRECT')
+          .reduce((sum: number, m: any) => sum + (m.metric_value || 0), 0)
+
+        if (previousImpressions > 0 && currentImpressions < previousImpressions * 0.8) {
+          const declinePercent = ((1 - currentImpressions / previousImpressions) * 100).toFixed(0)
+          generatedRecommendations.push({
+            id: "impressions-decline",
+            type: "engagement",
+            priority: "high",
+            title: "Impressions Declining",
+            description: `Your impressions dropped by ${declinePercent}% compared to last month. Consider posting more frequently and optimizing your profile.`,
+            action: "View Analytics",
+            actionLink: "/gmb-dashboard?tab=analytics",
+            category: "Performance",
+          })
+        }
+
+        // Calculate clicks
+        const currentClicks = currentMetrics
+          .filter((m: any) => m.metric_type === 'ACTIONS_WEBSITE' || m.metric_type === 'ACTIONS_PHONE' || m.metric_type === 'ACTIONS_DRIVING_DIRECTIONS')
+          .reduce((sum: number, m: any) => sum + (m.metric_value || 0), 0)
+        
+        const previousClicks = previousMetrics
+          .filter((m: any) => m.metric_type === 'ACTIONS_WEBSITE' || m.metric_type === 'ACTIONS_PHONE' || m.metric_type === 'ACTIONS_DRIVING_DIRECTIONS')
+          .reduce((sum: number, m: any) => sum + (m.metric_value || 0), 0)
+
+        if (previousClicks > 0 && currentClicks < previousClicks * 0.7) {
+          generatedRecommendations.push({
+            id: "clicks-decline",
+            type: "engagement",
+            priority: "high",
+            title: "Click-Through Rate Dropping",
+            description: "Your click-through rate has decreased. Ensure your business profile is complete and engaging.",
+            action: "Optimize Profile",
+            actionLink: "/gmb-dashboard?tab=locations",
+            category: "Performance",
+          })
+        }
+
+        // Check for low conversion rate (clicks vs impressions)
+        if (currentImpressions > 0 && currentClicks > 0) {
+          const conversionRate = (currentClicks / currentImpressions) * 100
+          if (conversionRate < 2) {
+            generatedRecommendations.push({
+              id: "low-conversion",
+              type: "engagement",
+              priority: "medium",
+              title: "Improve Conversion Rate",
+              description: `Your conversion rate is ${conversionRate.toFixed(1)}%. Optimize your profile, add more photos, and ensure your hours and contact info are up to date.`,
+              action: "Update Profile",
+              actionLink: "/gmb-dashboard?tab=locations",
+              category: "Performance",
+            })
+          }
+        }
+      }
+
+      // Search keywords recommendations
+      if (searchKeywords && searchKeywords.length > 0) {
+        const topKeywords = searchKeywords.slice(0, 5)
+        const hasLowImpressions = topKeywords.some((k: any) => k.impressions_count < 10)
+        
+        if (hasLowImpressions) {
+          generatedRecommendations.push({
+            id: "optimize-seo",
+            type: "profile",
+            priority: "medium",
+            title: "Optimize for Search Keywords",
+            description: `Your top search keywords have low impressions. Consider optimizing your business profile with relevant keywords and creating content around these terms: ${topKeywords.slice(0, 3).map((k: any) => k.search_keyword).join(", ")}.`,
+            action: "View Keywords",
+            actionLink: "/gmb-dashboard?tab=analytics",
+            category: "SEO",
+          })
+        }
+
+        // Check if there are keyword opportunities
+        if (topKeywords.length < 5) {
+          generatedRecommendations.push({
+            id: "expand-keywords",
+            type: "profile",
+            priority: "low",
+            title: "Expand Your SEO Strategy",
+            description: "You have limited search keyword visibility. Create posts and update your profile with industry-specific terms to improve discoverability.",
+            action: "Learn More",
+            category: "SEO",
+          })
+        }
+      }
+
+      // Location comparison recommendations
+      if (locations && locations.length > 1 && currentMetrics) {
+        // Group metrics by location
+        const locationMetrics: Record<string, number> = {}
+        currentMetrics.forEach((m: any) => {
+          if (m.metric_type === 'QUERIES_DIRECT' || m.metric_type === 'QUERIES_INDIRECT') {
+            locationMetrics[m.location_id] = (locationMetrics[m.location_id] || 0) + (m.metric_value || 0)
+          }
+        })
+
+        if (Object.keys(locationMetrics).length > 1) {
+          const sortedLocations = Object.entries(locationMetrics)
+            .sort(([, a], [, b]) => b - a)
+          const highest = sortedLocations[0]
+          const lowest = sortedLocations[sortedLocations.length - 1]
+
+          if (highest[1] > 0 && lowest[1] < highest[1] * 0.3) {
+            const lowLocation = locations.find((l: any) => l.id === lowest[0])
+            if (lowLocation) {
+              generatedRecommendations.push({
+                id: "location-performance",
+                type: "profile",
+                priority: "medium",
+                title: "Location Performance Gap",
+                description: `${lowLocation.location_name} has significantly lower impressions than your best-performing location. Consider optimizing its profile or location-specific content.`,
+                action: "View Location",
+                actionLink: `/gmb-dashboard?tab=locations`,
+                category: "Performance",
+              })
+            }
+          }
+        }
+      }
+
       // Seasonal recommendations
       const currentMonth = new Date().getMonth()
       const isHolidaySeason = currentMonth === 11 || currentMonth === 0 // December or January
@@ -196,7 +363,7 @@ export function BusinessRecommendations() {
         })
       }
 
-      setRecommendations(generatedRecommendations.slice(0, 8)) // Limit to 8 recommendations
+      setRecommendations(generatedRecommendations.slice(0, 10)) // Limit to 10 recommendations
     } catch (error) {
       console.error("Error fetching recommendations:", error)
       toast.error("Failed to load recommendations")
