@@ -80,6 +80,30 @@ export function AIAssistant() {
               .in("location_id", locationIds)
           : { data: null }
 
+      // Get performance metrics (last 30 days)
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      
+      const { data: performanceMetrics } = locationIds.length > 0
+        ? await supabase
+            .from("gmb_performance_metrics")
+            .select("metric_type, metric_value, metric_date")
+            .eq("user_id", user.id)
+            .in("location_id", locationIds)
+            .gte("metric_date", thirtyDaysAgo.toISOString().split('T')[0])
+        : { data: null }
+
+      // Get search keywords
+      const { data: searchKeywords } = locationIds.length > 0
+        ? await supabase
+            .from("gmb_search_keywords")
+            .select("search_keyword, impressions_count, month_year")
+            .eq("user_id", user.id)
+            .in("location_id", locationIds)
+            .order("impressions_count", { ascending: false })
+            .limit(10)
+        : { data: null }
+
       // Analyze and generate tips
       const tips: AITip[] = []
 
@@ -160,7 +184,105 @@ export function AIAssistant() {
         }
       }
 
-      setAiTips(tips.slice(0, 5)) // Limit to 5 tips
+      // Performance metrics insights
+      if (performanceMetrics && performanceMetrics.length > 0) {
+        const impressions = performanceMetrics
+          .filter((m: any) => m.metric_type === 'QUERIES_DIRECT' || m.metric_type === 'QUERIES_INDIRECT')
+          .reduce((sum: number, m: any) => sum + (m.metric_value || 0), 0)
+        
+        const clicks = performanceMetrics
+          .filter((m: any) => m.metric_type === 'ACTIONS_WEBSITE' || m.metric_type === 'ACTIONS_PHONE' || m.metric_type === 'ACTIONS_DRIVING_DIRECTIONS')
+          .reduce((sum: number, m: any) => sum + (m.metric_value || 0), 0)
+
+        if (impressions > 0) {
+          const conversionRate = (clicks / impressions) * 100
+          
+          if (impressions > 1000) {
+            tips.push({
+              id: "high-visibility",
+              type: "insight",
+              title: "Strong Online Visibility",
+              message: `Great! Your business has ${impressions.toLocaleString()} impressions in the last 30 days. You're being discovered online.`,
+              category: "Performance",
+            })
+          } else if (impressions < 100) {
+            tips.push({
+              id: "low-visibility",
+              type: "warning",
+              title: "Low Online Visibility",
+              message: `Your business has only ${impressions} impressions. Consider optimizing your profile, adding photos, and posting regularly to increase visibility.`,
+              category: "Performance",
+              action: "Optimize profile",
+            })
+          }
+
+          if (conversionRate < 2 && impressions > 500) {
+            tips.push({
+              id: "conversion-opportunity",
+              type: "recommendation",
+              title: "Improve Click-Through Rate",
+              message: `Your conversion rate is ${conversionRate.toFixed(1)}%. Optimize your profile description, add compelling photos, and ensure your hours are accurate to encourage more clicks.`,
+              category: "Performance",
+              action: "Update profile",
+            })
+          }
+        }
+      }
+
+      // Search keywords insights
+      if (searchKeywords && searchKeywords.length > 0) {
+        const topKeyword = searchKeywords[0]
+        const totalImpressions = searchKeywords.reduce((sum: number, k: any) => sum + (k.impressions_count || 0), 0)
+        
+        if (topKeyword && topKeyword.impressions_count > 50) {
+          tips.push({
+            id: "top-keyword",
+            type: "insight",
+            title: "Top Search Keyword",
+            message: `"${topKeyword.search_keyword}" is your top-performing keyword with ${topKeyword.impressions_count} impressions. Consider creating content around this term to maintain visibility.`,
+            category: "SEO",
+          })
+        }
+
+        if (totalImpressions < 100 && searchKeywords.length > 0) {
+          tips.push({
+            id: "seo-opportunity",
+            type: "recommendation",
+            title: "SEO Optimization Opportunity",
+            message: `Your search keywords have low total impressions (${totalImpressions}). Optimize your business profile with relevant keywords from your industry to improve discoverability.`,
+            category: "SEO",
+            action: "Optimize SEO",
+          })
+        }
+      }
+
+      // Location comparison insights
+      if (locations && locations.length > 1 && performanceMetrics) {
+        const locationPerformance: Record<string, number> = {}
+        performanceMetrics.forEach((m: any) => {
+          if (m.metric_type === 'QUERIES_DIRECT' || m.metric_type === 'QUERIES_INDIRECT') {
+            locationPerformance[m.location_id] = (locationPerformance[m.location_id] || 0) + (m.metric_value || 0)
+          }
+        })
+
+        const sortedLocations = Object.entries(locationPerformance).sort(([, a], [, b]) => b - a)
+        if (sortedLocations.length > 1) {
+          const bestLocation = locations.find((l: any) => l.id === sortedLocations[0][0])
+          const worstLocation = locations.find((l: any) => l.id === sortedLocations[sortedLocations.length - 1][0])
+          
+          if (bestLocation && worstLocation && sortedLocations[0][1] > sortedLocations[sortedLocations.length - 1][1] * 3) {
+            tips.push({
+              id: "location-disparity",
+              type: "warning",
+              title: "Location Performance Gap",
+              message: `${bestLocation.location_name} significantly outperforms ${worstLocation.location_name}. Consider applying successful strategies from your best location to improve others.`,
+              category: "Performance",
+            })
+          }
+        }
+      }
+
+      setAiTips(tips.slice(0, 8)) // Limit to 8 tips (increased from 5)
     } catch (error) {
       console.error("Error analyzing business:", error)
       toast.error("Failed to analyze business data")
