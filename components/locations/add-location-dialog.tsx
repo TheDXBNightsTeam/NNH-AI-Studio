@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Loader2 } from "lucide-react"
+import { Plus, Loader2, Search } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
@@ -101,6 +101,7 @@ export function AddLocationDialog({ open: externalOpen, onOpenChange }: AddLocat
         phone: "",
         website: "",
         category: "",
+        categoryId: "",
       })
       router.refresh()
     } catch (error) {
