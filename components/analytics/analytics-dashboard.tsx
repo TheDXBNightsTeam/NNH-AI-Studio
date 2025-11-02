@@ -5,6 +5,7 @@ import { ReviewSentimentChart } from "./review-sentiment-chart"
 import { LocationPerformance } from "./location-performance"
 import { TrafficChart } from "./traffic-chart"
 import { ResponseTimeChart } from "./response-time-chart"
+import { SearchKeywords } from "./search-keywords"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CalendarDays, TrendingUp } from "lucide-react"
@@ -98,6 +99,11 @@ export function AnalyticsDashboard() {
         
         {/* Review Sentiment */}
         <ReviewSentimentChart />
+      </div>
+
+      {/* Search Keywords */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <SearchKeywords />
       </div>
 
       {/* Response Time Chart */}

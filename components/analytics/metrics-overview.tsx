@@ -61,7 +61,10 @@ export function MetricCard({ title, value, change, period, isLoading }: MetricCa
 
 export function MetricsOverview() {
   const [metrics, setMetrics] = useState({
-    totalViews: 0,
+    totalImpressions: 0,
+    totalConversations: 0,
+    totalClicks: 0,
+    totalDirectionRequests: 0,
     totalReviews: 0,
     avgRating: 0,
     responseRate: 0,
@@ -79,18 +82,96 @@ export function MetricsOverview() {
           return
         }
 
-        const { data: locations } = await supabase.from("gmb_locations").select("*").eq("user_id", user.id)
-        const { data: reviews } = await supabase.from("gmb_reviews").select("*").eq("user_id", user.id)
+        // Get active account IDs
+        const { data: accounts } = await supabase
+          .from("gmb_accounts")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
 
-        const totalViews = locations?.reduce((sum, loc) => sum + (loc.total_views || 0), 0) || 0
+        const accountIds = accounts?.map(acc => acc.id) || []
+        if (accountIds.length === 0) {
+          setIsLoading(false)
+          return
+        }
+
+        // Get locations
+        const { data: locations } = await supabase
+          .from("gmb_locations")
+          .select("id")
+          .eq("user_id", user.id)
+          .in("gmb_account_id", accountIds)
+
+        const locationIds = locations?.map(loc => loc.id) || []
+
+        // Get reviews for response rate
+        const { data: reviews } = locationIds.length > 0
+          ? await supabase
+              .from("gmb_reviews")
+              .select("rating, reply_text")
+              .eq("user_id", user.id)
+              .in("location_id", locationIds)
+          : { data: [] }
+
+        // Calculate review metrics
         const totalReviews = reviews?.length || 0
-        const avgRating =
-          locations?.reduce((sum, loc) => sum + (loc.average_rating || 0), 0) / (locations?.length || 1) || 0
         const repliedReviews = reviews?.filter((r) => r.reply_text).length || 0
         const responseRate = totalReviews > 0 ? (repliedReviews / totalReviews) * 100 : 0
+        const avgRating =
+          totalReviews > 0
+            ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / totalReviews
+            : 0
+
+        // Get performance metrics from Performance API data (last 30 days)
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        const today = new Date()
+
+        const { data: performanceMetrics } = locationIds.length > 0
+          ? await supabase
+              .from("gmb_performance_metrics")
+              .select("metric_type, metric_value")
+              .eq("user_id", user.id)
+              .in("location_id", locationIds)
+              .gte("metric_date", thirtyDaysAgo.toISOString().split('T')[0])
+              .lte("metric_date", today.toISOString().split('T')[0])
+          : { data: [] }
+
+        // Aggregate performance metrics
+        let totalImpressions = 0
+        let totalConversations = 0
+        let totalClicks = 0
+        let totalDirectionRequests = 0
+
+        if (performanceMetrics) {
+          performanceMetrics.forEach((metric) => {
+            const value = parseInt(metric.metric_value) || 0
+            switch (metric.metric_type) {
+              case 'BUSINESS_IMPRESSIONS_DESKTOP_MAPS':
+              case 'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH':
+              case 'BUSINESS_IMPRESSIONS_MOBILE_MAPS':
+              case 'BUSINESS_IMPRESSIONS_MOBILE_SEARCH':
+                totalImpressions += value
+                break
+              case 'BUSINESS_CONVERSATIONS':
+                totalConversations += value
+                break
+              case 'WEBSITE_CLICKS':
+              case 'CALL_CLICKS':
+                totalClicks += value
+                break
+              case 'BUSINESS_DIRECTION_REQUESTS':
+                totalDirectionRequests += value
+                break
+            }
+          })
+        }
 
         setMetrics({
-          totalViews,
+          totalImpressions,
+          totalConversations,
+          totalClicks,
+          totalDirectionRequests,
           totalReviews,
           avgRating: Math.round(avgRating * 10) / 10,
           responseRate: Math.round(responseRate),
@@ -108,6 +189,7 @@ export function MetricsOverview() {
       .channel("analytics-metrics")
       .on("postgres_changes", { event: "*", schema: "public", table: "gmb_locations" }, fetchMetrics)
       .on("postgres_changes", { event: "*", schema: "public", table: "gmb_reviews" }, fetchMetrics)
+      .on("postgres_changes", { event: "*", schema: "public", table: "gmb_performance_metrics" }, fetchMetrics)
       .subscribe()
 
     return () => {
@@ -118,31 +200,31 @@ export function MetricsOverview() {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <MetricCard
-        title="Total Views"
-        value={metrics.totalViews.toLocaleString()}
+        title="Total Impressions"
+        value={metrics.totalImpressions.toLocaleString()}
         change={12.5}
-        period="last month"
+        period="last 30 days"
         isLoading={isLoading}
       />
       <MetricCard
-        title="Total Reviews"
-        value={metrics.totalReviews.toLocaleString()}
+        title="Website/Call Clicks"
+        value={metrics.totalClicks.toLocaleString()}
         change={8.3}
-        period="last month"
+        period="last 30 days"
         isLoading={isLoading}
       />
       <MetricCard
-        title="Avg. Rating"
-        value={(Number(metrics.avgRating ?? 0)).toFixed(1)}
-        change={2.2}
-        period="last month"
+        title="Conversations"
+        value={metrics.totalConversations.toLocaleString()}
+        change={5.2}
+        period="last 30 days"
         isLoading={isLoading}
       />
       <MetricCard
-        title="Response Rate"
-        value={`${metrics.responseRate}%`}
+        title="Direction Requests"
+        value={metrics.totalDirectionRequests.toLocaleString()}
         change={-1.5}
-        period="last month"
+        period="last 30 days"
         isLoading={isLoading}
       />
     </div>
