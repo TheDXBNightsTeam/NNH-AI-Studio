@@ -16,17 +16,23 @@ import { PerformanceChart } from "@/components/dashboard/performance-chart"
 import { GMBDashboardSidebar } from "@/components/dashboard/gmb-sidebar"
 import { GMBPostsSection } from "@/components/dashboard/gmb-posts-section"
 import { AIInsightsWidget } from "@/components/dashboard/ai-insights-widget"
+import { WelcomeHero } from "@/components/dashboard/welcome-hero"
+import { SmartChecklist } from "@/components/dashboard/smart-checklist"
+import { AICopilotEnhanced } from "@/components/dashboard/ai-copilot-enhanced"
+import { PerformanceSnapshot } from "@/components/dashboard/performance-snapshot"
+import { AchievementBadges } from "@/components/dashboard/achievement-badges"
 
 // Tab Components
 import { LocationsList } from "@/components/locations/locations-list"
 import { ReviewsList } from "@/components/reviews/reviews-list"
 import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard"
 import { GMBSettings } from "@/components/settings/gmb-settings"
-import { AIAssistant } from "@/components/ai/ai-assistant"
-import { BusinessInsights } from "@/components/insights/business-insights"
-import { BusinessRecommendations } from "@/components/recommendations/business-recommendations"
 import { QuestionsList } from "@/components/questions/questions-list"
-import { AttributesManager } from "@/components/attributes/attributes-manager"
+
+// Server Actions
+import { getOnboardingTasks, getProfileStrength } from "@/server/actions/onboarding"
+import { getWeeklyPerformance } from "@/server/actions/performance"
+import { getUserAchievements } from "@/server/actions/achievements"
 
 interface DashboardStats {
   totalLocations: number
@@ -109,6 +115,16 @@ export default function GMBDashboard() {
   const [syncSchedule, setSyncSchedule] = useState<string>('manual')
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null)
   const [syncing, setSyncing] = useState(false)
+  
+  const [onboardingTasks, setOnboardingTasks] = useState<any[]>([])
+  const [profileStrength, setProfileStrength] = useState(0)
+  const [tasksRemaining, setTasksRemaining] = useState(0)
+  const [estimatedMinutes, setEstimatedMinutes] = useState(0)
+  const [weeklyPerformance, setWeeklyPerformance] = useState<any[]>([])
+  const [aiInsight, setAiInsight] = useState<string | null>(null)
+  const [achievements, setAchievements] = useState<any[]>([])
+  const [streak, setStreak] = useState(0)
+  const [aiRecommendations, setAiRecommendations] = useState<any[]>([])
 
   // Check for mobile view
   useEffect(() => {
@@ -128,7 +144,7 @@ export default function GMBDashboard() {
       const errorParam = params.get('error')
       const connectedParam = params.get('connected')
       
-      if (tabParam && ['dashboard', 'locations', 'reviews', 'questions', 'attributes', 'posts', 'ai-assistant', 'recommendations', 'analytics', 'settings'].includes(tabParam)) {
+      if (tabParam && ['dashboard', 'locations', 'reviews', 'questions', 'posts', 'analytics', 'settings'].includes(tabParam)) {
         setActiveTab(tabParam)
       }
       
@@ -371,6 +387,74 @@ export default function GMBDashboard() {
           console.error("Error fetching dashboard stats:", error)
           // Don't set error state here, just log it
           // The dashboard can still function with default stats
+        }
+        
+        // Fetch onboarding data
+        try {
+          const [profileData, tasks, performanceData, achievementsData] = await Promise.all([
+            getProfileStrength(),
+            getOnboardingTasks(),
+            getWeeklyPerformance(),
+            getUserAchievements()
+          ])
+          
+          setProfileStrength(profileData.strength)
+          setTasksRemaining(profileData.totalTasks - profileData.tasksCompleted)
+          setEstimatedMinutes(profileData.estimatedMinutes)
+          setOnboardingTasks(tasks)
+          
+          setWeeklyPerformance(performanceData.data)
+          setAiInsight(performanceData.aiInsight)
+          
+          setAchievements(achievementsData.achievements)
+          setStreak(achievementsData.streak)
+          
+          // Generate AI recommendations based on current data
+          const recommendations: any[] = []
+          
+          const urgentReviews = reviews.filter((r: any) => {
+            return (!r.review_reply || r.review_reply.trim() === '') && 
+                   r.rating <= 2 && 
+                   Date.now() - new Date(r.created_at).getTime() < 86400000
+          })
+          
+          if (urgentReviews.length > 0) {
+            recommendations.push({
+              id: 'urgent-reviews',
+              priority: 'high',
+              type: 'review',
+              message: `${urgentReviews.length} urgent low-rated review${urgentReviews.length > 1 ? 's' : ''} need${urgentReviews.length === 1 ? 's' : ''} your attention (< 24h old)`,
+              actionLabel: 'Reply Now',
+              actionUrl: '/gmb-dashboard?tab=reviews'
+            })
+          }
+          
+          const unansweredReviews = reviews.filter((r: any) => !r.review_reply || r.review_reply.trim() === '')
+          if (unansweredReviews.length >= 5) {
+            recommendations.push({
+              id: 'draft-replies',
+              priority: 'medium',
+              type: 'review',
+              message: `${unansweredReviews.length} unanswered reviews. Want AI to draft replies?`,
+              actionLabel: 'Draft Replies',
+              actionUrl: '/gmb-dashboard?tab=reviews'
+            })
+          }
+          
+          if (posts.length === 0 && locations.length > 0) {
+            recommendations.push({
+              id: 'first-post',
+              priority: 'medium',
+              type: 'post',
+              message: 'Create your first post to boost visibility by 40%',
+              actionLabel: 'AI Generate',
+              actionUrl: '/gmb-dashboard?tab=posts'
+            })
+          }
+          
+          setAiRecommendations(recommendations)
+        } catch (error) {
+          console.error("Error fetching onboarding data:", error)
         }
       } catch (error) {
         console.error("Unexpected error:", error)
@@ -628,15 +712,12 @@ export default function GMBDashboard() {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               {/* Hidden Tab List (controlled by sidebar) */}
               <TabsList className="hidden">
-                <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+                <TabsTrigger value="dashboard">Overview</TabsTrigger>
                 <TabsTrigger value="locations">Locations</TabsTrigger>
                 <TabsTrigger value="reviews">Reviews</TabsTrigger>
-                <TabsTrigger value="questions">Questions & Answers</TabsTrigger>
-                <TabsTrigger value="attributes">Attributes</TabsTrigger>
+                <TabsTrigger value="questions">Q&A</TabsTrigger>
                 <TabsTrigger value="posts">Posts</TabsTrigger>
-                <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
-                <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
-                <TabsTrigger value="analytics">Analytics & Insights</TabsTrigger>
+                <TabsTrigger value="analytics">Analytics</TabsTrigger>
                 <TabsTrigger value="settings">Settings</TabsTrigger>
               </TabsList>
               
@@ -664,6 +745,14 @@ export default function GMBDashboard() {
                   </div>
                 )}
                 
+                {/* Welcome Hero */}
+                <WelcomeHero
+                  userName={user?.email?.split('@')[0]}
+                  profileStrength={profileStrength}
+                  tasksRemaining={tasksRemaining}
+                  estimatedMinutes={estimatedMinutes}
+                />
+                
                 {/* Stats Cards */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                   <StatCard
@@ -685,24 +774,6 @@ export default function GMBDashboard() {
                     icon={MapPin}
                   />
                   <StatCard
-                    title="Total Reviews"
-                    value={stats.totalReviews.toString()}
-                    change={typeof stats.reviewsChange === 'number'
-                      ? `${stats.reviewsChange > 0 ? '+' : ''}${stats.reviewsChange}% vs last 30 days`
-                      : undefined
-                    }
-                    changeType={typeof stats.reviewsChange === 'number'
-                      ? stats.reviewsChange > 0
-                        ? "positive"
-                        : stats.reviewsChange < 0
-                        ? "negative"
-                        : "neutral"
-                      : "neutral"
-                    }
-                    index={1}
-                    icon={MessageSquare}
-                  />
-                  <StatCard
                     title="Average Rating"
                     value={stats.averageRating}
                     change={typeof stats.ratingChange === 'number'
@@ -717,8 +788,26 @@ export default function GMBDashboard() {
                         : "neutral"
                       : "neutral"
                     }
-                    index={2}
+                    index={1}
                     icon={Star}
+                  />
+                  <StatCard
+                    title="New Reviews"
+                    value={stats.totalReviews.toString()}
+                    change={typeof stats.reviewsChange === 'number'
+                      ? `${stats.reviewsChange > 0 ? '+' : ''}${stats.reviewsChange}% this month`
+                      : undefined
+                    }
+                    changeType={typeof stats.reviewsChange === 'number'
+                      ? stats.reviewsChange > 0
+                        ? "positive"
+                        : stats.reviewsChange < 0
+                        ? "negative"
+                        : "neutral"
+                      : "neutral"
+                    }
+                    index={2}
+                    icon={MessageSquare}
                   />
                   <StatCard
                     title="Response Rate"
@@ -730,39 +819,46 @@ export default function GMBDashboard() {
                   />
                 </div>
                 
-                {/* AI Insights Widget */}
-                <ErrorBoundary
-                  fallback={
-                    <div className="p-4 text-center text-muted-foreground text-sm">
-                      Failed to load AI insights
-                    </div>
-                  }
-                >
-                  <AIInsightsWidget />
-                </ErrorBoundary>
-                
-                {/* Charts and Activity */}
-                <div className="grid gap-6 md:grid-cols-2">
-                  <ErrorBoundary
-                    fallback={
-                      <div className="p-8 text-center text-muted-foreground">
-                        <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                        <p>Failed to load performance chart</p>
-                      </div>
-                    }
-                  >
-                    <PerformanceChart />
-                  </ErrorBoundary>
-                  <ErrorBoundary
-                    fallback={
-                      <div className="p-8 text-center text-muted-foreground">
-                        <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                        <p>Failed to load activity feed</p>
-                      </div>
-                    }
-                  >
-                    <ActivityFeed />
-                  </ErrorBoundary>
+                {/* Main Dashboard Grid */}
+                <div className="grid gap-6 lg:grid-cols-3">
+                  {/* Left Column - Checklist + Achievements */}
+                  <div className="space-y-6">
+                    <SmartChecklist
+                      tasks={onboardingTasks}
+                      onTaskAction={(taskId) => {
+                        const task = onboardingTasks.find(t => t.id === taskId)
+                        if (task?.actionUrl) {
+                          router.push(task.actionUrl)
+                        }
+                      }}
+                    />
+                    
+                    <AchievementBadges
+                      achievements={achievements}
+                      streak={streak}
+                    />
+                  </div>
+                  
+                  {/* Middle Column - AI Copilot */}
+                  <div>
+                    <AICopilotEnhanced
+                      recommendations={aiRecommendations}
+                      mainMessage={
+                        aiRecommendations.length > 0
+                          ? undefined
+                          : "Great job! Everything looks good. I'll notify you when there's something that needs attention."
+                      }
+                      onMainAction={() => router.push('/gmb-dashboard?tab=reviews')}
+                    />
+                  </div>
+                  
+                  {/* Right Column - Performance Snapshot */}
+                  <div>
+                    <PerformanceSnapshot
+                      data={weeklyPerformance}
+                      aiInsight={aiInsight || undefined}
+                    />
+                  </div>
                 </div>
               </TabsContent>
               
@@ -808,20 +904,6 @@ export default function GMBDashboard() {
                 </ErrorBoundary>
               </TabsContent>
               
-              {/* Attributes Tab */}
-              <TabsContent value="attributes" className="space-y-6 animate-in fade-in-50">
-                <ErrorBoundary
-                  fallback={
-                    <div className="p-8 text-center text-muted-foreground">
-                      <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                      <p>Failed to load attributes</p>
-                    </div>
-                  }
-                >
-                  <AttributesManager />
-                </ErrorBoundary>
-              </TabsContent>
-              
               {/* Posts Tab */}
               <TabsContent value="posts" className="space-y-6 animate-in fade-in-50">
                 <ErrorBoundary
@@ -833,34 +915,6 @@ export default function GMBDashboard() {
                   }
                 >
                   <GMBPostsSection />
-                </ErrorBoundary>
-              </TabsContent>
-              
-              {/* AI Assistant Tab */}
-              <TabsContent value="ai-assistant" className="space-y-6 animate-in fade-in-50">
-                <ErrorBoundary
-                  fallback={
-                    <div className="p-8 text-center text-muted-foreground">
-                      <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                      <p>Failed to load AI Assistant</p>
-                    </div>
-                  }
-                >
-                  <AIAssistant />
-                </ErrorBoundary>
-              </TabsContent>
-              
-              {/* Recommendations Tab */}
-              <TabsContent value="recommendations" className="space-y-6 animate-in fade-in-50">
-                <ErrorBoundary
-                  fallback={
-                    <div className="p-8 text-center text-muted-foreground">
-                      <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                      <p>Failed to load recommendations</p>
-                    </div>
-                  }
-                >
-                  <BusinessRecommendations />
                 </ErrorBoundary>
               </TabsContent>
               
