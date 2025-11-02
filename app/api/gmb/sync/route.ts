@@ -1013,18 +1013,55 @@ export async function POST(request: NextRequest) {
           reviewsNextPageToken = nextPageToken;
         } while (reviewsNextPageToken && syncType === 'full');
 
-        // NOTE: Google My Business v4 Media API has been deprecated/discontinued by Google
-        // Media fetching is no longer available through the v4 API endpoint
-        // Alternative: Media can be fetched from Posts using Business Information API
-        // Use: GET /api/gmb/media?locationId=xxx to fetch media from posts
-        console.log('[GMB Sync API] Media sync skipped - Google My Business v4 Media API is deprecated');
-        console.log('[GMB Sync API] Use GET /api/gmb/media to fetch media from Posts via Business Information API');
+        // Try to fetch media using Google My Business v4 API
+        // Note: This API requires Google My Business API to be enabled in Google Cloud Console
+        let mediaNextPageToken: string | undefined = undefined;
+        do {
+          const { media, nextPageToken } = await fetchMedia(
+            accessToken,
+            fullLocationName,
+            account.account_id,
+            mediaNextPageToken
+          );
+
+          if (media.length > 0) {
+            const mediaRows = media.map((item) => ({
+              gmb_account_id: accountId,
+              location_id: location.id,
+              user_id: userId,
+              external_media_id: item.name || item.mediaId || null,
+              type: item.mediaFormat || item.type || null,
+              url: item.googleUrl || item.sourceUrl || null,
+              thumbnail_url: item.thumbnailUrl || null,
+              created_at: item.createTime || null,
+              updated_at: item.updateTime || null,
+              metadata: item,
+            }));
+            
+            for (const chunk of chunks(mediaRows)) {
+              const { error } = await supabase
+                .from('gmb_media')
+                .upsert(chunk, { 
+                  onConflict: 'external_media_id',
+                  ignoreDuplicates: false 
+                });
+                
+              if (error) {
+                console.error('[GMB Sync API] Error upserting media:', error);
+              } else {
+                console.log(`[GMB Sync API] Upserted ${chunk.length} media items`);
+              }
+            }
+            
+            counts.media += media.length;
+          }
+
+          mediaNextPageToken = nextPageToken;
+        } while (mediaNextPageToken && syncType === 'full');
       }
     }
 
-    console.log(`[GMB Sync API] Synced ${counts.reviews} reviews`);
-    // Note: Media sync removed - Google My Business v4 Media API is deprecated
-    // Media is available through posts created via Business Information API
+    console.log(`[GMB Sync API] Synced ${counts.reviews} reviews and ${counts.media} media items`);
 
     // Fetch performance metrics and search keywords for each location
     console.log('[GMB Sync API] Starting performance metrics sync...');
