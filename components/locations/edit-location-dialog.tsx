@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
-import { Loader2, MapPin, Phone, Globe, FileText, Clock, CheckCircle2 } from "lucide-react"
+import { Loader2, MapPin, Phone, Globe, FileText, Clock, CheckCircle2, Plus, X } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { GMBLocation } from "@/lib/types/database"
 
 interface EditLocationDialogProps {
@@ -37,6 +38,33 @@ export function EditLocationDialog({ location, open, onOpenChange, onSuccess }: 
 
   // Business hours state
   const [businessHours, setBusinessHours] = useState<any[]>([])
+  
+  // Service items state
+  const [serviceItems, setServiceItems] = useState<any[]>([])
+  const [newServiceItem, setNewServiceItem] = useState({
+    type: "freeForm" as "freeForm" | "structured",
+    category: "",
+    displayName: "",
+    description: "",
+    serviceTypeId: "",
+  })
+  
+  // Special hours state
+  const [specialHours, setSpecialHours] = useState<any[]>([])
+  const [newSpecialHour, setNewSpecialHour] = useState({
+    startDate: "",
+    endDate: "",
+    closed: false,
+    openTime: { hours: 9, minutes: 0 },
+    closeTime: { hours: 17, minutes: 0 },
+  })
+  
+  // More hours state
+  const [moreHours, setMoreHours] = useState<any[]>([])
+  const [newMoreHours, setNewMoreHours] = useState({
+    hoursTypeId: "",
+    periods: [] as any[],
+  })
 
   useEffect(() => {
     if (location && open) {
@@ -59,6 +87,15 @@ export function EditLocationDialog({ location, open, onOpenChange, onSuccess }: 
       })
 
       setBusinessHours(regularHours.periods || [])
+      
+      // Load service items
+      setServiceItems(metadata.serviceItems || [])
+      
+      // Load special hours
+      setSpecialHours(metadata.specialHours?.specialHourPeriods || [])
+      
+      // Load more hours
+      setMoreHours(metadata.moreHours || [])
     }
   }, [location, open])
 
@@ -104,7 +141,23 @@ export function EditLocationDialog({ location, open, onOpenChange, onSuccess }: 
             periods: businessHours,
           },
         }
-        updateMask = "regularHours"
+        if (specialHours.length > 0) {
+          updateData.specialHours = {
+            specialHourPeriods: specialHours,
+          }
+          updateMask = "regularHours,specialHours"
+        } else {
+          updateMask = "regularHours"
+        }
+        if (moreHours.length > 0) {
+          updateData.moreHours = moreHours
+          updateMask = updateMask ? `${updateMask},moreHours` : "moreHours"
+        }
+      } else if (activeTab === "services") {
+        updateData = {
+          serviceItems: serviceItems,
+        }
+        updateMask = "serviceItems"
       }
 
       // Remove undefined fields
@@ -153,10 +206,11 @@ export function EditLocationDialog({ location, open, onOpenChange, onSuccess }: 
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
             <TabsTrigger value="address">Address</TabsTrigger>
             <TabsTrigger value="hours">Hours</TabsTrigger>
+            <TabsTrigger value="services">Services</TabsTrigger>
           </TabsList>
 
           <TabsContent value="basic" className="space-y-4 mt-4">
@@ -316,6 +370,121 @@ export function EditLocationDialog({ location, open, onOpenChange, onSuccess }: 
                   ))}
                 </div>
               )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="services" className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label className="text-foreground">Service Items</Label>
+              <p className="text-xs text-muted-foreground mb-4">
+                Services offered by your business
+              </p>
+              
+              {/* Existing service items */}
+              {serviceItems.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {serviceItems.map((item: any, idx: number) => {
+                    const displayName = item.structuredServiceItem?.description || 
+                                      item.freeFormServiceItem?.label?.displayName || 
+                                      'Service'
+                    return (
+                      <div key={idx} className="p-3 rounded-lg bg-secondary border border-primary/20 flex items-center justify-between">
+                        <span className="text-sm text-foreground">{displayName}</span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setServiceItems(serviceItems.filter((_, i) => i !== idx))}
+                          className="h-8 w-8 p-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Add new service item */}
+              <div className="p-4 rounded-lg bg-secondary border border-primary/20 space-y-3">
+                <Label className="text-foreground">Add Service</Label>
+                
+                <Select
+                  value={newServiceItem.type}
+                  onValueChange={(value: "freeForm" | "structured") =>
+                    setNewServiceItem({ ...newServiceItem, type: value })
+                  }
+                >
+                  <SelectTrigger className="bg-card border-primary/30 text-foreground">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="freeForm">Free Form</SelectItem>
+                    <SelectItem value="structured">Structured</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {newServiceItem.type === "freeForm" ? (
+                  <>
+                    <Input
+                      placeholder="Service Name"
+                      value={newServiceItem.displayName}
+                      onChange={(e) => setNewServiceItem({ ...newServiceItem, displayName: e.target.value })}
+                      className="bg-card border-primary/30 text-foreground"
+                    />
+                    <Input
+                      placeholder="Category"
+                      value={newServiceItem.category}
+                      onChange={(e) => setNewServiceItem({ ...newServiceItem, category: e.target.value })}
+                      className="bg-card border-primary/30 text-foreground"
+                    />
+                  </>
+                ) : (
+                  <Input
+                    placeholder="Service Type ID"
+                    value={newServiceItem.serviceTypeId}
+                    onChange={(e) => setNewServiceItem({ ...newServiceItem, serviceTypeId: e.target.value })}
+                    className="bg-card border-primary/30 text-foreground"
+                  />
+                )}
+
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    if (newServiceItem.type === "freeForm" && newServiceItem.displayName && newServiceItem.category) {
+                      setServiceItems([
+                        ...serviceItems,
+                        {
+                          freeFormServiceItem: {
+                            category: newServiceItem.category,
+                            label: {
+                              displayName: newServiceItem.displayName,
+                            },
+                          },
+                        },
+                      ])
+                      setNewServiceItem({ type: "freeForm", category: "", displayName: "", description: "", serviceTypeId: "" })
+                    } else if (newServiceItem.type === "structured" && newServiceItem.serviceTypeId) {
+                      setServiceItems([
+                        ...serviceItems,
+                        {
+                          structuredServiceItem: {
+                            serviceTypeId: newServiceItem.serviceTypeId,
+                            description: newServiceItem.description,
+                          },
+                        },
+                      ])
+                      setNewServiceItem({ type: "freeForm", category: "", displayName: "", description: "", serviceTypeId: "" })
+                    }
+                  }}
+                  className="w-full border-primary/30"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Service
+                </Button>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
