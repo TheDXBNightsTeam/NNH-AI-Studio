@@ -38,15 +38,12 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutGrid },
+  { id: "dashboard", label: "Overview", icon: LayoutGrid },
   { id: "locations", label: "Locations", icon: MapPin },
   { id: "reviews", label: "Reviews", icon: MessageSquare },
-  { id: "questions", label: "Questions & Answers", icon: HelpCircle },
-  { id: "attributes", label: "Attributes", icon: Tags },
+  { id: "questions", label: "Q&A", icon: HelpCircle },
   { id: "posts", label: "Posts", icon: Sparkles },
-  { id: "ai-assistant", label: "AI Assistant", icon: Bot },
-  { id: "recommendations", label: "Recommendations", icon: Target },
-  { id: "analytics", label: "Analytics & Insights", icon: BarChart3 },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "settings", label: "Settings", icon: Settings },
 ]
 
