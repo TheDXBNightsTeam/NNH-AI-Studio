@@ -80,7 +80,7 @@ function getUserFriendlyMessage(code: string): string {
     UNSUPPORTED_POST_TYPE: 'This post type is not supported',
   };
 
-  return messages[code] || message;
+  return messages[code] || code;
 }
 
 /**
