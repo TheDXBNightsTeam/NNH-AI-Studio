@@ -113,7 +113,7 @@ export async function getMonthlyStats() {
     .select("rating, review_date, created_at")
     .eq("user_id", user.id)
     .in("location_id", activeLocationIds)
-    .order("review_date", { ascending: true, nullsLast: true })
+    .order("review_date", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true })
 
   if (error) {
