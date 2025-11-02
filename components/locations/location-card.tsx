@@ -11,6 +11,7 @@ import Link from "next/link"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { EditLocationDialog } from "./edit-location-dialog"
 import { LocationAttributesDialog } from "./location-attributes-dialog"
+import { GoogleUpdatedInfo } from "./google-updated-info"
 
 interface LocationCardProps {
   location: GMBLocation
@@ -175,6 +176,28 @@ export function LocationCard({ location, index }: LocationCardProps) {
                     <Badge variant="outline" className="text-xs bg-secondary/50">
                       +{serviceItems.length - 3} more
                     </Badge>
+                  )}
+                </div>
+              )}
+              
+              {/* Relationship Data */}
+              {(parentLocation || parentChain || childrenLocations.length > 0) && (
+                <div className="mt-3 pt-3 border-t border-primary/20">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Relationships</p>
+                  {parentLocation && (
+                    <div className="text-xs text-muted-foreground mb-1">
+                      Parent: {parentLocation.placeId || 'Linked location'}
+                    </div>
+                  )}
+                  {parentChain && (
+                    <div className="text-xs text-muted-foreground mb-1">
+                      Chain: {parentChain.replace('chains/', '')}
+                    </div>
+                  )}
+                  {childrenLocations.length > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      {childrenLocations.length} child location{childrenLocations.length > 1 ? 's' : ''}
+                    </div>
                   )}
                 </div>
               )}

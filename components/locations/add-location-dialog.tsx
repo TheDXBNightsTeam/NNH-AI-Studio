@@ -40,6 +40,7 @@ export function AddLocationDialog({ open: externalOpen, onOpenChange }: AddLocat
   })
   const [categories, setCategories] = useState<any[]>([])
   const [loadingCategories, setLoadingCategories] = useState(false)
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -111,12 +112,22 @@ export function AddLocationDialog({ open: externalOpen, onOpenChange }: AddLocat
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Location
+      <div className="flex gap-2">
+        <DialogTrigger asChild>
+          <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Location
+          </Button>
+        </DialogTrigger>
+        <Button
+          variant="outline"
+          onClick={() => setSearchDialogOpen(true)}
+          className="border-primary/30"
+        >
+          <Search className="h-4 w-4 mr-2" />
+          Search Google
         </Button>
-      </DialogTrigger>
+      </div>
       <DialogContent className="bg-card border-primary/30 text-foreground sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="text-foreground">Add New Location</DialogTitle>
@@ -235,6 +246,31 @@ export function AddLocationDialog({ open: externalOpen, onOpenChange }: AddLocat
           </DialogFooter>
         </form>
       </DialogContent>
+
+      <SearchGoogleLocationsDialog
+        open={searchDialogOpen}
+        onOpenChange={setSearchDialogOpen}
+        onLocationSelect={(location) => {
+          if (location.location) {
+            const loc = location.location
+            setFormData({
+              location_name: loc.title || "",
+              address: loc.storefrontAddress
+                ? `${(loc.storefrontAddress.addressLines || []).join(', ')}${
+                    loc.storefrontAddress.locality ? `, ${loc.storefrontAddress.locality}` : ''
+                  }${loc.storefrontAddress.administrativeArea ? `, ${loc.storefrontAddress.administrativeArea}` : ''}${
+                    loc.storefrontAddress.postalCode ? ` ${loc.storefrontAddress.postalCode}` : ''
+                  }`
+                : "",
+              phone: loc.phoneNumbers?.primaryPhone || "",
+              website: loc.websiteUri || "",
+              category: loc.categories?.primaryCategory?.displayName || "",
+              categoryId: loc.categories?.primaryCategory?.name || "",
+            })
+            setInternalOpen(true)
+          }
+        }}
+      />
     </Dialog>
   )
 }
