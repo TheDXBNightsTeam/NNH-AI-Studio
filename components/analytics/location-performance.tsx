@@ -48,7 +48,7 @@ export function LocationPerformance() {
           `)
           .eq("user_id", user.id)
           .in("gmb_account_id", accountIds)
-          .order("rating", { ascending: false, nullsLast: true })
+          .order("rating", { ascending: false })
           .limit(4)
 
         if (error) {
@@ -59,7 +59,7 @@ export function LocationPerformance() {
             .select("id, location_name, rating, review_count")
             .eq("user_id", user.id)
             .in("gmb_account_id", accountIds)
-            .order("rating", { ascending: false, nullsLast: true })
+            .order("rating", { ascending: false })
             .limit(4)
           
           if (fallbackData) {
