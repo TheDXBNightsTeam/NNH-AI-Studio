@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GBP_LOC_BASE = 'https://mybusinessbusinessinformation.googleapis.com/v1';
-const GBP_V4_BASE = 'https://mybusiness.googleapis.com/v4';
+const PLACES_API_BASE = 'https://places.googleapis.com/v1';
 
 // Helper function for chunking arrays
 const chunks = <T>(array: T[], size = 100): T[][] => {
@@ -18,10 +18,10 @@ const chunks = <T>(array: T[], size = 100): T[][] => {
 function buildLocationResourceName(accountId: string, locationId: string): string {
   // Clean location_id from any existing prefix
   const cleanLocationId = locationId.replace(/^(accounts\/.*\/)?locations\//, '');
-  
+
   // If accountId starts with "accounts/", use it directly, otherwise add prefix
   const accountResource = accountId.startsWith('accounts/') ? accountId : `accounts/${accountId}`;
-  
+
   return `${accountResource}/locations/${cleanLocationId}`;
 }
 
@@ -29,7 +29,7 @@ function buildLocationResourceName(accountId: string, locationId: string): strin
 function parseLocationResourceName(resourceName: string): { accountId: string; locationId: string } | null {
   const match = resourceName.match(/accounts\/([^\/]+)\/locations\/(.+)/);
   if (!match) return null;
-  
+
   return {
     accountId: match[1],
     locationId: match[2]
@@ -43,10 +43,10 @@ async function refreshAccessToken(refreshToken: string): Promise<{
   refresh_token?: string;
 }> {
   console.log('[GMB Sync] Attempting to refresh access token...');
-  
+
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  
+
   if (!clientId || !clientSecret) {
     throw new Error('Missing Google OAuth configuration');
   }
@@ -63,7 +63,7 @@ async function refreshAccessToken(refreshToken: string): Promise<{
   });
 
   const data = await response.json();
-  
+
   if (!response.ok) {
     console.error('[GMB Sync] Token refresh failed:', data);
     if (data.error === 'invalid_grant') {
@@ -82,7 +82,7 @@ async function getValidAccessToken(
   accountId: string
 ): Promise<string> {
   console.log('[GMB Sync] Getting valid access token for account:', accountId);
-  
+
   const { data: account, error } = await supabase
     .from('gmb_accounts')
     .select('access_token, refresh_token, token_expires_at')
@@ -96,7 +96,7 @@ async function getValidAccessToken(
 
   const now = new Date();
   const expiresAt = account.token_expires_at ? new Date(account.token_expires_at) : null;
-  
+
   // Check if token is still valid (with 5 minute buffer)
   if (account.access_token && expiresAt && expiresAt > new Date(now.getTime() + 5 * 60000)) {
     console.log('[GMB Sync] Using existing valid access token');
@@ -111,29 +111,29 @@ async function getValidAccessToken(
 
   console.log('[GMB Sync] Token expired or missing, refreshing...');
   const tokens = await refreshAccessToken(account.refresh_token);
-  
+
   // Update tokens in database
   const newExpiresAt = new Date();
   newExpiresAt.setSeconds(newExpiresAt.getSeconds() + tokens.expires_in);
-  
+
   const updateData: any = {
     access_token: tokens.access_token,
     token_expires_at: newExpiresAt.toISOString(),
   };
-  
+
   if (tokens.refresh_token) {
     updateData.refresh_token = tokens.refresh_token;
   }
-  
+
   const { error: updateError } = await supabase
     .from('gmb_accounts')
     .update(updateData)
     .eq('id', accountId);
-    
+
   if (updateError) {
     console.error('[GMB Sync] Failed to update tokens:', updateError);
   }
-  
+
   return tokens.access_token;
 }
 
@@ -144,7 +144,7 @@ async function fetchLocations(
   pageToken?: string
 ): Promise<{ locations: any[]; nextPageToken?: string }> {
   console.log('[GMB Sync] Fetching locations for account:', accountResource);
-  
+
   const url = new URL(`${GBP_LOC_BASE}/${accountResource}/locations`);
   url.searchParams.set('readMask', 'name,title,storefrontAddress,phoneNumbers,websiteUri,categories');
   url.searchParams.set('pageSize', '100');
@@ -165,7 +165,7 @@ async function fetchLocations(
     // Try to read error as JSON if Content-Type is correct
     const contentType = response.headers.get('content-type')?.toLowerCase();
     let errorData: any = {};
-    
+
     if (contentType && contentType.includes('application/json')) {
       try {
         errorData = await response.json();
@@ -182,7 +182,7 @@ async function fetchLocations(
         // Ignore text parsing errors
       }
     }
-    
+
     console.error('[GMB Sync] Failed to fetch locations:', errorData);
     throw new Error(`Failed to fetch locations: ${errorData.error?.message || 'Unknown error'}`);
   }
@@ -195,7 +195,7 @@ async function fetchLocations(
   }
 
   const data = await response.json();
-  
+
   console.log(`[GMB Sync] Fetched ${data.locations?.length || 0} locations`);
   return {
     locations: data.locations || [],
@@ -203,67 +203,64 @@ async function fetchLocations(
   };
 }
 
-// Fetch reviews for a location
+// Fetch reviews for a location using Google Places API (New)
 async function fetchReviews(
   accessToken: string,
   locationResource: string,
   pageToken?: string
 ): Promise<{ reviews: any[]; nextPageToken?: string }> {
   console.log('[GMB Sync] Fetching reviews for location:', locationResource);
-  
-  // Validate locationResource format
-  // Should be: accounts/{accountId}/locations/{locationId}
-  if (!locationResource || !locationResource.startsWith('accounts/')) {
-    console.error('[GMB Sync] Invalid location resource format:', locationResource);
-    console.error('[GMB Sync] Expected format: accounts/{accountId}/locations/{locationId}');
-    return { reviews: [], nextPageToken: undefined };
-  }
-  
-  const url = new URL(`${GBP_V4_BASE}/${locationResource}/reviews`);
-  url.searchParams.set('pageSize', '50');
-  if (pageToken) {
-    url.searchParams.set('pageToken', pageToken);
+
+  // Extract place ID from location resource
+  // Format: accounts/{accountId}/locations/{locationId} or locations/{locationId}
+  let placeId = locationResource;
+  if (locationResource.includes('/')) {
+    const parts = locationResource.split('/');
+    placeId = parts[parts.length - 1];
   }
 
-  console.log('[GMB Sync] Reviews URL:', url.toString());
+  // Use Google Places API (New) to fetch reviews
+  // Note: This requires the place to be claimed and linked to Google My Business
+  const url = new URL(`${PLACES_API_BASE}/places/${placeId}`);
+
+  console.log('[GMB Sync] Reviews URL (Places API):', url.toString());
 
   const response = await fetch(url.toString(), {
+    method: 'GET',
     headers: { 
-      Authorization: `Bearer ${accessToken}`,
+      'Authorization': `Bearer ${accessToken}`,
+      'X-Goog-FieldMask': 'reviews',
+      'Content-Type': 'application/json',
     },
   });
 
   // Check if response failed
   if (!response.ok) {
-    // Try to read error as JSON if Content-Type is correct
     const contentType = response.headers.get('content-type')?.toLowerCase();
     let errorData: any = {};
-    
+
     if (contentType && contentType.includes('application/json')) {
       try {
         errorData = await response.json();
-        console.error('[GMB Sync] JSON error response:', JSON.stringify(errorData));
+        console.error('[GMB Sync] Places API error:', JSON.stringify(errorData));
       } catch (e) {
-        // Failed to parse JSON, continue with empty object
         console.error('[GMB Sync] Failed to parse error response as JSON');
       }
     } else {
-      // Not JSON, try to read as text for debugging
       try {
         const errorText = await response.text();
-        console.error('[GMB Sync] Non-JSON error response for reviews. Status:', response.status, response.statusText);
+        console.error('[GMB Sync] Non-JSON error response. Status:', response.status);
         console.error('[GMB Sync] Response preview:', errorText.substring(0, 500));
       } catch (e) {
         console.error('[GMB Sync] Failed to read error text:', e);
       }
     }
-    
-    console.error('[GMB Sync] Failed to fetch reviews for location:', locationResource);
-    // Don't throw error for reviews, just return empty array
+
+    console.warn('[GMB Sync] Reviews not available via Places API for:', locationResource);
+    console.warn('[GMB Sync] This is expected if the location is not yet indexed in Places API');
     return { reviews: [], nextPageToken: undefined };
   }
 
-  // Response is OK, verify Content-Type before parsing
   const contentType = response.headers.get('content-type')?.toLowerCase();
   if (!contentType || !contentType.includes('application/json')) {
     console.error('[GMB Sync] Unexpected content type for reviews:', contentType);
@@ -271,31 +268,32 @@ async function fetchReviews(
   }
 
   const data = await response.json();
-  
+  console.log('[GMB Sync] Places API reviews response:', data.reviews?.length || 0, 'reviews');
+
   return {
     reviews: data.reviews || [],
-    nextPageToken: data.nextPageToken,
+    nextPageToken: undefined, // Places API doesn't support pagination for reviews
   };
 }
 
-// Fetch media for a location
+// Fetch media for a location using Business Information API
 async function fetchMedia(
   accessToken: string,
   locationResource: string,
   pageToken?: string
 ): Promise<{ media: any[]; nextPageToken?: string }> {
   console.log('[GMB Sync] Fetching media for location:', locationResource);
-  
-  // Validate locationResource format
-  // Should be: accounts/{accountId}/locations/{locationId}
-  if (!locationResource || !locationResource.startsWith('accounts/')) {
-    console.error('[GMB Sync] Invalid location resource format:', locationResource);
-    console.error('[GMB Sync] Expected format: accounts/{accountId}/locations/{locationId}');
+
+  // Build full location resource if needed
+  let fullLocationResource = locationResource;
+  if (!locationResource.startsWith('accounts/')) {
+    console.warn('[GMB Sync] Location resource missing accounts/ prefix:', locationResource);
     return { media: [], nextPageToken: undefined };
   }
-  
-  const url = new URL(`${GBP_V4_BASE}/${locationResource}/media`);
-  url.searchParams.set('pageSize', '50');
+
+  // Use Business Information API to fetch location with media
+  const url = new URL(`${GBP_LOC_BASE}/${fullLocationResource}/media`);
+  url.searchParams.set('pageSize', '100');
   if (pageToken) {
     url.searchParams.set('pageToken', pageToken);
   }
@@ -304,41 +302,37 @@ async function fetchMedia(
 
   const response = await fetch(url.toString(), {
     headers: { 
-      Authorization: `Bearer ${accessToken}`,
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
     },
   });
 
   // Check if response failed
   if (!response.ok) {
-    // Try to read error as JSON if Content-Type is correct
     const contentType = response.headers.get('content-type')?.toLowerCase();
     let errorData: any = {};
-    
+
     if (contentType && contentType.includes('application/json')) {
       try {
         errorData = await response.json();
-        console.error('[GMB Sync] JSON error response:', JSON.stringify(errorData));
+        console.error('[GMB Sync] Media API error:', JSON.stringify(errorData));
       } catch (e) {
-        // Failed to parse JSON, continue with empty object
         console.error('[GMB Sync] Failed to parse error response as JSON');
       }
     } else {
-      // Not JSON, try to read as text for debugging
       try {
         const errorText = await response.text();
-        console.error('[GMB Sync] Non-JSON error response for media. Status:', response.status, response.statusText);
+        console.error('[GMB Sync] Non-JSON error response. Status:', response.status);
         console.error('[GMB Sync] Response preview:', errorText.substring(0, 500));
       } catch (e) {
         console.error('[GMB Sync] Failed to read error text:', e);
       }
     }
-    
-    console.error('[GMB Sync] Failed to fetch media for location:', locationResource);
-    // Don't throw error for media, just return empty array
+
+    console.warn('[GMB Sync] Media not available for:', locationResource);
     return { media: [], nextPageToken: undefined };
   }
 
-  // Response is OK, verify Content-Type before parsing
   const contentType = response.headers.get('content-type')?.toLowerCase();
   if (!contentType || !contentType.includes('application/json')) {
     console.error('[GMB Sync] Unexpected content type for media:', contentType);
@@ -346,7 +340,8 @@ async function fetchMedia(
   }
 
   const data = await response.json();
-  
+  console.log('[GMB Sync] Media items fetched:', data.mediaItems?.length || 0);
+
   return {
     media: data.mediaItems || [],
     nextPageToken: data.nextPageToken,
@@ -356,10 +351,10 @@ async function fetchMedia(
 export async function POST(request: NextRequest) {
   console.log('[GMB Sync API] Sync request received');
   const started = Date.now();
-  
+
   try {
     const supabase = await createClient();
-    
+
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -369,22 +364,22 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    
+
     console.log('[GMB Sync API] User authenticated:', user.id);
-    
+
     // Parse request body
     const body = await request.json();
     const { accountId, syncType = 'full' } = body;
-    
+
     if (!accountId) {
       return NextResponse.json(
         { error: 'Missing accountId' },
         { status: 400 }
       );
     }
-    
+
     console.log(`[GMB Sync API] Starting ${syncType} sync for account:`, accountId);
-    
+
     // Get account details
     const { data: account, error: accountError } = await supabase
       .from('gmb_accounts')
@@ -392,7 +387,7 @@ export async function POST(request: NextRequest) {
       .eq('id', accountId)
       .eq('user_id', user.id)
       .single();
-      
+
     if (accountError || !account) {
       console.error('[GMB Sync API] Account not found:', accountError);
       return NextResponse.json(
@@ -400,7 +395,7 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
-    
+
     if (!account.is_active) {
       console.error('[GMB Sync API] Account is inactive');
       return NextResponse.json(
@@ -408,31 +403,31 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+
     // Get Google account resource name if not stored
     let accountResource = account.account_id;
     if (!accountResource) {
       console.log('[GMB Sync API] Account resource name missing, fetching from Google...');
       const accessToken = await getValidAccessToken(supabase, accountId);
-      
+
       // Try to get account resource name from Google
       const accountsUrl = new URL('https://mybusinessaccountmanagement.googleapis.com/v1/accounts');
       accountsUrl.searchParams.set('alt', 'json');
-      
+
       const accountsResponse = await fetch(accountsUrl.toString(), {
         headers: { 
           Authorization: `Bearer ${accessToken}`,
           Accept: 'application/json',
         },
       });
-      
+
       if (accountsResponse.ok) {
         const accountsData = await accountsResponse.json();
         const accounts = accountsData.accounts || [];
         if (accounts.length > 0) {
           accountResource = accounts[0].name;
           console.log('[GMB Sync API] Found account resource:', accountResource);
-          
+
           // Update account with resource name
           await supabase
             .from('gmb_accounts')
@@ -440,7 +435,7 @@ export async function POST(request: NextRequest) {
             .eq('id', accountId);
         }
       }
-      
+
       if (!accountResource) {
         console.error('[GMB Sync API] Could not find Google account resource');
         return NextResponse.json(
@@ -449,30 +444,30 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    
+
     // Get valid access token
     const accessToken = await getValidAccessToken(supabase, accountId);
-    
+
     const counts = { locations: 0, reviews: 0, media: 0 };
-    
+
     // Fetch and upsert locations
     console.log('[GMB Sync API] Starting location sync...');
     let locationsNextPageToken: string | undefined = undefined;
-    
+
     do {
       const { locations, nextPageToken } = await fetchLocations(
         accessToken,
         accountResource,
         locationsNextPageToken
       );
-      
+
       if (locations.length > 0) {
         // Log the first location to check format
         console.log('[GMB Sync API] Sample location from Google API:', {
           name: locations[0].name,
           title: locations[0].title
         });
-        
+
         const locationRows = locations.map((location) => {
           const address = location.storefrontAddress;
           const addressStr = address
@@ -482,7 +477,7 @@ export async function POST(request: NextRequest) {
                 address.postalCode ? ` ${address.postalCode}` : ''
               }`
             : null;
-            
+
           return {
             gmb_account_id: accountId,
             user_id: user.id,
@@ -497,43 +492,43 @@ export async function POST(request: NextRequest) {
             updated_at: new Date().toISOString(),
           };
         });
-        
+
         // Upsert locations in chunks
         for (const chunk of chunks(locationRows)) {
           const { error } = await supabase
             .from('gmb_locations')
             .upsert(chunk, { onConflict: 'gmb_account_id,location_id' });
-            
+
           if (error) {
             console.error('[GMB Sync API] Error upserting locations:', error);
           }
         }
-        
+
         counts.locations += locations.length;
       }
-      
+
       locationsNextPageToken = nextPageToken;
-      
+
       // For incremental sync, only fetch first page
       if (syncType === 'incremental') break;
     } while (locationsNextPageToken);
-    
+
     console.log(`[GMB Sync API] Synced ${counts.locations} locations`);
-    
+
     // Fetch reviews and media for each location
     console.log('[GMB Sync API] Starting reviews and media sync...');
     const { data: dbLocations } = await supabase
       .from('gmb_locations')
       .select('id, location_id')
       .eq('gmb_account_id', accountId);
-      
+
     if (dbLocations && Array.isArray(dbLocations)) {
       console.log(`[GMB Sync API] Processing ${dbLocations.length} locations for reviews/media sync`);
-      
+
       for (const location of dbLocations) {
         // Build the full location resource name
         let fullLocationName = location.location_id;
-        
+
         // If location_id doesn't start with 'accounts/', we need to build it
         if (!fullLocationName.startsWith('accounts/')) {
           fullLocationName = buildLocationResourceName(account.account_id, location.location_id);
@@ -541,7 +536,7 @@ export async function POST(request: NextRequest) {
         } else {
           console.log(`[GMB Sync API] Using full location resource: ${fullLocationName}`);
         }
-        
+
         // Fetch reviews
         let reviewsNextPageToken: string | undefined = undefined;
         do {
@@ -550,7 +545,7 @@ export async function POST(request: NextRequest) {
             fullLocationName,
             reviewsNextPageToken
           );
-          
+
           if (reviews.length > 0) {
             const reviewRows = reviews.map((review) => ({
               gmb_account_id: accountId,
@@ -566,24 +561,24 @@ export async function POST(request: NextRequest) {
               has_reply: !!review.reviewReply?.comment,
               updated_at: new Date().toISOString(),
             }));
-            
+
             // Upsert reviews in chunks
             for (const chunk of chunks(reviewRows)) {
               const { error } = await supabase
                 .from('gmb_reviews')
                 .upsert(chunk, { onConflict: 'external_review_id' });
-                
+
               if (error) {
                 console.error('[GMB Sync API] Error upserting reviews:', error);
               }
             }
-            
+
             counts.reviews += reviews.length;
           }
-          
+
           reviewsNextPageToken = nextPageToken;
         } while (reviewsNextPageToken && syncType === 'full');
-        
+
         // Fetch media
         let mediaNextPageToken: string | undefined = undefined;
         do {
@@ -592,7 +587,7 @@ export async function POST(request: NextRequest) {
             fullLocationName,
             mediaNextPageToken
           );
-          
+
           if (media.length > 0) {
             const mediaRows = media.map((item) => ({
               gmb_account_id: accountId,
@@ -603,7 +598,7 @@ export async function POST(request: NextRequest) {
               created_at: item.createTime || null,
               updated_at: item.updateTime || null,
             }));
-            
+
             // TODO: Upsert media in chunks (gmb_media table not yet created)
             // for (const chunk of chunks(mediaRows)) {
             //   const { error } = await supabase
@@ -615,26 +610,26 @@ export async function POST(request: NextRequest) {
             //   }
             // }
             console.log(`[GMB Sync API] ${media.length} media items fetched but not stored (table not implemented)`);
-            
+
             counts.media += media.length;
           }
-          
+
           mediaNextPageToken = nextPageToken;
         } while (mediaNextPageToken && syncType === 'full');
       }
     }
-    
+
     console.log(`[GMB Sync API] Synced ${counts.reviews} reviews and ${counts.media} media items`);
-    
+
     // Update last sync timestamp
     await supabase
       .from('gmb_accounts')
       .update({ last_sync: new Date().toISOString() })
       .eq('id', accountId);
-      
+
     const took = Date.now() - started;
     console.log(`[GMB Sync API] Sync completed in ${took}ms`, counts);
-    
+
     return NextResponse.json({
       ok: true,
       accountId,
@@ -642,11 +637,11 @@ export async function POST(request: NextRequest) {
       counts,
       took_ms: took,
     });
-    
+
   } catch (error: any) {
     const took = Date.now() - started;
     console.error('[GMB Sync API] Sync failed:', error);
-    
+
     // Handle specific error cases
     if (error.message === 'invalid_grant') {
       return NextResponse.json(
@@ -659,7 +654,7 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    
+
     return NextResponse.json(
       {
         ok: false,
