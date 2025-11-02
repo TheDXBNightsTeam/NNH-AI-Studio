@@ -70,6 +70,15 @@ export function LocationsList() {
           throw fetchError
         }
 
+        // Helper function to extract location ID number from location_id (normalize)
+        const getLocationIdNumber = (locationId: string): string => {
+          // Extract location ID number from formats like:
+          // - "locations/11247391224469965786"
+          // - "accounts/101323766532690204511/locations/11247391224469965786"
+          const match = locationId.match(/locations\/([^\/]+)$/)
+          return match ? match[1] : locationId
+        }
+
         // Helper function to calculate metadata completeness score
         const getMetadataCompleteness = (location: GMBLocation): number => {
           const metadata = (location.metadata as any) || {}
@@ -138,10 +147,16 @@ export function LocationsList() {
           })))
         }
 
-        // Remove duplicates based on location_id (in case of multiple accounts with same location)
+        // Remove duplicates based on location_id (normalized - extract location number only)
+        // This handles cases where same location has different formats:
+        // - "locations/11247391224469965786"
+        // - "accounts/101323766532690204511/locations/11247391224469965786"
         const uniqueLocations = (data || []).reduce((acc: GMBLocation[], location: GMBLocation) => {
-          // Check if we already have a location with the same location_id
-          const existingIndex = acc.findIndex(l => l.location_id === location.location_id)
+          // Normalize location_id to extract just the location number
+          const locationIdNumber = getLocationIdNumber(location.location_id)
+          
+          // Check if we already have a location with the same normalized location_id
+          const existingIndex = acc.findIndex(l => getLocationIdNumber(l.location_id) === locationIdNumber)
           
           if (existingIndex === -1) {
             // New unique location
@@ -152,7 +167,8 @@ export function LocationsList() {
             const existingScore = getMetadataCompleteness(existing)
             const currentScore = getMetadataCompleteness(location)
             
-            console.log(`[LocationsList] Duplicate found for location_id: ${location.location_id}`)
+            console.log(`[LocationsList] Duplicate found for location_id: ${location.location_id} (normalized: ${locationIdNumber})`)
+            console.log(`[LocationsList] Existing location_id: ${existing.location_id}`)
             console.log(`[LocationsList] Existing score: ${existingScore}, Current score: ${currentScore}`)
             
             // If scores are equal, prefer the one with latest updated_at
@@ -181,7 +197,7 @@ export function LocationsList() {
         }, [])
 
         console.log('[LocationsList] Unique locations after deduplication:', uniqueLocations.length)
-        console.log('[LocationsList] Unique location IDs:', uniqueLocations.map(l => l.location_id))
+        console.log('[LocationsList] Unique location IDs:', uniqueLocations.map((l: GMBLocation) => l.location_id))
 
         setLocations(uniqueLocations)
       } catch (err) {
