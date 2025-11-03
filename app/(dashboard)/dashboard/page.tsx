@@ -68,10 +68,24 @@ const ProfileProtectionStatus = ({ loading }: { loading: boolean }) => {
         const response = await fetch('/api/profile-protection/status');
         if (response.ok) {
           const data = await response.json();
-          setProtectionData(data);
+          setProtectionData({
+            enabled: data.enabled || false,
+            locationsProtected: data.locationsProtected || 0,
+            totalLocations: data.totalLocations || 0,
+            recentAlerts: data.recentAlerts || 0,
+            lastCheck: data.lastCheck ? new Date(data.lastCheck) : null
+          });
         }
       } catch (error) {
         console.error('Failed to fetch protection status:', error);
+        // Set default values on error
+        setProtectionData({
+          enabled: false,
+          locationsProtected: 0,
+          totalLocations: 0,
+          recentAlerts: 0,
+          lastCheck: null
+        });
       }
     };
 
@@ -167,10 +181,18 @@ const ActiveLocationInfo = ({ loading, stats }: { loading: boolean; stats: Dashb
         const response = await fetch('/api/locations/active');
         if (response.ok) {
           const data = await response.json();
-          setActiveLocation(data);
+          setActiveLocation({
+            name: data.name || 'Unknown Location',
+            rating: data.rating || 0
+          });
         }
       } catch (error) {
         console.error('Failed to fetch active location:', error);
+        // Set default values on error
+        setActiveLocation({
+          name: 'Default Location',
+          rating: 0
+        });
       }
     };
 
@@ -187,6 +209,8 @@ const ActiveLocationInfo = ({ loading, stats }: { loading: boolean; stats: Dashb
     );
   }
 
+  const safeRating = activeLocation?.rating || stats.allTimeAverageRating || 0;
+
   return (
     <Card className="lg:col-span-1 border border-primary/20">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -200,10 +224,10 @@ const ActiveLocationInfo = ({ loading, stats }: { loading: boolean; stats: Dashb
             : activeLocation?.name || "Loading..."
           }
         </h3>
-        {stats.totalLocations > 0 && activeLocation && (
+        {stats.totalLocations > 0 && (
           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
             <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-            {activeLocation.rating.toFixed(1)} / 5.0 Rating
+            {safeRating.toFixed(1)} / 5.0 Rating
           </p>
         )}
         {stats.totalLocations > 1 && (
@@ -280,12 +304,23 @@ export default function DashboardPage() {
         }
       }
 
-      // Fetch real stats from API
+      // Fetch real stats from API with safe defaults
       if (hasActiveAccount) {
         const statsRes = await fetch('/api/dashboard/stats');
         if (statsRes.ok) {
           const newStats = await statsRes.json();
-          setStats(newStats);
+          setStats({
+            totalLocations: newStats.totalLocations || 0,
+            locationsTrend: newStats.locationsTrend || 0,
+            averageRating: newStats.recentAverageRating || 0,
+            allTimeAverageRating: newStats.allTimeAverageRating || 0,
+            ratingTrend: newStats.ratingTrend || 0,
+            totalReviews: newStats.totalReviews || 0,
+            reviewsTrend: newStats.reviewsTrend || 0,
+            responseRate: newStats.responseRate || 0,
+            responseTarget: 100,
+            healthScore: newStats.healthScore || 0,
+          });
         }
       }
 
@@ -388,11 +423,11 @@ export default function DashboardPage() {
     }
   };
 
-  // Health Score Card
+  // Health Score Card with safe defaults
   const HealthScoreCard = () => (
     <Card className={cn("lg:col-span-1 border-l-4", 
-      stats.healthScore > 80 ? 'border-green-500' : 
-      stats.healthScore > 60 ? 'border-yellow-500' : 'border-red-500'
+      (stats.healthScore || 0) > 80 ? 'border-green-500' : 
+      (stats.healthScore || 0) > 60 ? 'border-yellow-500' : 'border-red-500'
     )}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">GMB Health Score</CardTitle>
@@ -400,7 +435,11 @@ export default function DashboardPage() {
       </CardHeader>
       <CardContent>
         <div className="text-4xl font-bold">
-          {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : `${stats.healthScore}%`}
+          {loading ? (
+            <Loader2 className="w-6 h-6 animate-spin" />
+          ) : (
+            `${(stats.healthScore || 0)}%`
+          )}
         </div>
         <p className="text-xs text-muted-foreground mt-1">
           Score based on Quality, Visibility, and Compliance.
