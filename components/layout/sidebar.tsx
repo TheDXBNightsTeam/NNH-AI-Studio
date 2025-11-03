@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, MapPin, Star, FileText, ChartBar as BarChart3, Settings, Zap, Users, Image, Calendar, Webhook, CheckSquare, Grid3x3 } from 'lucide-react';
+import { LayoutDashboard, MapPin, Star, FileText, ChartBar as BarChart3, Settings, Zap, Users, Image, Calendar, Webhook, CheckSquare, Grid3x3, MessageSquare, Layers, Youtube } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UserButton } from '@/components/auth/user-button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -30,65 +30,80 @@ const navigation: NavigationItem[] = [
   },
   {
     name: 'Locations',
-    href: '/dashboard/locations',
+    href: '/locations',
     icon: MapPin,
   },
   {
     name: 'Reviews',
-    href: '/dashboard/reviews',
+    href: '/reviews',
     icon: Star,
   },
   {
-    name: 'Posts',
-    href: '/dashboard/posts',
+    name: 'Questions',
+    href: '/questions',
+    icon: MessageSquare,
+  },
+  {
+    name: 'GMB Posts',
+    href: '/gmb-posts',
     icon: FileText,
   },
   {
     name: 'Calendar',
-    href: '/dashboard/calendar',
+    href: '/calendar',
     icon: Calendar,
   },
   {
     name: 'Media',
-    href: '/dashboard/media',
+    href: '/media',
     icon: Image,
   },
   {
     name: 'Analytics',
-    href: '/dashboard/analytics',
+    href: '/analytics',
     icon: BarChart3,
   },
   {
     name: 'Grid Tracking',
-    href: '/dashboard/grid-tracking',
+    href: '/grid-tracking',
     icon: Grid3x3,
   },
   {
+    name: 'Features',
+    href: '/features',
+    icon: Layers,
+  },
+  {
     name: 'Automation',
-    href: '/dashboard/automation',
+    href: '/automation',
     icon: Zap,
   },
   {
     name: 'Approvals',
-    href: '/dashboard/approvals',
+    href: '/approvals',
     icon: CheckSquare,
   },
   {
     name: 'Webhooks',
-    href: '/dashboard/webhooks',
+    href: '/webhooks',
     icon: Webhook,
   },
   {
     name: 'Team',
-    href: '/dashboard/team',
+    href: '/team',
     icon: Users,
   },
 ];
 
 const bottomNavigation: NavigationItem[] = [
   {
+    name: 'YouTube Posts',
+    href: '/youtube-posts',
+    icon: Youtube,
+  },
+  {
     name: 'Settings',
-    href: '/dashboard/settings',
+    href: '/settings',
     icon: Settings,
   },
 ];

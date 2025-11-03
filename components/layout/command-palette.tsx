@@ -22,7 +22,6 @@ import {
   Settings,
   Zap,
   Users,
-  HelpCircle,
   Search,
   Plus,
   Download,
@@ -44,70 +43,65 @@ const navigationCommands = [
   {
     icon: MapPin,
     label: 'Locations',
-    action: '/dashboard/locations',
+    action: '/locations',
     shortcut: 'G L',
   },
   {
     icon: Star,
     label: 'Reviews',
-    action: '/dashboard/reviews',
+    action: '/reviews',
     shortcut: 'G R',
   },
   {
     icon: MessageSquare,
     label: 'Questions',
-    action: '/dashboard/questions',
+    action: '/questions',
   },
   {
     icon: FileText,
-    label: 'Posts',
-    action: '/dashboard/posts',
+    label: 'GMB Posts',
+    action: '/gmb-posts',
     shortcut: 'G P',
+  },
+  {
+    icon: FileText,
+    label: 'YouTube Posts',
+    action: '/youtube-posts',
   },
   {
     icon: BarChart3,
     label: 'Analytics',
-    action: '/dashboard/analytics',
+    action: '/analytics',
     shortcut: 'G A',
   },
   {
     icon: Zap,
     label: 'Automation',
-    action: '/dashboard/automation',
+    action: '/automation',
   },
   {
     icon: Users,
     label: 'Team',
-    action: '/dashboard/team',
+    action: '/team',
   },
   {
     icon: Settings,
     label: 'Settings',
-    action: '/dashboard/settings',
+    action: '/settings',
     shortcut: 'G S',
-  },
-  {
-    icon: HelpCircle,
-    label: 'Help & Support',
-    action: '/dashboard/help',
   },
 ];
 
 const actionCommands = [
   {
     icon: Plus,
-    label: 'Add New Location',
-    action: '/dashboard/locations/new',
+    label: 'Create GMB Post',
+    action: '/gmb-posts',
   },
   {
-    icon: FileText,
-    label: 'Create Post',
-    action: '/dashboard/posts/new',
-  },
-  {
-    icon: Users,
-    label: 'Invite Team Member',
-    action: '/dashboard/team/invite',
+    icon: Plus,
+    label: 'Create YouTube Post',
+    action: '/youtube-posts',
   },
   {
     icon: Download,

@@ -8,7 +8,7 @@ import {
   MapPin,
   Star,
   BarChart3,
-  User,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,23 +20,23 @@ const mobileNavigation = [
   },
   {
     name: 'Locations',
-    href: '/dashboard/locations',
+    href: '/locations',
     icon: MapPin,
   },
   {
     name: 'Reviews',
-    href: '/dashboard/reviews',
+    href: '/reviews',
     icon: Star,
   },
   {
     name: 'Analytics',
-    href: '/dashboard/analytics',
+    href: '/analytics',
     icon: BarChart3,
   },
   {
-    name: 'Profile',
-    href: '/dashboard/profile',
-    icon: User,
+    name: 'Settings',
+    href: '/settings',
+    icon: Settings,
   },
 ];
 

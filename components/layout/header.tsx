@@ -55,15 +55,22 @@ interface Notification {
 
 const routeNames: Record<string, string> = {
   '/dashboard': 'Dashboard',
-  '/dashboard/locations': 'Locations',
-  '/dashboard/reviews': 'Reviews',
-  '/dashboard/questions': 'Questions',
-  '/dashboard/posts': 'Posts',
-  '/dashboard/analytics': 'Analytics',
-  '/dashboard/automation': 'Automation',
-  '/dashboard/team': 'Team',
-  '/dashboard/settings': 'Settings',
-  '/dashboard/help': 'Help & Support',
+  '/locations': 'Locations',
+  '/reviews': 'Reviews',
+  '/questions': 'Questions',
+  '/gmb-posts': 'GMB Posts',
+  '/youtube-posts': 'YouTube Posts',
+  '/posts': 'Posts',
+  '/calendar': 'Calendar',
+  '/media': 'Media',
+  '/analytics': 'Analytics',
+  '/grid-tracking': 'Grid Tracking',
+  '/features': 'Features',
+  '/automation': 'Automation',
+  '/approvals': 'Approvals',
+  '/webhooks': 'Webhooks',
+  '/team': 'Team',
+  '/settings': 'Settings',
 };
 
 export function Header({ onMenuClick, onCommandPaletteOpen }: HeaderProps) {
