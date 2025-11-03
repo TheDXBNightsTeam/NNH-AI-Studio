@@ -635,10 +635,7 @@ export default function GMBDashboard() {
         }))
       }
       
-      // Refresh dashboard data
-      fetchDashboardData()
-      
-      // Also refresh router cache
+      // Refresh router cache - components will auto-refresh via event listener
       router.refresh()
     } catch (error: any) {
       console.error('Error syncing GMB:', error)
