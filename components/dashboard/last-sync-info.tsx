@@ -99,14 +99,14 @@ export function LastSyncInfo({
             </div>
           </div>
           
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-3 flex-shrink-0">
             {onSync && (
               <Button
                 size="sm"
                 variant="outline"
                 onClick={onSync}
                 disabled={isSyncing || isDisconnecting}
-                className="flex-shrink-0"
+                className="flex-shrink-0 whitespace-nowrap"
               >
                 <RefreshCw className={cn(
                   "h-4 w-4 mr-2",
@@ -121,7 +121,7 @@ export function LastSyncInfo({
                 variant="outline"
                 onClick={onDisconnect}
                 disabled={isSyncing || isDisconnecting}
-                className="flex-shrink-0 bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/30"
+                className="flex-shrink-0 whitespace-nowrap bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/30"
               >
                 <Unlink className={cn(
                   "h-4 w-4 mr-2",
