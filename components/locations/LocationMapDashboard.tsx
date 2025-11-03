@@ -8,12 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox'; // يجب أن يكون لديك هذا المكون
-import { Filter, Search, Globe, Pin, RefreshCw, Loader2, Star, Send, Layers } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox'; 
+import { Filter, Search, Globe, Pin, RefreshCw, Loader2, Star, Send, Layers, AlertTriangle, MessageSquare, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils'; 
-import { toast } from 'sonner'; // لرسائل التنبيه
+import { toast } from 'sonner'; 
+import Link from 'next/link'; 
+import { useTheme } from 'next-themes'; // ⭐️ لإحضار الثيم الحالي
 
-// تعريف نوع بيانات الموقع (يجب أن يتطابق مع ما يرجعه API)
+// تعريف نوع بيانات الموقع والمنافس
 interface LocationData {
     id: string;
     name: string;
@@ -21,6 +23,14 @@ interface LocationData {
     lng: number;
     rating: number;
     status: 'Verified' | 'Suspended' | 'Needs Attention';
+}
+
+interface CompetitorData {
+    id: string;
+    name: string;
+    lat: number;
+    lng: number;
+    rating: number;
 }
 
 const mapContainerStyle = {
@@ -33,21 +43,36 @@ const defaultCenter = {
   lng: 55.2708,
 };
 
-// ⭐️ التعديل هنا: تم حذف 'localContext' غير الصالحة
 const libraries: ("places" | "drawing" | "geometry" | "visualization" | "marker")[] = ['places'];
+
+// ⭐️ مصفوفة أنماط الخريطة الداكنة (Aesthetic Dark Theme)
+const darkMapStyles = [
+    { elementType: 'geometry', stylers: [{ color: '#1d2c4d' }] },
+    { elementType: 'labels.text.stroke', stylers: [{ color: '#1d2c4d' }] },
+    { elementType: 'labels.text.fill', stylers: [{ color: '#8ec3b9' }] },
+    { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#b3d4f8' }] },
+    { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2b3961' }] },
+    { featureType: 'road', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#445b8a' }] },
+    { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+    { featureType: 'water', stylers: [{ color: '#28385e' }] },
+];
 
 
 export function LocationMapDashboard() {
+  const { theme } = useTheme(); // ⭐️ استخدام الثيم لتطبيق الأنماط
   const [locationsData, setLocationsData] = useState<LocationData[]>([]);
+  const [competitorData, setCompetitorData] = useState<CompetitorData[]>([]); 
   const [loadingData, setLoadingData] = useState(true);
+  const [loadingCompetitors, setLoadingCompetitors] = useState(false); 
   const [errorData, setErrorData] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [selectedMarker, setSelectedMarker] = useState<LocationData | null>(null);
-
-  // ⭐️ حالة جديدة لتعقب المواقع المحددة للإجراءات الجماعية
+  const [selectedMarker, setSelectedMarker] = useState<LocationData | CompetitorData | null>(null); 
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [showCompetitors, setShowCompetitors] = useState(false); 
 
 
   // 1. تحميل سكربت الخريطة
@@ -56,7 +81,7 @@ export function LocationMapDashboard() {
     libraries,
   });
 
-  // 2. دالة جلب البيانات من API Route
+  // 2. دالة جلب بيانات المواقع
   const fetchMapData = useCallback(async () => {
     setLoadingData(true);
     setErrorData(null);
@@ -69,7 +94,6 @@ export function LocationMapDashboard() {
       }
 
       setLocationsData(data);
-      // بعد جلب البيانات، يتم إزالة تحديد الكل لضمان التناسق
       setSelectedLocations([]); 
       setLoadingData(false);
     } catch (e: any) {
@@ -79,11 +103,38 @@ export function LocationMapDashboard() {
     }
   }, []);
 
+  // 3. دالة جلب بيانات المنافسين
+  const fetchCompetitorData = useCallback(async () => {
+    if (showCompetitors) {
+        setLoadingCompetitors(true);
+        try {
+            const response = await fetch('/api/locations/competitor-data');
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to fetch competitor data');
+            }
+            setCompetitorData(data);
+        } catch (e: any) {
+            console.error('Competitor fetch failed:', e);
+            toast.error('Failed to load competitor data.');
+            setShowCompetitors(false); // إخفاء الطبقة عند الفشل
+        } finally {
+            setLoadingCompetitors(false);
+        }
+    } else {
+        setCompetitorData([]);
+    }
+  }, [showCompetitors]);
+
   useEffect(() => {
     fetchMapData();
   }, [fetchMapData]);
 
-  // 3. تطبيق منطق التصفية والبحث
+  useEffect(() => {
+    fetchCompetitorData();
+  }, [fetchCompetitorData, showCompetitors]); // يتم التشغيل عند تبديل showCompetitors
+
+  // 4. تطبيق منطق التصفية والبحث
   const filteredLocations = useMemo(() => {
     return locationsData.filter(loc => {
       const statusMatch = selectedStatus === 'all' || loc.status === selectedStatus;
@@ -92,7 +143,8 @@ export function LocationMapDashboard() {
     });
   }, [selectedStatus, searchTerm, locationsData]);
 
-  // ⭐️ دالة تبديل التحديد للمواقع
+
+  // دالة تبديل التحديد للمواقع
   const toggleLocationSelection = (locationId: string) => {
     setSelectedLocations(prev => 
         prev.includes(locationId) 
@@ -101,29 +153,27 @@ export function LocationMapDashboard() {
     );
   };
 
-  // ⭐️ دالة تحديد / إلغاء تحديد الكل للمواقع المُفلترة
+  // دالة تحديد / إلغاء تحديد الكل للمواقع المُفلترة
   const toggleSelectAll = () => {
     const allFilteredIds = filteredLocations.map(loc => loc.id);
     const areAllSelected = allFilteredIds.every(id => selectedLocations.includes(id));
 
     if (areAllSelected) {
-        // إلغاء تحديد الكل
-        setSelectedLocations(prev => prev.filter(id => !allFilteredIds.includes(id)));
+        const currentSelectionMinusFiltered = selectedLocations.filter(id => !allFilteredIds.includes(id));
+        setSelectedLocations(currentSelectionMinusFiltered);
     } else {
-        // تحديد الكل (مع دمج المواقع التي لم يتم فلترتها إذا كانت محددة بالفعل)
         const currentSelectionMinusFiltered = selectedLocations.filter(id => !allFilteredIds.includes(id));
         setSelectedLocations([...currentSelectionMinusFiltered, ...allFilteredIds]);
     }
   };
 
-  // ⭐️ دالة تنفيذ النشر الجماعي (كمثال)
+  // دالة تنفيذ النشر الجماعي (Placeholder)
   const handleBulkPublish = async () => {
     if (selectedLocations.length === 0) {
         toast.error("Please select at least one location.");
         return;
     }
 
-    // 💡 افتراض: هنا يجب أن تظهر نافذة منبثقة لاختيار المنشور
     const postIdToPublish = prompt("Enter the ID of the post you want to publish to all selected locations:");
     if (!postIdToPublish) return;
 
@@ -145,7 +195,7 @@ export function LocationMapDashboard() {
         }
 
         toast.success(`Post published successfully to ${selectedLocations.length} locations!`);
-        setSelectedLocations([]); // مسح التحديد بعد الانتهاء
+        setSelectedLocations([]); 
 
     } catch (e: any) {
         toast.error(e.message);
@@ -167,13 +217,23 @@ export function LocationMapDashboard() {
       }
   };
 
+  const getCompetitorIcon = () => {
+    // لون أرجواني للمنافسين
+    return { url: 'http://maps.google.com/mapfiles/ms/icons/purple-dot.png' };
+  };
+
 
   const renderMap = () => (
     <GoogleMap
       mapContainerStyle={mapContainerStyle}
       zoom={locationsData.length > 0 ? 11 : 4} 
       center={locationsData.length > 0 ? { lat: locationsData[0].lat, lng: locationsData[0].lng } : defaultCenter}
-      options={{ disableDefaultUI: true, zoomControl: true }}
+      options={{ 
+          disableDefaultUI: true, 
+          zoomControl: true,
+          // ⭐️ تطبيق الثيم الداكن إذا كان مفعلاً
+          styles: theme === 'dark' ? darkMapStyles : [] 
+      }}
       onClick={() => setSelectedMarker(null)} 
     >
         {/* عرض نقاط المواقع الحقيقية */}
@@ -187,6 +247,18 @@ export function LocationMapDashboard() {
             />
         ))}
 
+        {/* ⭐️ عرض نقاط المنافسين (فقط إذا كانت showCompetitors مفعلة) ⭐️ */}
+        {showCompetitors && competitorData.map((comp) => (
+            <Marker 
+                key={comp.id} 
+                position={{ lat: comp.lat, lng: comp.lng }} 
+                title={`Competitor: ${comp.name}`}
+                icon={getCompetitorIcon()}
+                onClick={() => setSelectedMarker(comp)}
+            />
+        ))}
+
+
         {/* نافذة المعلومات عند النقر على النقطة */}
         {selectedMarker && (
             <InfoWindow 
@@ -194,18 +266,24 @@ export function LocationMapDashboard() {
                 onCloseClick={() => setSelectedMarker(null)}
             >
                 <div className="p-2">
-                    <h4 className="font-bold text-sm">{selectedMarker.name}</h4>
+                    <h4 className="font-bold text-sm">
+                        {'status' in selectedMarker ? selectedMarker.name : `Competitor: ${selectedMarker.name}`}
+                    </h4>
                     <p className="text-xs flex items-center gap-1 mt-1">
                         <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" /> 
                         Rating: {selectedMarker.rating.toFixed(1) || 'N/A'}
                     </p>
-                    <p className={cn("text-xs mt-1", 
-                         selectedMarker.status === 'Suspended' ? 'text-red-500' : 
-                         selectedMarker.status === 'Needs Attention' ? 'text-yellow-600' : 
-                         'text-green-600')}>
-                        Status: {selectedMarker.status}
-                    </p>
-                    <Button variant="link" size="sm" className="h-6 p-0 mt-2">View Details</Button>
+                    {'status' in selectedMarker && (
+                        <p className={cn("text-xs mt-1", 
+                            selectedMarker.status === 'Suspended' ? 'text-red-500' : 
+                            selectedMarker.status === 'Needs Attention' ? 'text-yellow-600' : 
+                            'text-green-600')}>
+                            Status: {selectedMarker.status}
+                        </p>
+                    )}
+                    <Button variant="link" size="sm" className="h-6 p-0 mt-2">
+                        {'status' in selectedMarker ? 'View Details' : 'Analyze Competitor'}
+                    </Button>
                 </div>
             </InfoWindow>
         )}
@@ -243,7 +321,6 @@ export function LocationMapDashboard() {
                         {isBulkProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                         Bulk Publish Post
                     </Button>
-                    {/* يمكنك إضافة المزيد من الإجراءات الجماعية هنا */}
                     <Button 
                         variant="secondary" 
                         size="sm" 
@@ -283,16 +360,52 @@ export function LocationMapDashboard() {
             </Select>
           </div>
 
-          {/* زر عرض طبقة المنافسة (للتنفيذ لاحقاً) */}
-          <Button variant="outline" className="w-full gap-2 mt-4" disabled>
-            <Globe className="w-4 h-4" /> Show Competitor Overlay (Soon)
+          {/* ⭐️ زر عرض طبقة المنافسة (تم تفعيله) ⭐️ */}
+          <Button 
+            variant={showCompetitors ? "default" : "outline"}
+            className="w-full gap-2 mt-4" 
+            onClick={() => setShowCompetitors(!showCompetitors)}
+            disabled={loadingCompetitors} // ⭐️ أصبح معطلاً فقط أثناء تحميل المنافسين
+          >
+            {loadingCompetitors ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+                <Globe className="w-4 h-4" />
+            )}
+            {showCompetitors ? 'Hide Competitors' : `Show Competitors (${competitorData.length})`}
           </Button>
+
+          {/* ⭐️ لوحة التنبيهات الجغرافية (Geo-Alerts) - جمالية ومساعدة ⭐️ */}
+          <Card className="border border-yellow-500/30 bg-yellow-500/10 mt-4 p-3 space-y-2">
+            <h4 className="text-sm font-semibold text-yellow-500 flex items-center gap-1">
+                <AlertTriangle className="w-4 h-4" /> Geo-Alerts
+            </h4>
+            {filteredLocations.filter(l => l.status === 'Needs Attention').length > 0 && (
+                <p className="text-xs text-foreground">
+                    ⚠️ {filteredLocations.filter(l => l.status === 'Needs Attention').length} locations require immediate review or posting.
+                </p>
+            )}
+            {competitorData.length > 0 && (
+                <p className="text-xs text-foreground">
+                    🔎 Found {competitorData.length} active competitors in your area.
+                </p>
+            )}
+            {filteredLocations.length > 0 && (
+                <p className="text-xs text-foreground">
+                    <Sparkles className="w-3 h-3 inline mr-1 text-primary"/> AI suggests targeting the 'Dubai Marina' grid area next.
+                </p>
+            )}
+            {filteredLocations.length === 0 && (
+                 <p className="text-xs text-muted-foreground">No critical alerts detected.</p>
+            )}
+          </Card>
+
 
           {/* قائمة المواقع الناتجة */}
           <div className="pt-4">
             <h3 className="text-md font-semibold mb-3">Filtered Results ({filteredLocations.length})</h3>
 
-            {/* ⭐️ زر تحديد/إلغاء تحديد الكل */}
+            {/* زر تحديد/إلغاء تحديد الكل */}
             {filteredLocations.length > 0 && (
                 <div className="flex items-center space-x-2 mb-3">
                     <Checkbox
@@ -324,11 +437,11 @@ export function LocationMapDashboard() {
                                 className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer flex justify-between items-center"
                             >
                                 <div className="flex items-center gap-3">
-                                    {/* ⭐️ Checkbox لتحديد الموقع */}
+                                    {/* Checkbox لتحديد الموقع */}
                                     <Checkbox 
                                         checked={selectedLocations.includes(loc.id)} 
                                         onCheckedChange={() => toggleLocationSelection(loc.id)}
-                                        onClick={(e) => e.stopPropagation()} // منع نقر العنصر الأب من إغلاق نافذة المعلومات
+                                        onClick={(e) => e.stopPropagation()} 
                                     />
                                     <div onClick={() => setSelectedMarker(loc)}>
                                         <p className="font-medium text-sm">{loc.name}</p>
