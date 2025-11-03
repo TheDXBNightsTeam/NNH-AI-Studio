@@ -57,11 +57,11 @@ export default function NotFound() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {[
-                { label: 'GMB Dashboard', href: '/gmb-dashboard' },
+                { label: 'Dashboard', href: '/dashboard' },
                 { label: 'YouTube Dashboard', href: '/youtube-dashboard' },
-                { label: 'GMB Posts', href: '/gmb-posts' },
+                { label: 'GMB Posts', href: '/dashboard/posts' },
                 { label: 'YouTube Posts', href: '/youtube-posts' },
-                { label: 'Analytics', href: '/gmb-dashboard' },
+                { label: 'Analytics', href: '/dashboard/analytics' },
                 { label: 'About', href: '/about' },
               ].map((link) => (
                 <Link

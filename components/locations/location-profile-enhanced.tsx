@@ -477,7 +477,7 @@ export function LocationProfileEnhanced({ location, onRefresh }: LocationProfile
                     className="w-full justify-start"
                     variant="outline"
                   >
-                    <Link href={`/gmb-dashboard?tab=reviews&location=${location.id}`}>
+                    <Link href={`/dashboard/reviews?location=${location.id}`}>
                       <MessageSquare className="w-4 h-4 mr-2" />
                       View Reviews
                     </Link>
