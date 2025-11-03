@@ -31,6 +31,8 @@ export interface GMBLocation {
   response_rate: number
   is_active: boolean
   is_syncing: boolean
+  latitude?: number | null
+  longitude?: number | null
   metadata: Record<string, any>
   ai_insights?: string
   created_at: string
