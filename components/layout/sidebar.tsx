@@ -104,7 +104,8 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
         className={cn(
           'fixed left-0 top-0 z-40 h-screen w-[280px]',
           'border-r bg-background shadow-sm',
-          'lg:translate-x-0'
+          // Always visible on desktop (lg and above)
+          'block'
         )}
       >
         <div className="flex h-full flex-col">
