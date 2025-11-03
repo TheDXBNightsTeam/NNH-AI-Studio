@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { ReviewCard } from "./review-card"
 import { ReviewColumn } from "./review-column"
 import { ReplyDialog } from "./reply-dialog"
 import { Button } from "@/components/ui/button"
@@ -332,30 +333,35 @@ export function ReviewsList() {
         </Card>
       )}
 
-      {/* Reviews Columns */}
+      {/* Reviews List - Single Column Layout */}
       {filteredReviews.length > 0 && (
         <div className="grid gap-6 lg:grid-cols-3">
-          <ReviewColumn
-            title="New Reviews"
-            status="new"
-            reviews={newReviews}
-            onGenerateResponse={handleGenerateResponse}
-            onReply={handleReply}
-          />
-          <ReviewColumn
-            title="In Progress"
-            status="in_progress"
-            reviews={inProgressReviews}
-            onGenerateResponse={handleGenerateResponse}
-            onReply={handleReply}
-          />
-          <ReviewColumn
-            title="Responded"
-            status="responded"
-            reviews={respondedReviews}
-            onGenerateResponse={handleGenerateResponse}
-            onReply={handleReply}
-          />
+          {/* Main Reviews List - Takes 2/3 of the width */}
+          <div className="lg:col-span-2 space-y-4">
+            {filteredReviews.map((review, index) => (
+              <ReviewCard
+                key={review.id}
+                review={review}
+                index={index}
+                onGenerateResponse={handleGenerateResponse}
+                onReply={handleReply}
+              />
+            ))}
+          </div>
+          
+          {/* Empty Side Columns - Placeholders for future features */}
+          <div className="lg:col-span-1 space-y-4">
+            <div className="bg-card border border-primary/30 rounded-lg p-4 min-h-[200px]">
+              <div className="text-muted-foreground text-sm text-center py-8">
+                {/* Placeholder for future widgets */}
+              </div>
+            </div>
+            <div className="bg-card border border-primary/30 rounded-lg p-4 min-h-[200px]">
+              <div className="text-muted-foreground text-sm text-center py-8">
+                {/* Placeholder for future widgets */}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
