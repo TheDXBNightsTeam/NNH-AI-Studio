@@ -9,7 +9,7 @@ import { StatsCards } from '@/components/dashboard/stats-cards';
 import { LastSyncInfo } from '@/components/dashboard/last-sync-info';
 // ⭐️ تم إزالة استدعاء WeeklyTasksWidget
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Zap, Clock, ShieldCheck, TrendingUp, AlertTriangle, Loader2, Star, Send } from 'lucide-react'; // تم إضافة Loader2 و Star
+import { RefreshCw, Zap, Clock, ShieldCheck, TrendingUp, AlertTriangle, Loader2, Star, Send, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -393,50 +393,6 @@ Score based on Quality, Visibility, and Compliance.
 </CardContent>
 </Card>
 );
-
-  // ⭐️ مكون بطاقة الموقع النشط (Active Location Card) ⭐️
-  const ActiveLocationInfo = () => {
-      // 💡 يمكن جلب الاسم بشكل ديناميكي من الـ API لاحقًا، لكن نستخدم حاليًا المكان الذي ذكره المستخدم في الصورة
-      const activeLocationName = "Downtown Branch"; 
-
-      // جلب الإحصائيات من 'stats'
-      const totalLocations = stats.totalLocations || 0;
-      const averageRating = stats.allTimeAverageRating || 0; 
-
-      if (loading) {
-          return (
-              <Card className="lg:col-span-1 border border-primary/20 flex items-center justify-center p-4">
-                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              </Card>
-          );
-      }
-
-      return (
-        <Card className="lg:col-span-1 border border-primary/20">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-primary">Active Location</CardTitle>
-            <MapPin className="w-4 h-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-              <h3 className="text-xl font-bold truncate">
-                  {totalLocations === 0 ? "No Locations" : activeLocationName}
-              </h3>
-              {totalLocations > 0 && (
-                  <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
-                      <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                      {averageRating.toFixed(1)} / 5.0 Rating
-                  </p>
-              )}
-              {totalLocations > 1 && (
-                  <Link href="/dashboard/locations" className="text-xs text-primary hover:underline mt-1 block">
-                      Manage {totalLocations - 1} more
-                  </Link>
-              )}
-          </CardContent>
-        </Card>
-      );
-  };
-
 
 return (
 <div className="space-y-8">
