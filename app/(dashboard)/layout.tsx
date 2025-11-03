@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { MobileNav } from '@/components/layout/mobile-nav';
@@ -12,8 +12,26 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Sidebar should be open by default on desktop, closed on mobile
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  // On mobile, close sidebar by default
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setSidebarOpen(false);
+      } else {
+        setSidebarOpen(true);
+      }
+    };
+
+    // Set initial state
+    handleResize();
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <KeyboardProvider onCommandPaletteOpen={() => setCommandPaletteOpen(true)}>
@@ -22,7 +40,7 @@ export default function DashboardLayout({
 
         <div className="lg:pl-[280px]">
           <Header
-            onMenuClick={() => setSidebarOpen(true)}
+            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
             onCommandPaletteOpen={() => setCommandPaletteOpen(true)}
           />
 
