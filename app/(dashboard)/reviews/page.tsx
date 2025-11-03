@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 // 💡 سنفترض أننا نستخدم مكوناً جديداً لبيئة العمل
-import { ReviewResponseCockpit } from '@/components/reviews/review-response-cockpit';
+import { ReviewResponseCockpit } from '@/components/reviews/ReviewResponseCockpit';
 import { BarChart3, MessageSquare, ShieldCheck, Sparkles, AlertTriangle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
