@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logServerActivity } from '@/server/services/activity';
 import { errorResponse, successResponse } from '@/lib/utils/api-response';
 
 export const dynamic = 'force-dynamic';
@@ -316,16 +317,12 @@ export async function POST(
 
     // Log activity (non-blocking)
     try {
-      await supabase
-        .from('activity_logs')
-        .insert({
-          user_id: user.id,
-          activity_type: isDraft ? 'question_draft' : 'question_answered',
-          activity_message: isDraft 
-            ? `Saved draft answer for question`
-            : `Answered customer question`,
-          metadata: { question_id: questionId }
-        });
+      await logServerActivity({
+        userId: user.id,
+        type: isDraft ? 'question_draft' : 'question_answered',
+        message: isDraft ? 'Saved draft answer for question' : 'Answered customer question',
+        metadata: { question_id: questionId },
+      });
     } catch (logError) {
       // Don't fail the request if logging fails
       console.error('[Questions API] Error logging activity:', logError);
@@ -439,6 +436,16 @@ export async function DELETE(
       console.error('[Questions API] Error removing answer:', updateError);
       return errorResponse('DATABASE_ERROR', 'Failed to remove answer', 500);
     }
+
+    // Unified activity log: Answer removed
+    try {
+      await logServerActivity({
+        userId: user.id,
+        type: 'question_answer_removed',
+        message: 'Removed answer and reverted question to pending',
+        metadata: { question_id: questionId },
+      });
+    } catch {}
 
     return successResponse({
       question: updatedQuestion,

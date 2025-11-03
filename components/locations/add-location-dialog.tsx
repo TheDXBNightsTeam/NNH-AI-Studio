@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Loader2, Search } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { logActivity } from "@/lib/services/activity"
 import { useRouter } from "next/navigation"
 import { SearchGoogleLocationsDialog } from "./search-google-locations-dialog"
 
@@ -88,12 +89,11 @@ export function AddLocationDialog({ open: externalOpen, onOpenChange }: AddLocat
 
       if (error) throw error
 
-      // Log activity
-      await supabase.from("activity_logs").insert({
-        user_id: user.id,
-        activity_type: "location",
-        activity_message: `Added new location: ${formData.location_name}`,
-        actionable: false,
+      // Log activity (unified)
+      await logActivity({
+        type: "location",
+        message: `Added new location: ${formData.location_name}`,
+        metadata: { location_name: formData.location_name },
       })
 
       setOpen(false)

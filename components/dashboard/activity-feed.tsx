@@ -3,17 +3,93 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowRight, MessageSquare, MapPin, Star, Zap } from "lucide-react"
+import { 
+  ArrowRight, 
+  MessageSquare, 
+  MapPin, 
+  Star, 
+  Zap, 
+  FileText,
+  HelpCircle,
+  Youtube,
+  Upload,
+  Trash2,
+  Edit,
+  Link as LinkIcon,
+  CheckCircle,
+  XCircle,
+  Save,
+  Eye
+} from "lucide-react"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { ActivityLog } from "@/lib/types/database"
 import { Skeleton } from "@/components/ui/skeleton"
+import Link from "next/link"
 
+// خريطة الأيقونات حسب نوع النشاط
 const activityIcons = {
+  // GMB
   review: MessageSquare,
   location: MapPin,
   rating: Star,
+  post: FileText,
+  post_deleted: Trash2,
+  post_updated: Edit,
+  post_saved: Save,
+  question_answered: CheckCircle,
+  question_draft: Save,
+  question_answer_removed: XCircle,
+  
+  // YouTube
+  youtube_connected: LinkIcon,
+  youtube_disconnected: XCircle,
+  youtube_ai_generated: Zap,
+  youtube_draft_created: Save,
+  youtube_draft_deleted: Trash2,
+  youtube_video_uploaded: Upload,
+  youtube_analytics_exported: Eye,
+  
+  // AI
   ai: Zap,
+  
+  // Default
+  default: MessageSquare,
+}
+
+// دالة لتوليد الروابط بناءً على نوع النشاط والـ metadata
+const getActivityLink = (activity: ActivityLog): string | null => {
+  const meta = activity.metadata as Record<string, any> || {}
+  
+  // GMB Posts
+  if (activity.activity_type.includes('post')) {
+    return '/gmb-posts'
+  }
+  
+  // GMB Reviews
+  if (activity.activity_type.includes('review')) {
+    return '/reviews'
+  }
+  
+  // GMB Questions
+  if (activity.activity_type.includes('question')) {
+    return '/questions'
+  }
+  
+  // GMB Locations
+  if (activity.activity_type.includes('location')) {
+    return '/locations'
+  }
+  
+  // YouTube
+  if (activity.activity_type.includes('youtube')) {
+    if (activity.activity_type === 'youtube_video_uploaded' && meta.videoId) {
+      return `https://www.youtube.com/watch?v=${meta.videoId}`
+    }
+    return '/youtube-dashboard'
+  }
+  
+  return null
 }
 
 export function ActivityFeed() {
@@ -77,8 +153,32 @@ export function ActivityFeed() {
   }, [])
 
   const getActivityIcon = (type: string) => {
-    const IconComponent = activityIcons[type as keyof typeof activityIcons] || MessageSquare
+    const IconComponent = activityIcons[type as keyof typeof activityIcons] || activityIcons.default
     return IconComponent
+  }
+
+  // دالة لتحديد لون الأيقونة حسب نوع النشاط
+  const getActivityColor = (type: string): string => {
+    if (type.includes('delete') || type.includes('disconnect') || type.includes('removed')) {
+      return 'from-red-500 to-red-600'
+    }
+    if (type.includes('ai') || type.includes('generated')) {
+      return 'from-purple-500 to-pink-500'
+    }
+    if (type.includes('youtube')) {
+      return 'from-red-600 to-red-700'
+    }
+    if (type.includes('saved') || type.includes('draft')) {
+      return 'from-blue-500 to-blue-600'
+    }
+    if (type.includes('upload') || type.includes('publish') || type.includes('connected')) {
+      return 'from-green-500 to-green-600'
+    }
+    if (type.includes('answered') || type.includes('replied')) {
+      return 'from-emerald-500 to-emerald-600'
+    }
+    // Default
+    return 'from-primary to-accent'
   }
 
   const formatRelativeTime = (timestamp: string) => {
@@ -128,33 +228,67 @@ export function ActivityFeed() {
           <AnimatePresence mode="popLayout">
             {activities.map((activity) => {
               const Icon = getActivityIcon(activity.activity_type)
-              return (
+              const activityLink = getActivityLink(activity)
+              const colorClass = getActivityColor(activity.activity_type)
+              const isExternal = activityLink?.startsWith('http')
+              
+              const content = (
                 <motion.div
                   key={activity.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
-                  className="flex items-center gap-4 p-4 rounded-lg bg-secondary border border-primary/20 hover:border-primary/40 transition-all duration-200"
+                  className={`flex items-center gap-4 p-4 rounded-lg bg-secondary border border-primary/20 transition-all duration-200 ${
+                    activityLink ? 'hover:border-primary/40 hover:bg-secondary/80 cursor-pointer' : ''
+                  }`}
                 >
-                  <div className="relative">
-                    <div className="absolute inset-0 animate-ping rounded-full bg-primary/30 opacity-0 group-hover:opacity-100" />
-                    <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                  <div className="relative group">
+                    <div className="absolute inset-0 rounded-full bg-primary/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className={`relative w-10 h-10 rounded-full bg-gradient-to-br ${colorClass} flex items-center justify-center shadow-lg`}>
                       <Icon className="w-5 h-5 text-white" />
                     </div>
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground truncate">{activity.activity_message}</p>
-                    <p className="text-xs text-muted-foreground">{formatRelativeTime(activity.created_at)}</p>
+                    <p className="text-sm text-foreground font-medium truncate">
+                      {activity.activity_message}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatRelativeTime(activity.created_at)}
+                    </p>
                   </div>
 
-                  {activity.actionable && (
+                  {activityLink && (
                     <Button size="sm" variant="ghost" className="shrink-0 text-primary hover:text-accent">
                       <ArrowRight className="w-4 h-4" />
                     </Button>
                   )}
                 </motion.div>
               )
+
+              // إذا كان هناك رابط، نلف المحتوى بـ Link أو a tag
+              if (activityLink) {
+                if (isExternal) {
+                  return (
+                    <a
+                      key={activity.id}
+                      href={activityLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block"
+                    >
+                      {content}
+                    </a>
+                  )
+                }
+                return (
+                  <Link key={activity.id} href={activityLink}>
+                    {content}
+                  </Link>
+                )
+              }
+
+              return content
             })}
           </AnimatePresence>
         )}

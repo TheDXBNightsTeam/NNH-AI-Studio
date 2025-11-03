@@ -1,0 +1,45 @@
+"use client"
+
+import { createClient } from '@/lib/supabase/client'
+
+export type ActivityType =
+  | 'ai'
+  | 'post'
+  | 'review'
+  | 'location'
+  | 'auth'
+  | 'youtube'
+  | 'settings'
+  | 'error'
+
+type LogParams = {
+  type: ActivityType | string
+  message: string
+  metadata?: Record<string, any>
+  actionable?: boolean
+}
+
+/**
+ * Log user activity into Supabase activity_logs table.
+ * Safe to call on client; silently no-ops if user not authenticated.
+ */
+export async function logActivity({ type, message, metadata = {}, actionable = false }: LogParams) {
+  try {
+    const supabase = createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    await supabase.from('activity_logs').insert({
+      user_id: user.id,
+      activity_type: type,
+      activity_message: message,
+      metadata,
+      actionable,
+    })
+  } catch (err) {
+    // Do not block UX if logging fails
+    console.error('logActivity failed:', err)
+  }
+}

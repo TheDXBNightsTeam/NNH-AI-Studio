@@ -15,6 +15,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2, Sparkles } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { logActivity } from "@/lib/services/activity"
 import { useRouter } from "next/navigation"
 import type { GMBReview } from "@/lib/types/database"
 
@@ -137,12 +138,11 @@ export function ReplyDialog({ review, open, onOpenChange, onReply }: ReplyDialog
           throw updateError
         }
 
-        // Log activity
-        await supabase.from("activity_logs").insert({
-          user_id: user.id,
-          activity_type: "review",
-          activity_message: `Replied to review from ${review.reviewer_name}`,
-          actionable: false,
+        // Log activity (unified)
+        await logActivity({
+          type: "review",
+          message: `Replied to review from ${review.reviewer_name}`,
+          metadata: { reviewId: review.id, rating: review.rating },
         })
 
         onOpenChange(false)
