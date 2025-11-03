@@ -1,19 +1,24 @@
+// (dashboard)/locations/page.tsx
+
 'use client';
 
 import { Suspense } from 'react';
-import { LocationsList } from '@/components/locations/locations-list';
+// ⭐️ تصحيح الاستيراد: تم تغيير المسار إلى '/LocationMapDashboard' ليتطابق مع اسم الملف الفعلي
+import { LocationMapDashboard } from '@/components/locations/LocationMapDashboard'; 
 
 function LocationsPageContent() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Locations</h1>
+        {/* ⭐️ تم تغيير العنوان والوصف ليعكسا التركيز على الخريطة والأداء والمنافسة */}
+        <h1 className="text-3xl font-bold tracking-tight">Geo-Performance Map</h1>
         <p className="text-muted-foreground mt-2">
-          Manage your Google My Business locations
+          Visualize location health, local ranking, and competitor activity on an interactive map.
         </p>
       </div>
 
-      <LocationsList />
+      {/* ⭐️ استدعاء مكون الخريطة الجديد */}
+      <LocationMapDashboard />
     </div>
   );
 }
@@ -29,4 +34,3 @@ export default function LocationsPage() {
     </Suspense>
   );
 }
-

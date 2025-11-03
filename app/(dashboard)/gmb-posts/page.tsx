@@ -1,130 +1,173 @@
-"use client"
+'use client';
 
-import { useEffect, useState } from "react"
-import { createClient } from "@/lib/supabase/client"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import Link from "next/link"
-import { ArrowLeft, Calendar, Image as ImageIcon, Loader2, Send, Timer, Sparkles } from "lucide-react"
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Link from 'next/link';
+import { ArrowLeft, Calendar, Image as ImageIcon, Loader2, Send, Timer, Sparkles, Upload } from 'lucide-react';
 
-type LocationItem = { id: string; location_name: string }
+type LocationItem = { id: string; location_name: string };
+
+// تعريف أنواع أزرار CTA المتاحة في GMB
+const ctaOptions = [
+  { value: 'BOOK', label: 'Book' },
+  { value: 'ORDER', label: 'Order Online' },
+  { value: 'SHOP', label: 'Shop' },
+  { value: 'LEARN_MORE', label: 'Learn More' },
+  { value: 'SIGN_UP', label: 'Sign Up' },
+  { value: 'CALL', label: 'Call' },
+];
 
 export default function GMBPostsPage() {
-  const supabase = createClient()
-  const [locations, setLocations] = useState<LocationItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const supabase = createClient();
+  const [locations, setLocations] = useState<LocationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  // حالة جديدة لتعقب تحميل الميديا
+  const [mediaUploading, setMediaUploading] = useState(false);
 
-  const [locationId, setLocationId] = useState<string>("")
-  const [title, setTitle] = useState("")
-  const [content, setContent] = useState("")
-  const [mediaUrl, setMediaUrl] = useState("")
-  const [cta, setCta] = useState("")
-  const [ctaUrl, setCtaUrl] = useState("")
-  const [schedule, setSchedule] = useState<string>("")
-  const [genLoading, setGenLoading] = useState(false)
-  const [posts, setPosts] = useState<any[]>([])
-  const [listLoading, setListLoading] = useState(true)
+  const [locationId, setLocationId] = useState<string>('');
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [mediaUrl, setMediaUrl] = useState('');
+  // استخدام قيمة CTA (value) التي تطابق الخيارات المحددة
+  const [cta, setCta] = useState<string>('');
+  const [ctaUrl, setCtaUrl] = useState('');
+  const [schedule, setSchedule] = useState<string>('');
+  const [genLoading, setGenLoading] = useState(false);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [listLoading, setListLoading] = useState(true);
 
   const handleGenerate = async () => {
     try {
-      setGenLoading(true)
+      setGenLoading(true);
       const res = await fetch('/api/ai/generate-post', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform: 'gmb', prompt: content || title, tone: 'friendly' })
-      })
-      const j = await res.json()
-      if (j?.title) setTitle(j.title)
-      if (j?.description) setContent(j.description)
-      if (j?.hashtags && typeof j.hashtags === 'string') setCta(``) // keep CTA untouched
-    } catch (e:any) {
-      alert(e.message)
+        body: JSON.stringify({ platform: 'gmb', prompt: content || title, tone: 'friendly' }),
+      });
+      const j = await res.json();
+      if (j?.title) setTitle(j.title);
+      if (j?.description) setContent(j.description);
+      // إذا كان التوليد بالذكاء الاصطناعي لا يتضمن CTA، نحافظ على CTA فارغاً
+      // if (j?.hashtags && typeof j.hashtags === 'string') setCta(``); // تم إزالة هذا السطر ليتطابق مع التحسينات
+    } catch (e: any) {
+      alert(e.message);
     } finally {
-      setGenLoading(false)
+      setGenLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
       const { data } = await supabase
-        .from("gmb_locations")
-        .select("id, location_name")
-        .eq("user_id", user.id)
-        .order("location_name")
-      setLocations((data ?? []) as any)
-      setLoading(false)
+        .from('gmb_locations')
+        .select('id, location_name')
+        .eq('user_id', user.id)
+        .order('location_name');
+      setLocations((data ?? []) as any);
+      setLoading(false);
       // fetch posts
       try {
-        const res = await fetch('/api/gmb/posts/list')
-        const j = await res.json()
-        if (res.ok) setPosts(j.items || [])
+        const res = await fetch('/api/gmb/posts/list');
+        const j = await res.json();
+        if (res.ok) setPosts(j.items || []);
       } finally {
-        setListLoading(false)
+        setListLoading(false);
       }
-    })()
-  }, [])
+    })();
+  }, []);
 
   const handleSave = async () => {
-    if (!locationId || !content.trim()) return
+    // يجب أن يكون ctaUrl مطلوباً إذا تم تحديد CTA، لكننا سنسمح بالحفظ بدونها الآن
+    if (!locationId || !content.trim()) return;
     try {
-      setSaving(true)
-      const res = await fetch("/api/gmb/posts/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      setSaving(true);
+      const res = await fetch('/api/gmb/posts/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           locationId,
           title: title || undefined,
           content,
           mediaUrl: mediaUrl || undefined,
+          // إرسال قيمة CTA فقط إذا كانت محددة
           callToAction: cta || undefined,
-          callToActionUrl: ctaUrl || undefined,
+          // إرسال CTA URL فقط إذا تم تحديد CTA URL أو إذا كان CTA محددًا
+          callToActionUrl: (cta && ctaUrl) || undefined, 
           scheduledAt: schedule || undefined,
         }),
-      })
-      const j = await res.json()
-      if (!res.ok) throw new Error(j.error || "Failed to save post")
-      alert("Post saved successfully")
-      return j.post?.id as string | undefined
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || 'Failed to save post');
+      alert('Post saved successfully');
+      return j.post?.id as string | undefined;
     } catch (e: any) {
-      alert(e.message)
+      alert(e.message);
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handlePublish = async () => {
-    if (!locationId || !content.trim()) return
-    // Ensure we have a saved post id first
-    let postId = await handleSave()
-    if (!postId) return
+    if (!locationId || !content.trim()) return;
+    // التأكد من أن لدينا saved post id أولاً
+    let postId = await handleSave();
+    if (!postId) return;
     try {
+      setSaving(true); // نستخدم حالة الحفظ هنا أيضًا للإشارة إلى العمل الجاري
       const res = await fetch('/api/gmb/posts/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId })
-      })
-      const j = await res.json()
-      if (!res.ok) throw new Error(j.error || 'Failed to publish')
-      alert('Published to Google successfully')
-      // Clear form after publish
-      setTitle("")
-      setContent("")
-      setMediaUrl("")
-      setCta("")
-      setCtaUrl("")
-      setSchedule("")
-      // refresh list
-      const r = await fetch('/api/gmb/posts/list'); const jj = await r.json(); if (r.ok) setPosts(jj.items||[])
-    } catch (e:any) {
-      alert(e.message)
+        body: JSON.stringify({ postId }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || 'Failed to publish');
+      alert('Published to Google successfully');
+      // مسح النموذج بعد النشر
+      setTitle('');
+      setContent('');
+      setMediaUrl('');
+      setCta('');
+      setCtaUrl('');
+      setSchedule('');
+      // تحديث القائمة بعد النشر (بدلًا من جلبها بالكامل، يمكننا إزالة المنشور القديم وإضافة المنشور الجديد إذا لزم الأمر)
+      const r = await fetch('/api/gmb/posts/list');
+      const jj = await r.json();
+      if (r.ok) setPosts(jj.items || []);
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setSaving(false);
     }
-  }
+  };
+
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setMediaUploading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload/image', { method: 'POST', body: formData });
+      const j = await res.json();
+      if (res.ok && j.url) setMediaUrl(j.url);
+      else alert(j.error || 'Upload failed');
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setMediaUploading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -146,11 +189,13 @@ export default function GMBPostsPage() {
               <label className="text-sm text-muted-foreground">Location</label>
               <Select onValueChange={setLocationId} value={locationId}>
                 <SelectTrigger>
-                  <SelectValue placeholder={loading ? "Loading locations..." : "Select a location"} />
+                  <SelectValue placeholder={loading ? 'Loading locations...' : 'Select a location'} />
                 </SelectTrigger>
                 <SelectContent>
                   {locations.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>{l.location_name}</SelectItem>
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.location_name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -165,9 +210,20 @@ export default function GMBPostsPage() {
             {/* Content */}
             <div className="grid gap-2">
               <label className="text-sm text-muted-foreground">Content</label>
-              <Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={6} placeholder="Write your post content..." />
+              <Textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows={6}
+                placeholder="Write your post content..."
+              />
               <div className="flex gap-2">
-                <Button type="button" onClick={handleGenerate} variant="outline" className="gap-2" disabled={genLoading}>
+                <Button
+                  type="button"
+                  onClick={handleGenerate}
+                  variant="outline"
+                  className="gap-2"
+                  disabled={genLoading}
+                >
                   {genLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Generate with AI
                 </Button>
               </div>
@@ -177,29 +233,25 @@ export default function GMBPostsPage() {
             <div className="grid gap-2">
               <label className="text-sm text-muted-foreground">Image/Media (optional)</label>
               <div className="flex gap-2">
-                <Input value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} placeholder="URL or upload file" />
+                <Input value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} placeholder="URL or upload file" disabled={mediaUploading} />
                 <label className="cursor-pointer">
-                  <Button variant="outline" type="button" className="gap-2" asChild>
-                    <span><ImageIcon className="w-4 h-4" /> Upload</span>
+                  <Button variant="outline" type="button" className="gap-2" asChild disabled={mediaUploading}>
+                    {mediaUploading ? (
+                      <span>
+                        <Loader2 className="w-4 h-4 animate-spin" /> Uploading...
+                      </span>
+                    ) : (
+                      <span>
+                        <Upload className="w-4 h-4" /> Upload
+                      </span>
+                    )}
                   </Button>
                   <input
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      try {
-                        const formData = new FormData()
-                        formData.append('file', file)
-                        const res = await fetch('/api/upload/image', { method: 'POST', body: formData })
-                        const j = await res.json()
-                        if (res.ok && j.url) setMediaUrl(j.url)
-                        else alert(j.error || 'Upload failed')
-                      } catch (e: any) {
-                        alert(e.message)
-                      }
-                    }}
+                    onChange={handleMediaUpload}
+                    disabled={mediaUploading}
                   />
                 </label>
               </div>
@@ -214,11 +266,25 @@ export default function GMBPostsPage() {
             <div className="grid gap-2 md:grid-cols-2">
               <div className="grid gap-2">
                 <label className="text-sm text-muted-foreground">Call to Action (optional)</label>
-                <Input value={cta} onChange={(e) => setCta(e.target.value)} placeholder="Book, Order, Learn more..." />
+                {/* ⭐️ تم استبدال Input بـ Select لتحسين UX */}
+                <Select onValueChange={setCta} value={cta}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select CTA type (Book, Order, etc.)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        {ctaOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <label className="text-sm text-muted-foreground">CTA URL</label>
-                <Input value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} placeholder="https://..." />
+                {/* الحقل الآن معطّل إذا لم يتم تحديد CTA */}
+                <Input value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} placeholder="https://..." disabled={!cta} />
               </div>
             </div>
 
@@ -240,7 +306,7 @@ export default function GMBPostsPage() {
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 Save Post
               </Button>
-              <Button variant="outline" type="button" className="gap-2" onClick={handlePublish}>
+              <Button variant="outline" type="button" className="gap-2" onClick={handlePublish} disabled={saving}>
                 <Timer className="w-4 h-4" /> Publish to Google
               </Button>
             </div>
@@ -251,11 +317,17 @@ export default function GMBPostsPage() {
                 <div className="text-sm text-muted-foreground mb-2">Preview</div>
                 {title && <div className="font-semibold mb-1">{title}</div>}
                 <div className="whitespace-pre-wrap text-sm">{content}</div>
+                {cta && ctaOptions.find(o => o.value === cta) && (
+                    <Button size="sm" className="mt-3" variant="secondary" disabled={!ctaUrl}>
+                        {ctaOptions.find(o => o.value === cta)?.label || 'CTA'}
+                    </Button>
+                )}
               </div>
             )}
           </CardContent>
         </Card>
 
+        {/* Recent Posts Card remains the same */}
         <Card className="border border-primary/20 glass mt-8">
           <CardHeader>
             <CardTitle>Recent Posts</CardTitle>
@@ -280,12 +352,38 @@ export default function GMBPostsPage() {
                   <tbody>
                     {posts.map((p) => (
                       <tr key={p.id} className="border-t border-primary/10">
-                        <td className="py-2 pr-4">{p.title || p.content?.slice(0,50) || 'Untitled'}</td>
+                        <td className="py-2 pr-4">{p.title || p.content?.slice(0, 50) || 'Untitled'}</td>
                         <td className="py-2 pr-4 capitalize">{p.status}</td>
                         <td className="py-2 pr-4">{new Date(p.created_at).toLocaleString()}</td>
                         <td className="py-2 pr-4 flex gap-2">
-                          <Button variant="outline" size="sm" onClick={async()=>{ setTitle(p.title||''); setContent(p.content||''); setLocationId(p.location_id); }}>Edit</Button>
-                          <Button variant="outline" size="sm" onClick={async()=>{ const r = await fetch(`/api/gmb/posts/delete?id=${encodeURIComponent(p.id)}`, { method:'DELETE' }); if (r.ok) { setPosts((s)=>s.filter((x)=>x.id!==p.id)) } }}>Delete</Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              setTitle(p.title || '');
+                              setContent(p.content || '');
+                              setLocationId(p.location_id);
+                              // تحميل CTA و CTA URL عند التعديل
+                              setCta(p.call_to_action?.type || '');
+                              setCtaUrl(p.call_to_action?.url || '');
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              const r = await fetch(`/api/gmb/posts/delete?id=${encodeURIComponent(p.id)}`, {
+                                method: 'DELETE',
+                              });
+                              if (r.ok) {
+                                setPosts((s) => s.filter((x) => x.id !== p.id));
+                              }
+                            }}
+                          >
+                            Delete
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -297,7 +395,5 @@ export default function GMBPostsPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
-
-
