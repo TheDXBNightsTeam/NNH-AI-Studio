@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,9 @@ export function LocationCard({ location, index }: LocationCardProps) {
   const [mapOpen, setMapOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [attributesOpen, setAttributesOpen] = useState(false)
+  const [coverPhoto, setCoverPhoto] = useState<string | null>(null)
+  const [logoPhoto, setLogoPhoto] = useState<string | null>(null)
+  const [loadingMedia, setLoadingMedia] = useState(true)
   
   // Extract metadata
   const metadata = (location.metadata as any) || {}
@@ -46,6 +49,58 @@ export function LocationCard({ location, index }: LocationCardProps) {
   const hasVoiceOfMerchant = metadata.hasVoiceOfMerchant
   const canHaveFoodMenus = metadata.canHaveFoodMenus
   const isOpen = openInfo.status === 'OPEN'
+
+  // Fetch media for cover/logo photos
+  useEffect(() => {
+    async function fetchLocationMedia() {
+      try {
+        setLoadingMedia(true)
+        const response = await fetch(`/api/gmb/media?locationId=${location.id}`)
+        const result = await response.json()
+        
+        if (response.ok && result.data?.media) {
+          const media = result.data.media
+          let foundCover = false
+          let foundLogo = false
+          
+          media.forEach((item: any) => {
+            const category = item.locationAssociation?.category || 
+                           item.metadata?.locationAssociation?.category ||
+                           item.metadata?.category ||
+                           item.category
+            const url = item.sourceUrl || item.googleUrl || item.url || item.thumbnailUrl
+            
+            if (!url) return
+            
+            if (category === 'COVER' && !foundCover) {
+              setCoverPhoto(url)
+              foundCover = true
+            } else if (category === 'LOGO' && !foundLogo) {
+              setLogoPhoto(url)
+              foundLogo = true
+            }
+          })
+          
+          // If no categorized media found, use first photo as cover
+          if (!foundCover && media.length > 0) {
+            const firstPhoto = media.find((item: any) => {
+              const url = item.sourceUrl || item.googleUrl || item.url || item.thumbnailUrl
+              return url && (item.mediaFormat === 'PHOTO' || !item.mediaFormat)
+            })
+            if (firstPhoto) {
+              setCoverPhoto(firstPhoto.sourceUrl || firstPhoto.googleUrl || firstPhoto.url || firstPhoto.thumbnailUrl)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching location media:', error)
+      } finally {
+        setLoadingMedia(false)
+      }
+    }
+    
+    fetchLocationMedia()
+  }, [location.id])
   
   // Format business hours
   const formatHours = (hours: any) => {
@@ -68,17 +123,19 @@ export function LocationCard({ location, index }: LocationCardProps) {
   
   const businessHours = formatHours(regularHours)
 
-  // Generate Google Maps embed URL - use latlng if available, otherwise address
+  // Generate Google Maps embed URL - use location name for better labeling
   const getMapUrl = () => {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
     if (!apiKey) return null // Don't show map if API key is not configured
     
-    if (latlng.latitude && latlng.longitude) {
-      return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${latlng.latitude},${latlng.longitude}&zoom=15`
-    }
-    if (!location.address) return null
-    const encodedAddress = encodeURIComponent(location.address)
-    return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodedAddress}&zoom=15`
+    // Prefer location name for better map labeling, fallback to address or coordinates
+    const locationQuery = location.location_name || location.address || 
+      (latlng.latitude && latlng.longitude ? `${latlng.latitude},${latlng.longitude}` : null)
+    
+    if (!locationQuery) return null
+    
+    const encodedQuery = encodeURIComponent(locationQuery)
+    return `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${encodedQuery}&zoom=15`
   }
 
   // Generate Google Maps search URL for external link - prefer mapsUri if available
@@ -120,12 +177,42 @@ export function LocationCard({ location, index }: LocationCardProps) {
             )}
           </div>
 
+          {/* Cover Photo */}
+          {coverPhoto && (
+            <div className="relative h-48 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20">
+              <img
+                src={coverPhoto}
+                alt={`${location.location_name} cover`}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-card/90 via-card/20 to-transparent" />
+            </div>
+          )}
+
           <CardContent className="p-6 relative z-10">
             {/* Location header */}
             <div className="space-y-3 mb-4">
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-4">
+                {/* Logo */}
+                {logoPhoto && (
+                  <div className="flex-shrink-0">
+                    <img
+                      src={logoPhoto}
+                      alt={`${location.location_name} logo`}
+                      className="w-20 h-20 rounded-lg object-cover border-2 border-primary/30 shadow-lg"
+                    />
+                  </div>
+                )}
+                
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-xl font-bold text-foreground truncate">{location.location_name}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-foreground truncate">{location.location_name}</h3>
+                    {logoPhoto && (
+                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-xs">
+                        Verified
+                      </Badge>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 flex-wrap mt-2">
                     {location.category && (
                       <Badge variant="secondary" className="bg-secondary text-muted-foreground">
