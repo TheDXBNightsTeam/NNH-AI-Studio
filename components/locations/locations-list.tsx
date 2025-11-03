@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { LocationCard } from "./location-card"
 import { LocationProfileEnhanced } from "./location-profile-enhanced"
 import { LocationFilters } from "./location-filters"
@@ -33,11 +33,12 @@ export function LocationsList() {
   const [showAddDialog, setShowAddDialog] = useState(false)
   
   const supabase = createClient()
-  const searchParams = useSearchParams()
   const router = useRouter()
   
   // Check for location query param
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    const searchParams = new URLSearchParams(window.location.search)
     const locationId = searchParams.get('location')
     if (locationId && locations.length > 0) {
       const location = locations.find(l => l.id === locationId)
@@ -47,7 +48,7 @@ export function LocationsList() {
     } else {
       setViewLocation(null)
     }
-  }, [searchParams, locations])
+  }, [locations])
 
   useEffect(() => {
     async function fetchLocations() {

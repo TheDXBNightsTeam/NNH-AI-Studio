@@ -1,246 +1,246 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from "react"
-import { Bell, Search, Menu, Check, CheckCheck, Trash2, AlertCircle, Info, CheckCircle, AlertTriangle, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { useSupabase } from "@/lib/hooks/use-supabase"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import Link from "next/link"
-import Image from "next/image"
-import { cn } from "@/lib/utils"
+import { useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
+import {
+  Search,
+  Bell,
+  Menu,
+  Sun,
+  Moon,
+  Command,
+  ChevronRight,
+  Keyboard,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { UserButton } from '@/components/auth/user-button';
+import { useTheme } from 'next-themes';
+import { useKeyboard } from '@/components/keyboard/keyboard-provider';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
-type Notification = {
-  id: string
-  type: 'review' | 'sync' | 'error' | 'info' | 'success' | 'warning'
-  title: string
-  message: string
-  link?: string
-  read: boolean
-  created_at: string
+interface HeaderProps {
+  onMenuClick: () => void;
+  onCommandPaletteOpen: () => void;
 }
 
-export function Header() {
-  const { user } = useSupabase()
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [open, setOpen] = useState(false)
+const notifications = [
+  {
+    id: 1,
+    title: 'New review received',
+    description: '5-star review at Downtown Location',
+    time: '5 minutes ago',
+    unread: true,
+  },
+  {
+    id: 2,
+    title: 'Question needs answer',
+    description: 'Customer asked about business hours',
+    time: '1 hour ago',
+    unread: true,
+  },
+  {
+    id: 3,
+    title: 'Post published successfully',
+    description: 'Holiday hours announcement',
+    time: '2 hours ago',
+    unread: false,
+  },
+];
 
-  const getInitials = (email?: string) => {
-    if (!email) return "U"
-    return email.charAt(0).toUpperCase()
-  }
+const routeNames: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/dashboard/locations': 'Locations',
+  '/dashboard/reviews': 'Reviews',
+  '/dashboard/questions': 'Questions',
+  '/dashboard/posts': 'Posts',
+  '/dashboard/analytics': 'Analytics',
+  '/dashboard/automation': 'Automation',
+  '/dashboard/team': 'Team',
+  '/dashboard/settings': 'Settings',
+  '/dashboard/help': 'Help & Support',
+};
 
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch('/api/notifications?limit=10')
-      const data = await res.json()
-      if (res.ok) {
-        setNotifications(data.notifications || [])
-        setUnreadCount(data.unreadCount || 0)
-      }
-    } catch (e) {
-      console.error('Failed to fetch notifications:', e)
-    } finally {
-      setLoading(false)
-    }
-  }
+export function Header({ onMenuClick, onCommandPaletteOpen }: HeaderProps) {
+  const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
+  const { showShortcutsModal } = useKeyboard();
+  const [unreadCount] = useState(2);
 
-  useEffect(() => {
-    if (user) {
-      fetchNotifications()
-      // Poll every 30 seconds
-      const interval = setInterval(fetchNotifications, 30000)
-      return () => clearInterval(interval)
-    }
-  }, [user])
-
-  const markAsRead = async (id: string) => {
-    try {
-      await fetch('/api/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notificationId: id })
-      })
-      fetchNotifications()
-    } catch (e) {
-      console.error('Failed to mark as read:', e)
-    }
-  }
-
-  const markAllAsRead = async () => {
-    try {
-      await fetch('/api/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markAllAsRead: true })
-      })
-      fetchNotifications()
-    } catch (e) {
-      console.error('Failed to mark all as read:', e)
-    }
-  }
-
-  const deleteNotification = async (id: string) => {
-    try {
-      await fetch(`/api/notifications?id=${id}`, { method: 'DELETE' })
-      fetchNotifications()
-    } catch (e) {
-      console.error('Failed to delete notification:', e)
-    }
-  }
-
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'review': return <AlertCircle className="w-4 h-4 text-blue-500" />
-      case 'success': return <CheckCircle className="w-4 h-4 text-green-500" />
-      case 'error': return <AlertTriangle className="w-4 h-4 text-red-500" />
-      case 'warning': return <AlertTriangle className="w-4 h-4 text-yellow-500" />
-      default: return <Info className="w-4 h-4 text-primary" />
-    }
-  }
+  const pathSegments = pathname.split('/').filter(Boolean);
+  const breadcrumbs = pathSegments.map((segment, index) => {
+    const path = `/${pathSegments.slice(0, index + 1).join('/')}`;
+    return {
+      name: routeNames[path] || segment.charAt(0).toUpperCase() + segment.slice(1),
+      path,
+    };
+  });
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-primary/30 bg-card px-4 md:px-6">
-      {/* Mobile Menu Button */}
-      <div className="lg:hidden">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-              <Menu className="h-6 w-6" />
-              <span className="sr-only">Toggle menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-64 bg-card border-primary/30">
-            <Sidebar />
-          </SheetContent>
-        </Sheet>
-      </div>
+    <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-16 items-center gap-4 px-4 lg:px-6">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="lg:hidden"
+          onClick={onMenuClick}
+        >
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Toggle menu</span>
+        </Button>
 
-      {/* Logo */}
-      <div className="flex items-center gap-3">
-        <Image 
-          src="/nnh-logo.png" 
-          alt="NNH Logo" 
-          width={40} 
-          height={40}
-          className="object-contain"
-        />
-        <span className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent hidden sm:block">
-          NNH - AI Studio
-        </span>
-      </div>
+        <nav className="hidden items-center gap-2 text-sm text-muted-foreground lg:flex">
+          {breadcrumbs.map((crumb, index) => (
+            <div key={crumb.path} className="flex items-center gap-2">
+              {index > 0 && <ChevronRight className="h-4 w-4" />}
+              <span
+                className={
+                  index === breadcrumbs.length - 1
+                    ? 'font-medium text-foreground'
+                    : 'hover:text-foreground'
+                }
+              >
+                {crumb.name}
+              </span>
+            </div>
+          ))}
+        </nav>
 
-      {/* Search - Hidden on small screens */}
-      <div className="hidden md:flex items-center gap-4 flex-1 max-w-xl ml-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search locations, reviews..."
-            className="pl-10 bg-secondary border-primary/30 text-foreground placeholder:text-muted-foreground focus:border-primary"
-          />
+        <div className="flex flex-1 items-center gap-2 lg:gap-4">
+          <div className="relative hidden w-full max-w-sm lg:block">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search or press Cmd+K..."
+              className="w-full pl-9 pr-4"
+              onClick={onCommandPaletteOpen}
+              readOnly
+            />
+            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden h-5 -translate-y-1/2 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+              <Command className="h-3 w-3" />K
+            </kbd>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            onClick={onCommandPaletteOpen}
+          >
+            <Search className="h-5 w-5" />
+            <span className="sr-only">Search</span>
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={showShortcutsModal}
+                >
+                  <Keyboard className="h-5 w-5" />
+                  <span className="sr-only">Keyboard shortcuts</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">Press ? for shortcuts</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <motion.button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="w-10 h-10 rounded-full bg-[hsl(var(--neuro-bg))] shadow-[6px_6px_12px_hsl(var(--shadow-dark)),_-6px_-6px_12px_hsl(var(--shadow-light))] hover:shadow-[4px_4px_8px_hsl(var(--shadow-dark)),_-4px_-4px_8px_hsl(var(--shadow-light))] active:shadow-[inset_3px_3px_6px_hsl(var(--shadow-dark)),_inset_-3px_-3px_6px_hsl(var(--shadow-light))] transition-all duration-200 flex items-center justify-center"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? (
+              <Sun className="h-5 w-5 text-yellow-500" />
+            ) : (
+              <Moon className="h-5 w-5 text-gray-600" />
+            )}
+          </motion.button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground"
+                  >
+                    {unreadCount}
+                  </motion.span>
+                )}
+                <span className="sr-only">Notifications</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+              <DropdownMenuLabel className="flex items-center justify-between">
+                <span>Notifications</span>
+                {unreadCount > 0 && (
+                  <Badge variant="secondary">{unreadCount} new</Badge>
+                )}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <ScrollArea className="max-h-[400px]">
+                {notifications.map((notification) => (
+                  <DropdownMenuItem
+                    key={notification.id}
+                    className="flex flex-col items-start gap-1 p-3"
+                  >
+                    <div className="flex w-full items-start justify-between gap-2">
+                      <div className="flex-1 space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {notification.title}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {notification.description}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {notification.time}
+                        </p>
+                      </div>
+                      {notification.unread && (
+                        <div className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                      )}
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </ScrollArea>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="w-full justify-center text-center">
+                View all notifications
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="hidden lg:block">
+            <UserButton />
+          </div>
         </div>
       </div>
-
-      {/* Right side */}
-      <div className="flex items-center gap-2 md:gap-4">
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
-              <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 h-5 w-5 rounded-full bg-primary text-[10px] font-bold text-white flex items-center justify-center">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 md:w-96 p-0" align="end">
-            <div className="border-b border-primary/20 p-4 flex items-center justify-between">
-              <h3 className="font-semibold">Notifications</h3>
-              {unreadCount > 0 && (
-                <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-xs">
-                  <CheckCheck className="w-3 h-3 mr-1" />
-                  Mark all read
-                </Button>
-              )}
-            </div>
-            <ScrollArea className="h-[400px]">
-              {loading ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
-              ) : notifications.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Bell className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
-                  <p className="text-sm text-muted-foreground">No notifications yet</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-primary/10">
-                  {notifications.map((notif) => (
-                    <div
-                      key={notif.id}
-                      className={cn(
-                        "p-4 hover:bg-primary/5 transition-colors",
-                        !notif.read && "bg-primary/5"
-                      )}
-                    >
-                      <div className="flex gap-3">
-                        <div className="mt-1">{getIcon(notif.type)}</div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{notif.title}</p>
-                              <p className="text-xs text-muted-foreground mt-1">{notif.message}</p>
-                              <p className="text-xs text-muted-foreground/70 mt-1">
-                                {new Date(notif.created_at).toLocaleString()}
-                              </p>
-                            </div>
-                            <div className="flex gap-1">
-                              {!notif.read && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() => markAsRead(notif.id)}
-                                >
-                                  <Check className="w-3 h-3" />
-                                </Button>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => deleteNotification(notif.id)}
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </div>
-                          {notif.link && (
-                            <Link href={notif.link} className="text-xs text-primary hover:underline mt-1 inline-block">
-                              View details →
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </PopoverContent>
-        </Popover>
-
-        <Avatar className="h-9 w-9 border-2 border-primary/30">
-          <AvatarFallback className="bg-primary/20 text-primary font-semibold">
-            {getInitials(user?.email)}
-          </AvatarFallback>
-        </Avatar>
-      </div>
     </header>
-  )
+  );
 }
