@@ -459,7 +459,7 @@ export function LocationCard({ location, index }: LocationCardProps) {
                 variant="ghost"
                 className="flex-1 bg-secondary hover:bg-primary/20 border border-primary/30 text-foreground"
               >
-                <Link href={`/gmb-dashboard?tab=locations&location=${location.id}`}>
+                <Link href={`/dashboard/locations?location=${location.id}`}>
                   <Eye className="w-4 h-4 mr-2" />
                   View Profile
                 </Link>
@@ -470,7 +470,7 @@ export function LocationCard({ location, index }: LocationCardProps) {
                 variant="ghost"
                 className="flex-1 bg-secondary hover:bg-primary/20 border border-primary/30 text-foreground"
               >
-                <Link href={`/gmb-dashboard?tab=reviews&location=${location.id}`}>
+                <Link href={`/dashboard/reviews?location=${location.id}`}>
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Reviews
                 </Link>

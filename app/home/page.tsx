@@ -178,7 +178,7 @@ export default async function HomePage() {
                   YouTube Dashboard
                 </Button>
               </Link>
-              <Link href="/gmb-dashboard">
+              <Link href="/dashboard">
                 <Button 
                   size="lg" 
                   variant="outline"
@@ -207,7 +207,7 @@ export default async function HomePage() {
                     Connect your Google My Business account or YouTube channel to start managing your online presence.
                   </p>
                   <div className="flex gap-3 justify-center pt-4">
-                    <Link href="/gmb-dashboard">
+                    <Link href="/dashboard/settings">
                       <Button className="gap-2 gradient-orange hover:opacity-90">
                         <Building2 className="w-4 h-4" />
                         Connect GMB
@@ -515,9 +515,9 @@ export default async function HomePage() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {[
-                  { icon: Building2, label: 'GMB Dashboard', href: '/gmb-dashboard' },
-                  { icon: BarChart3, label: 'View Analytics', href: '/gmb-dashboard' },
-                  { icon: MessageSquare, label: 'Manage Reviews', href: '/gmb-dashboard' },
+                  { icon: Building2, label: 'GMB Dashboard', href: '/dashboard' },
+                  { icon: BarChart3, label: 'View Analytics', href: '/dashboard/analytics' },
+                  { icon: MessageSquare, label: 'Manage Reviews', href: '/dashboard/reviews' },
                   { icon: Play, label: 'YouTube Dashboard', href: '/youtube-dashboard' },
                   { icon: Sparkles, label: 'GMB Posts', href: '/gmb-posts' },
                   { icon: Sparkles, label: 'YouTube Posts', href: '/youtube-posts' }
@@ -565,7 +565,7 @@ export default async function HomePage() {
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li><Link href="/features" className="hover:text-primary transition-colors">Features</Link></li>
                   <li><Link href="/pricing" className="hover:text-primary transition-colors">Pricing</Link></li>
-                  <li><Link href="/gmb-dashboard" className="hover:text-primary transition-colors">Analytics</Link></li>
+                  <li><Link href="/dashboard/analytics" className="hover:text-primary transition-colors">Analytics</Link></li>
                   <li><Link href="/youtube-dashboard" className="hover:text-primary transition-colors">YouTube Dashboard</Link></li>
                 </ul>
               </div>
@@ -583,7 +583,7 @@ export default async function HomePage() {
               <div>
                 <h5 className="font-semibold mb-4">Support</h5>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li><Link href="/gmb-dashboard" className="hover:text-primary transition-colors">GMB Dashboard</Link></li>
+                  <li><Link href="/dashboard" className="hover:text-primary transition-colors">GMB Dashboard</Link></li>
                   <li><Link href="/settings" className="hover:text-primary transition-colors">Settings</Link></li>
                   <li><Link href="/contact" className="hover:text-primary transition-colors">Contact Support</Link></li>
                 </ul>

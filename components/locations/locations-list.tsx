@@ -377,7 +377,7 @@ export function LocationsList() {
         <Button
           variant="ghost"
           onClick={() => {
-            router.push('/gmb-dashboard?tab=locations')
+            router.push('/dashboard/locations')
             setViewLocation(null)
           }}
           className="mb-4"

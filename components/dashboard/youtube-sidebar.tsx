@@ -191,7 +191,7 @@ export function YoutubeDashboardSidebar({ activeTab, setActiveTab, user }: Sideb
               {(!collapsed || isMobile) && <span className="font-medium">Home</span>}
             </Button>
           </Link>
-          <Link href="/gmb-dashboard">
+          <Link href="/dashboard">
             <Button
               variant="ghost"
               className={cn(
