@@ -266,30 +266,65 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fetch media from posts for each location
+    // First, try to fetch from gmb_media table (synced via v4 API)
+    const { data: dbMedia, error: dbMediaError } = await supabase
+      .from('gmb_media')
+      .select('*')
+      .eq('user_id', user.id)
+      .in('location_id', locations.map(l => l.id));
+
+    if (dbMediaError) {
+      console.error('[Media API] Error fetching from gmb_media table:', dbMediaError);
+    }
+
+    // Convert database media to API format
     const allMedia: any[] = [];
     
-    for (const location of locations) {
-      const locationResource = location.location_id;
-      if (!locationResource) continue;
-
-      // Try to fetch from Google API first
-      let mediaItems = await fetchMediaFromPosts(accessToken, locationResource);
-      
-      // If Google API doesn't return media, fall back to database posts
-      if (mediaItems.length === 0) {
-        mediaItems = await fetchMediaFromDatabasePosts(supabase, location.id);
-      }
-      
-      // Add location info to each media item
-      mediaItems.forEach(media => {
+    if (dbMedia && dbMedia.length > 0) {
+      console.log(`[Media API] Found ${dbMedia.length} media items in database`);
+      dbMedia.forEach((item: any) => {
         allMedia.push({
-          ...media,
-          location_id: location.id,
-          location_resource: locationResource,
+          id: item.id,
+          name: item.external_media_id,
+          sourceUrl: item.url,
+          googleUrl: item.url,
+          mediaFormat: item.type || 'PHOTO',
+          thumbnailUrl: item.thumbnail_url,
+          createTime: item.created_at,
+          updateTime: item.updated_at,
+          location_id: item.location_id,
+          fromDatabase: true,
+          fromGmbMediaTable: true,
         });
       });
+    } else {
+      console.log('[Media API] No media found in gmb_media table, trying alternative sources...');
+      
+      // Fallback: Fetch media from posts for each location
+      for (const location of locations) {
+        const locationResource = location.location_id;
+        if (!locationResource) continue;
+
+        // Try to fetch from Google API first
+        let mediaItems = await fetchMediaFromPosts(accessToken, locationResource);
+        
+        // If Google API doesn't return media, fall back to database posts
+        if (mediaItems.length === 0) {
+          mediaItems = await fetchMediaFromDatabasePosts(supabase, location.id);
+        }
+        
+        // Add location info to each media item
+        mediaItems.forEach(media => {
+          allMedia.push({
+            ...media,
+            location_id: location.id,
+            location_resource: locationResource,
+          });
+        });
+      }
     }
+
+    console.log(`[Media API] Returning ${allMedia.length} total media items`);
 
     return successResponse({
       media: allMedia,

@@ -81,6 +81,8 @@ export function ReviewsList() {
       let fetchError = null
       
       if (activeLocationIds.length > 0) {
+        console.log(`[ReviewsList] Fetching reviews for ${activeLocationIds.length} active locations`);
+        
         const result = await supabase
           .from("gmb_reviews")
           .select("*")
@@ -90,8 +92,24 @@ export function ReviewsList() {
           .order("created_at", { ascending: false })
         data = result.data
         fetchError = result.error
+        
+        if (fetchError) {
+          console.error("[ReviewsList] Error fetching reviews:", fetchError);
+        } else {
+          console.log(`[ReviewsList] Successfully fetched ${data?.length || 0} reviews`);
+          if (data && data.length > 0) {
+            console.log("[ReviewsList] Sample review:", {
+              id: data[0].id,
+              rating: data[0].rating,
+              reviewer_name: data[0].reviewer_name,
+              location_id: data[0].location_id,
+              review_text: data[0].review_text?.substring(0, 50) + '...'
+            });
+          }
+        }
       } else {
         // No active locations, return empty array
+        console.log("[ReviewsList] No active locations found");
         data = []
       }
 
