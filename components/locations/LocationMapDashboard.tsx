@@ -9,13 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox'; 
-import { Filter, Search, Globe, Pin, RefreshCw, Loader2, Star, Send, Layers, AlertTriangle, MessageSquare, Sparkles } from 'lucide-react';
+import { Filter, Search, Globe, Pin, RefreshCw, Loader2, Star, Send, Layers, AlertTriangle, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils'; 
 import { toast } from 'sonner'; 
 import Link from 'next/link'; 
-import { useTheme } from 'next-themes'; // ⭐️ لإحضار الثيم الحالي
+import { useTheme } from 'next-themes'; // ⭐️ للاستفادة من الثيم الداكن للمستخدم
 
-// تعريف نوع بيانات الموقع والمنافس
+// تعريف نوع بيانات الموقع والمنافس (يجب أن يتطابق مع API)
 interface LocationData {
     id: string;
     name: string;
@@ -45,7 +45,7 @@ const defaultCenter = {
 
 const libraries: ("places" | "drawing" | "geometry" | "visualization" | "marker")[] = ['places'];
 
-// ⭐️ مصفوفة أنماط الخريطة الداكنة (Aesthetic Dark Theme)
+// ⭐️ مصفوفة أنماط الخريطة الداكنة (Dark Map Theme)
 const darkMapStyles = [
     { elementType: 'geometry', stylers: [{ color: '#1d2c4d' }] },
     { elementType: 'labels.text.stroke', stylers: [{ color: '#1d2c4d' }] },
@@ -61,7 +61,7 @@ const darkMapStyles = [
 
 
 export function LocationMapDashboard() {
-  const { theme } = useTheme(); // ⭐️ استخدام الثيم لتطبيق الأنماط
+  const { theme } = useTheme(); 
   const [locationsData, setLocationsData] = useState<LocationData[]>([]);
   const [competitorData, setCompetitorData] = useState<CompetitorData[]>([]); 
   const [loadingData, setLoadingData] = useState(true);
@@ -111,13 +111,17 @@ export function LocationMapDashboard() {
             const response = await fetch('/api/locations/competitor-data');
             const data = await response.json();
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to fetch competitor data');
+                // 💡 إظهار التنبيه للمستخدم إذا كان هناك خطأ في API Key/Restrictions
+                if (data.error && data.error.includes('does not exist')) {
+                    toast.error("Database schema error (check 'type' column).");
+                }
+                throw new Error(data.error || 'Failed to fetch competitor data.');
             }
             setCompetitorData(data);
         } catch (e: any) {
             console.error('Competitor fetch failed:', e);
-            toast.error('Failed to load competitor data.');
-            setShowCompetitors(false); // إخفاء الطبقة عند الفشل
+            toast.error('Failed to load competitor data. Check Places API permissions.');
+            setShowCompetitors(false); 
         } finally {
             setLoadingCompetitors(false);
         }
@@ -131,8 +135,9 @@ export function LocationMapDashboard() {
   }, [fetchMapData]);
 
   useEffect(() => {
+    // 💡 جلب بيانات المنافسين فقط عند تفعيل زر العرض
     fetchCompetitorData();
-  }, [fetchCompetitorData, showCompetitors]); // يتم التشغيل عند تبديل showCompetitors
+  }, [fetchCompetitorData, showCompetitors]); 
 
   // 4. تطبيق منطق التصفية والبحث
   const filteredLocations = useMemo(() => {
@@ -297,7 +302,7 @@ export function LocationMapDashboard() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-      {/* ⭐️ الجزء الأيسر: عناصر التحكم والفلاتر والإجراءات الجماعية */}
+      {/* ⭐️ الجزء الأيسر: عناصر التحكم والفلاتر والإجراءات الجماعية ⭐️ */}
       <Card className="lg:col-span-1 border border-primary/20">
         <CardHeader className='flex flex-row items-center justify-between'>
           <CardTitle className="text-lg flex items-center gap-2"><Layers className="w-5 h-5"/> Location Actions & View</CardTitle>
@@ -365,7 +370,7 @@ export function LocationMapDashboard() {
             variant={showCompetitors ? "default" : "outline"}
             className="w-full gap-2 mt-4" 
             onClick={() => setShowCompetitors(!showCompetitors)}
-            disabled={loadingCompetitors} // ⭐️ أصبح معطلاً فقط أثناء تحميل المنافسين
+            disabled={loadingCompetitors} 
           >
             {loadingCompetitors ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -375,7 +380,7 @@ export function LocationMapDashboard() {
             {showCompetitors ? 'Hide Competitors' : `Show Competitors (${competitorData.length})`}
           </Button>
 
-          {/* ⭐️ لوحة التنبيهات الجغرافية (Geo-Alerts) - جمالية ومساعدة ⭐️ */}
+          {/* ⭐️ لوحة التنبيهات الجغرافية (Geo-Alerts) - الميزة المساعدة الجديدة ⭐️ */}
           <Card className="border border-yellow-500/30 bg-yellow-500/10 mt-4 p-3 space-y-2">
             <h4 className="text-sm font-semibold text-yellow-500 flex items-center gap-1">
                 <AlertTriangle className="w-4 h-4" /> Geo-Alerts
