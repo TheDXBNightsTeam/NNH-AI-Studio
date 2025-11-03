@@ -28,6 +28,7 @@ import { ReviewsList } from "@/components/reviews/reviews-list"
 import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard"
 import { GMBSettings } from "@/components/settings/gmb-settings"
 import { QuestionsList } from "@/components/questions/questions-list"
+import { MediaGallery } from "@/components/media/media-gallery"
 
 // Server Actions
 import { getOnboardingTasks, getProfileStrength } from "@/server/actions/onboarding"
@@ -37,6 +38,7 @@ import { getUserAchievements } from "@/server/actions/achievements"
 interface DashboardStats {
   totalLocations: number
   totalReviews: number
+  newReviews: number // Reviews from last 30 days
   averageRating: string
   responseRate: number
   locationsChange?: number
@@ -251,6 +253,7 @@ export default function GMBDashboard() {
             setStats({
               totalLocations: 0,
               totalReviews: 0,
+              newReviews: 0,
               averageRating: "0.0",
               responseRate: 0,
               locationsChange: undefined,
@@ -306,19 +309,26 @@ export default function GMBDashboard() {
               r.location_id && activeLocationIds.includes(r.location_id)
             )
             
-            // Filter by date - use review_date if available, otherwise created_at
-            // Current period: last 30 days
-            reviews = allReviews.filter(r => {
-              const reviewDate = r.review_date ? new Date(r.review_date) : new Date(r.created_at)
-              return reviewDate >= thirtyDaysAgo && reviewDate <= now
-            })
+            console.log(`[Dashboard] Found ${allReviews.length} total reviews from ${activeLocationIds.length} active locations`)
+            
+            // For main stats, use ALL reviews (not filtered by date)
+            // This ensures Average Rating, Total Reviews, and Response Rate show all data
+            reviews = allReviews
             setCurrentReviews(reviews)
             
-            // Previous period: 30-60 days ago
+            // Previous period: 30-60 days ago (for comparison only)
             previousReviews = allReviews.filter(r => {
               const reviewDate = r.review_date ? new Date(r.review_date) : new Date(r.created_at)
               return reviewDate >= sixtyDaysAgo && reviewDate < thirtyDaysAgo
             })
+            
+            // Calculate "New Reviews" (reviews from last 30 days)
+            const newReviewsCount = allReviews.filter(r => {
+              const reviewDate = r.review_date ? new Date(r.review_date) : new Date(r.created_at)
+              return reviewDate >= thirtyDaysAgo && reviewDate <= now
+            }).length
+            
+            console.log(`[Dashboard] Stats - Total: ${allReviews.length}, New (30d): ${newReviewsCount}`)
           } else if (allReviewsRes.status === 'rejected') {
             console.error("Failed to fetch reviews:", allReviewsRes.reason)
           }
@@ -344,6 +354,15 @@ export default function GMBDashboard() {
           const totalReviews = reviews.length
           const previousTotalReviews = previousReviews.length
           const repliedReviews = reviews.filter(r => r.review_reply && r.review_reply.trim().length > 0).length
+          
+          // Calculate "New Reviews" (reviews from last 30 days) - already calculated above but ensure it's available
+          let newReviewsCount = 0
+          if (allReviewsRes.status === 'fulfilled' && allReviewsRes.value.data) {
+            newReviewsCount = allReviews.filter(r => {
+              const reviewDate = r.review_date ? new Date(r.review_date) : new Date(r.created_at)
+              return reviewDate >= thirtyDaysAgo && reviewDate <= now
+            }).length
+          }
           
           // Calculate average rating with division by zero protection
           let avgRating = "0.0"
@@ -397,6 +416,7 @@ export default function GMBDashboard() {
           setStats({
             totalLocations: locations.length,
             totalReviews,
+            newReviews: newReviewsCount,
             averageRating: avgRating,
             responseRate,
             locationsChange: locationsChangePercent,
@@ -736,6 +756,7 @@ export default function GMBDashboard() {
                 <TabsTrigger value="dashboard">Overview</TabsTrigger>
                 <TabsTrigger value="locations">Locations</TabsTrigger>
                 <TabsTrigger value="reviews">Reviews</TabsTrigger>
+                <TabsTrigger value="media">Media</TabsTrigger>
                 <TabsTrigger value="questions">Q&A</TabsTrigger>
                 <TabsTrigger value="posts">Posts</TabsTrigger>
                 <TabsTrigger value="analytics">Analytics</TabsTrigger>
@@ -814,10 +835,12 @@ export default function GMBDashboard() {
                   />
                   <StatCard
                     title="New Reviews"
-                    value={stats.totalReviews.toString()}
+                    value={stats.newReviews.toString()}
                     change={typeof stats.reviewsChange === 'number'
                       ? `${stats.reviewsChange > 0 ? '+' : ''}${stats.reviewsChange}% this month`
-                      : undefined
+                      : stats.totalReviews > 0
+                        ? `${stats.totalReviews} total reviews`
+                        : undefined
                     }
                     changeType={typeof stats.reviewsChange === 'number'
                       ? stats.reviewsChange > 0
@@ -908,6 +931,20 @@ export default function GMBDashboard() {
                   }
                 >
                   <ReviewsList />
+                </ErrorBoundary>
+              </TabsContent>
+
+              {/* Media Tab */}
+              <TabsContent value="media" className="space-y-6 animate-in fade-in-50">
+                <ErrorBoundary
+                  fallback={
+                    <div className="p-8 text-center text-muted-foreground">
+                      <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                      <p>Failed to load media</p>
+                    </div>
+                  }
+                >
+                  <MediaGallery />
                 </ErrorBoundary>
               </TabsContent>
               

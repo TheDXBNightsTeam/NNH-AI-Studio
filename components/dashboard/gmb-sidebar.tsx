@@ -28,7 +28,8 @@ import {
   Target,
   LayoutGrid,
   HelpCircle,
-  Tags
+  Tags,
+  ImageIcon
 } from "lucide-react"
 
 interface SidebarProps {
@@ -41,6 +42,7 @@ const navItems = [
   { id: "dashboard", label: "Overview", icon: LayoutGrid },
   { id: "locations", label: "Locations", icon: MapPin },
   { id: "reviews", label: "Reviews", icon: MessageSquare },
+  { id: "media", label: "Media", icon: ImageIcon },
   { id: "questions", label: "Q&A", icon: HelpCircle },
   { id: "posts", label: "Posts", icon: Sparkles },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
