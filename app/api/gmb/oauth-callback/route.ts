@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       console.error('[OAuth Callback] OAuth error:', error);
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       return NextResponse.redirect(
-        `${baseUrl}/gmb-dashboard?tab=settings&error=${encodeURIComponent(`OAuth error: ${error}`)}`
+        `${baseUrl}/dashboard/settings?error=${encodeURIComponent(`OAuth error: ${error}`)}`
       );
     }
     
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       console.error('[OAuth Callback] Missing code or state');
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       return NextResponse.redirect(
-        `${baseUrl}/gmb-dashboard?tab=settings&error=${encodeURIComponent('Missing authorization code or state')}`
+        `${baseUrl}/dashboard/settings?error=${encodeURIComponent('Missing authorization code or state')}`
       );
     }
     
@@ -337,12 +337,12 @@ export async function GET(request: NextRequest) {
     if (!savedAccountId) {
       console.error('[OAuth Callback] No account was saved');
       return NextResponse.redirect(
-        `${baseUrl}/gmb-dashboard?tab=settings&error=${encodeURIComponent('Failed to save any account')}`
+        `${baseUrl}/dashboard/settings?error=${encodeURIComponent('Failed to save any account')}`
       );
     }
     
-    // Redirect to GMB dashboard with success message
-    const redirectUrl = `${baseUrl}/gmb-dashboard?tab=settings&connected=true`;
+    // Redirect to dashboard settings with success message
+    const redirectUrl = `${baseUrl}/dashboard/settings?connected=true`;
     console.log('[OAuth Callback] Redirecting to:', redirectUrl);
     return NextResponse.redirect(redirectUrl);
     
@@ -350,7 +350,7 @@ export async function GET(request: NextRequest) {
     console.error('[OAuth Callback] Unexpected error:', error);
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     return NextResponse.redirect(
-      `${baseUrl}/gmb-dashboard?tab=settings&error=${encodeURIComponent(
+      `${baseUrl}/dashboard/settings?error=${encodeURIComponent(
         error.message || 'An unexpected error occurred'
       )}`
     );

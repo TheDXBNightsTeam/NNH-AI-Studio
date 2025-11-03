@@ -1,0 +1,354 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  CheckCircle2,
+  Circle,
+  Clock,
+  TrendingUp,
+  Zap,
+  AlertCircle,
+  RefreshCw,
+  ChevronRight,
+} from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  priority: 'high' | 'medium' | 'low';
+  effort_level: 'quick' | 'moderate' | 'extensive';
+  estimated_minutes: number;
+  status: 'pending' | 'in_progress' | 'completed' | 'dismissed';
+  reasoning: string;
+  expected_impact: string;
+}
+
+export function WeeklyTasksWidget() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const supabase = createClient();
+
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const loadTasks = async () => {
+    setLoading(true);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get current week start date
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const weekStartDate = new Date(now);
+      weekStartDate.setDate(now.getDate() + daysToMonday);
+      weekStartDate.setHours(0, 0, 0, 0);
+
+      // Try to fetch tasks, but don't fail if table doesn't exist
+      const { data, error } = await supabase
+        .from('weekly_task_recommendations')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('week_start_date', weekStartDate.toISOString().split('T')[0])
+        .order('priority', { ascending: false })
+        .order('estimated_minutes', { ascending: true });
+
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 = table doesn't exist, which is okay
+        throw error;
+      }
+      
+      setTasks(data || []);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+      // Don't show error if table doesn't exist - just show empty state
+      setTasks([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateTasks = async () => {
+    setGenerating(true);
+    try {
+      const response = await fetch('/api/tasks/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+
+      const data = await response.json();
+
+      if (data.tasks_exist) {
+        toast.info('Tasks already generated for this week');
+      } else if (data.success) {
+        toast.success('Weekly tasks generated successfully!');
+        await loadTasks();
+      } else {
+        toast.error('Failed to generate tasks');
+      }
+    } catch (error) {
+      console.error('Failed to generate tasks:', error);
+      toast.error('Failed to generate tasks. API endpoint may not be available.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const updateTaskStatus = async (taskId: string, newStatus: string) => {
+    try {
+      const response = await fetch('/api/tasks/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          task_id: taskId,
+          status: newStatus,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update task');
+
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === taskId
+            ? { ...task, status: newStatus as any }
+            : task
+        )
+      );
+
+      if (newStatus === 'completed') {
+        toast.success('Task completed!');
+      }
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      toast.error('Failed to update task');
+    }
+  };
+
+  const completedTasks = tasks.filter((t) => t.status === 'completed').length;
+  const totalTasks = tasks.length;
+  const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+  const quickWins = tasks.filter(
+    (t) => t.effort_level === 'quick' && t.status === 'pending'
+  ).slice(0, 3);
+
+  const highPriorityTasks = tasks.filter(
+    (t) => t.priority === 'high' && t.status !== 'completed' && t.status !== 'dismissed'
+  );
+
+  const getCategoryColor = (category: string) => {
+    const colors: Record<string, string> = {
+      content: 'bg-blue-100 text-blue-700 border-blue-200',
+      reviews: 'bg-green-100 text-green-700 border-green-200',
+      optimization: 'bg-purple-100 text-purple-700 border-purple-200',
+      performance: 'bg-orange-100 text-orange-700 border-orange-200',
+      team: 'bg-pink-100 text-pink-700 border-pink-200',
+    };
+    return colors[category] || 'bg-gray-100 text-gray-700 border-gray-200';
+  };
+
+  const getPriorityIcon = (priority: string) => {
+    if (priority === 'high') return <AlertCircle className="h-4 w-4 text-red-600" />;
+    if (priority === 'medium') return <TrendingUp className="h-4 w-4 text-orange-600" />;
+    return <Circle className="h-4 w-4 text-gray-400" />;
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Weekly Tasks</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (tasks.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-yellow-600" />
+            Weekly Tasks
+          </CardTitle>
+          <CardDescription>AI-powered recommendations to improve your business</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <div className="rounded-full bg-muted p-3 w-fit mx-auto mb-4">
+              <CheckCircle2 className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No tasks yet</h3>
+            <p className="text-muted-foreground mb-6">
+              Generate personalized tasks based on your business performance
+            </p>
+            <Button onClick={generateTasks} disabled={generating}>
+              {generating ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Zap className="mr-2 h-4 w-4" />
+                  Generate Weekly Tasks
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-yellow-600" />
+              Weekly Tasks
+            </CardTitle>
+            <CardDescription>Your personalized action plan for this week</CardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={generateTasks} disabled={generating}>
+            <RefreshCw className={cn('h-4 w-4', generating && 'animate-spin')} />
+          </Button>
+        </div>
+
+        <div className="mt-4 space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Progress</span>
+            <span className="font-medium">
+              {completedTasks} / {totalTasks} completed
+            </span>
+          </div>
+          <Progress value={completionRate} className="h-2" />
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-6">
+        {highPriorityTasks.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              High Priority
+            </h4>
+            <div className="space-y-2">
+              {highPriorityTasks.map((task) => (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  onStatusChange={updateTaskStatus}
+                  getCategoryColor={getCategoryColor}
+                  getPriorityIcon={getPriorityIcon}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {quickWins.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <Zap className="h-4 w-4 text-yellow-600" />
+              Quick Wins (Under 15 min)
+            </h4>
+            <div className="space-y-2">
+              {quickWins.map((task) => (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  onStatusChange={updateTaskStatus}
+                  getCategoryColor={getCategoryColor}
+                  getPriorityIcon={getPriorityIcon}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {totalTasks > 0 && (
+          <Button variant="outline" className="w-full" asChild>
+            <a href="/dashboard/tasks">
+              View All Tasks
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </a>
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TaskItem({
+  task,
+  onStatusChange,
+  getCategoryColor,
+  getPriorityIcon,
+}: {
+  task: Task;
+  onStatusChange: (id: string, status: string) => void;
+  getCategoryColor: (category: string) => string;
+  getPriorityIcon: (priority: string) => React.ReactNode;
+}) {
+  const isCompleted = task.status === 'completed';
+
+  return (
+    <div
+      className={cn(
+        'flex items-start gap-3 p-3 rounded-lg border bg-card transition-colors',
+        isCompleted && 'opacity-60'
+      )}
+    >
+      <Checkbox
+        checked={isCompleted}
+        onCheckedChange={(checked) => {
+          onStatusChange(task.id, checked ? 'completed' : 'pending');
+        }}
+        className="mt-1"
+      />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start gap-2 mb-1">
+          {getPriorityIcon(task.priority)}
+          <h5 className={cn('font-medium text-sm', isCompleted && 'line-through')}>
+            {task.title}
+          </h5>
+        </div>
+        <p className="text-xs text-muted-foreground mb-2">{task.description}</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="outline" className={cn('text-xs', getCategoryColor(task.category))}>
+            {task.category}
+          </Badge>
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {task.estimated_minutes} min
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+

@@ -1,85 +1,208 @@
-"use client"
+'use client';
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { LayoutDashboard, MapPin, MessageSquare, Users, Sparkles, BarChart3, Settings, LogOut, Home, Youtube } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
-import Image from "next/image"
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { LayoutDashboard, MapPin, Star, FileText, ChartBar as BarChart3, Settings, Zap, Users, Image, Calendar, Webhook, CheckSquare, Grid3x3 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { UserButton } from '@/components/auth/user-button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 
-const navigation = [
-  { name: "Home", href: "/home", icon: Home },
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "YouTube", href: "/youtube-dashboard", icon: Youtube },
-  { name: "Locations", href: "/locations", icon: MapPin },
-  { name: "Reviews", href: "/reviews", icon: MessageSquare },
-  { name: "Accounts", href: "/accounts", icon: Users },
-  { name: "AI Studio", href: "/ai-studio", icon: Sparkles },
-  { name: "Analytics", href: "/analytics", icon: BarChart3 },
-  { name: "Settings", href: "/settings", icon: Settings },
-]
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
 
-export function Sidebar() {
-  const pathname = usePathname()
-  const router = useRouter()
-  const supabase = createClient()
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: any;
+  badge?: string | number;
+}
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push("/auth/login")
-  }
+const navigation: NavigationItem[] = [
+  {
+    name: 'Dashboard',
+    href: '/dashboard',
+    icon: LayoutDashboard,
+  },
+  {
+    name: 'Locations',
+    href: '/dashboard/locations',
+    icon: MapPin,
+  },
+  {
+    name: 'Reviews',
+    href: '/dashboard/reviews',
+    icon: Star,
+  },
+  {
+    name: 'Posts',
+    href: '/dashboard/posts',
+    icon: FileText,
+  },
+  {
+    name: 'Calendar',
+    href: '/dashboard/calendar',
+    icon: Calendar,
+  },
+  {
+    name: 'Media',
+    href: '/dashboard/media',
+    icon: Image,
+  },
+  {
+    name: 'Analytics',
+    href: '/dashboard/analytics',
+    icon: BarChart3,
+  },
+  {
+    name: 'Grid Tracking',
+    href: '/dashboard/grid-tracking',
+    icon: Grid3x3,
+  },
+  {
+    name: 'Automation',
+    href: '/dashboard/automation',
+    icon: Zap,
+  },
+  {
+    name: 'Approvals',
+    href: '/dashboard/approvals',
+    icon: CheckSquare,
+  },
+  {
+    name: 'Webhooks',
+    href: '/dashboard/webhooks',
+    icon: Webhook,
+  },
+  {
+    name: 'Team',
+    href: '/dashboard/team',
+    icon: Users,
+  },
+];
+
+const bottomNavigation: NavigationItem[] = [
+  {
+    name: 'Settings',
+    href: '/dashboard/settings',
+    icon: Settings,
+  },
+];
+
+export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
+  const pathname = usePathname();
 
   return (
-    <div className="flex h-full w-64 flex-col bg-card border-r border-primary/30">
-      {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-primary/30 px-4">
-        <Image 
-          src="/nnh-logo.png" 
-          alt="NNH Logo" 
-          width={40} 
-          height={40}
-          className="object-contain"
+    <>
+      <motion.aside
+        initial={false}
+        animate={{ x: isOpen ? 0 : -280 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        className={cn(
+          'fixed left-0 top-0 z-40 h-screen w-[280px]',
+          'border-r bg-background shadow-sm',
+          'lg:translate-x-0'
+        )}
+      >
+        <div className="flex h-full flex-col">
+          <div className="flex h-16 items-center gap-3 border-b px-6">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <MapPin className="h-6 w-6" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-lg font-bold">GMB Dashboard</span>
+              <span className="text-xs text-muted-foreground">
+                Manage your business
+              </span>
+            </div>
+          </div>
+
+          <ScrollArea className="flex-1 px-3 py-4">
+            <nav className="space-y-1">
+              {navigation.map((item) => {
+                const isActive = pathname === item.href;
+                const Icon = item.icon;
+
+                return (
+                  <Link key={item.name} href={item.href} onClick={onClose}>
+                    <motion.div
+                      whileHover={{ x: 4 }}
+                      whileTap={{ scale: 0.98 }}
+                      className={cn(
+                        'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      )}
+                    >
+                      <Icon className="h-5 w-5 shrink-0" />
+                      <span className="flex-1">{item.name}</span>
+                      {item.badge && (
+                        <span
+                          className={cn(
+                            'flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-xs font-medium',
+                            isActive
+                              ? 'bg-primary-foreground text-primary'
+                              : 'bg-primary text-primary-foreground'
+                          )}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </motion.div>
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <Separator className="my-4" />
+
+            <nav className="space-y-1">
+              {bottomNavigation.map((item) => {
+                const isActive = pathname === item.href;
+                const Icon = item.icon;
+
+                return (
+                  <Link key={item.name} href={item.href} onClick={onClose}>
+                    <motion.div
+                      whileHover={{ x: 4 }}
+                      whileTap={{ scale: 0.98 }}
+                      className={cn(
+                        'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      )}
+                    >
+                      <Icon className="h-5 w-5 shrink-0" />
+                      <span className="flex-1">{item.name}</span>
+                    </motion.div>
+                  </Link>
+                );
+              })}
+            </nav>
+          </ScrollArea>
+
+          <div className="border-t p-4">
+            <div className="flex items-center gap-3 rounded-lg bg-accent/50 p-3">
+              <UserButton />
+            </div>
+          </div>
+        </div>
+      </motion.aside>
+
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden"
         />
-        <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          NNH - AI Studio
-        </h1>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        {navigation.map((item) => {
-          const isActive = pathname === item.href
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
-                isActive
-                  ? "bg-primary/20 text-primary border border-primary/30"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              {item.name}
-            </Link>
-          )
-        })}
-      </nav>
-
-      {/* Sign Out */}
-      <div className="border-t border-primary/30 p-4">
-        <Button
-          onClick={handleSignOut}
-          variant="ghost"
-          className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-secondary"
-        >
-          <LogOut className="mr-3 h-5 w-5" />
-          Sign Out
-        </Button>
-      </div>
-    </div>
-  )
+      )}
+    </>
+  );
 }
