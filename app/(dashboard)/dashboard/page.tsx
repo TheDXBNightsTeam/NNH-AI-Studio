@@ -469,9 +469,11 @@ isDisconnecting={disconnecting}
 
 
 {/* ⭐️ تم تعديل هذا القسم ليناسب GMB Health Score و StatsCards */}
-<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+<div className="grid gap-4 lg:grid-cols-5">
 <HealthScoreCard />
+<div className="lg:col-span-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 <StatsCards loading={loading} data={stats} />
+</div>
 </div>
 
 <div className="grid gap-6 lg:grid-cols-2">
