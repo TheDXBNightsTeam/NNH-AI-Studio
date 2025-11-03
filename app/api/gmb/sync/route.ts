@@ -17,6 +17,29 @@ const chunks = <T>(array: T[], size = 100): T[][] => {
   );
 };
 
+// Helper function to convert starRating enum to number
+// API v4 returns starRating as enum string: "ONE", "TWO", "THREE", "FOUR", "FIVE"
+function convertStarRatingToNumber(starRating: string | undefined | null): number {
+  if (!starRating) return 0;
+  
+  const ratingMap: Record<string, number> = {
+    'ONE': 1,
+    'TWO': 2,
+    'THREE': 3,
+    'FOUR': 4,
+    'FIVE': 5,
+    'STAR_RATING_UNSPECIFIED': 0,
+  };
+  
+  // If it's already a number (legacy support), return it
+  if (typeof starRating === 'number') {
+    return starRating >= 1 && starRating <= 5 ? starRating : 0;
+  }
+  
+  // Convert enum string to number
+  return ratingMap[starRating.toUpperCase()] || 0;
+}
+
 // Helper function to build full location resource name
 function buildLocationResourceName(accountId: string, locationId: string): string {
   // Clean location_id from any existing prefix
@@ -453,10 +476,22 @@ async function fetchMedia(
   const media = data.mediaItems || [];
   
   console.log('[GMB Sync] v4 API media response:', media.length, 'items');
+  console.log('[GMB Sync] Response keys:', Object.keys(data));
+  
   if (media.length > 0) {
-    console.log('[GMB Sync] Sample media structure:', JSON.stringify(media[0], null, 2).substring(0, 200));
+    const sampleMedia = media[0];
+    console.log('[GMB Sync] Sample media structure:', {
+      name: sampleMedia.name,
+      mediaFormat: sampleMedia.mediaFormat,
+      googleUrl: sampleMedia.googleUrl ? 'present' : 'missing',
+      sourceUrl: sampleMedia.sourceUrl ? 'present' : 'missing',
+      thumbnailUrl: sampleMedia.thumbnailUrl ? 'present' : 'missing',
+      createTime: sampleMedia.createTime ? 'present' : 'missing',
+      updateTime: sampleMedia.updateTime ? 'present' : 'missing',
+      allKeys: Object.keys(sampleMedia)
+    });
   } else {
-    console.log('[GMB Sync] v4 API media response structure:', JSON.stringify(Object.keys(data), null, 2));
+    console.log('[GMB Sync] No media items in response. Full response structure:', JSON.stringify(Object.keys(data), null, 2));
   }
   
   return {
@@ -981,12 +1016,14 @@ export async function POST(request: NextRequest) {
           );
 
           if (reviews.length > 0) {
+            console.log(`[GMB Sync API] Processing ${reviews.length} reviews for location ${location.id}`);
+            
             const reviewRows = reviews.map((review) => {
-              // Ensure required fields have valid values
-              // rating is required and must be 1-5, so default to 0 or skip if invalid
-              const rating = review.starRating || 0;
+              // Convert starRating enum to number (API v4 returns "ONE", "TWO", etc.)
+              const rating = convertStarRatingToNumber(review.starRating);
+              
               if (rating < 1 || rating > 5) {
-                console.warn('[GMB Sync API] Invalid rating:', rating, 'for review:', review.name);
+                console.warn('[GMB Sync API] Invalid rating:', review.starRating, '→', rating, 'for review:', review.name);
                 return null; // Skip invalid reviews
               }
               
@@ -1006,18 +1043,30 @@ export async function POST(request: NextRequest) {
               };
             }).filter(Boolean); // Remove null entries (invalid reviews)
 
+            console.log(`[GMB Sync API] Prepared ${reviewRows.length} valid review rows from ${reviews.length} reviews`);
+
             // Upsert reviews in chunks
+            let upsertedCount = 0;
             for (const chunk of chunks(reviewRows)) {
-              const { error } = await supabase
+              console.log(`[GMB Sync API] Upserting chunk of ${chunk.length} reviews...`);
+              
+              const { data, error } = await supabase
                 .from('gmb_reviews')
                 .upsert(chunk, { onConflict: 'external_review_id' });
 
               if (error) {
                 console.error('[GMB Sync API] Error upserting reviews:', error);
+                console.error('[GMB Sync API] Failed chunk sample:', JSON.stringify(chunk[0], null, 2));
+              } else {
+                upsertedCount += chunk.length;
+                console.log(`[GMB Sync API] Successfully upserted ${chunk.length} reviews (total: ${upsertedCount})`);
               }
             }
 
+            console.log(`[GMB Sync API] Completed reviews sync: ${upsertedCount}/${reviewRows.length} reviews saved`);
             counts.reviews += reviews.length;
+          } else {
+            console.log(`[GMB Sync API] No reviews found for location ${location.id}`);
           }
 
           reviewsNextPageToken = nextPageToken;
@@ -1035,21 +1084,52 @@ export async function POST(request: NextRequest) {
           );
 
           if (media.length > 0) {
-            const mediaRows = media.map((item) => ({
-              gmb_account_id: accountId,
-              location_id: location.id,
-              user_id: userId,
-              external_media_id: item.name || item.mediaId || null,
-              type: item.mediaFormat || item.type || null,
-              url: item.googleUrl || item.sourceUrl || null,
-              thumbnail_url: item.thumbnailUrl || null,
-              created_at: item.createTime || null,
-              updated_at: item.updateTime || null,
-              metadata: item,
-            }));
+            console.log(`[GMB Sync API] Processing ${media.length} media items for location ${location.id}`);
             
+            const mediaRows = media.map((item) => {
+              // Log first item structure for debugging
+              if (media.indexOf(item) === 0) {
+                console.log('[GMB Sync API] First media item structure:', {
+                  name: item.name,
+                  mediaFormat: item.mediaFormat,
+                  type: item.type,
+                  googleUrl: item.googleUrl,
+                  sourceUrl: item.sourceUrl,
+                  thumbnailUrl: item.thumbnailUrl,
+                  createTime: item.createTime,
+                  updateTime: item.updateTime,
+                  allKeys: Object.keys(item)
+                });
+              }
+              
+              return {
+                gmb_account_id: accountId,
+                location_id: location.id,
+                user_id: userId,
+                external_media_id: item.name || item.mediaId || null,
+                type: item.mediaFormat || item.type || null,
+                url: item.googleUrl || item.sourceUrl || null,
+                thumbnail_url: item.thumbnailUrl || null,
+                created_at: item.createTime || null,
+                updated_at: item.updateTime || null,
+                metadata: item,
+              };
+            }).filter((item) => {
+              // Filter out items without external_media_id (required for upsert)
+              if (!item.external_media_id) {
+                console.warn('[GMB Sync API] Skipping media item without external_media_id:', item);
+                return false;
+              }
+              return true;
+            });
+            
+            console.log(`[GMB Sync API] Prepared ${mediaRows.length} valid media rows from ${media.length} items`);
+
+            let upsertedCount = 0;
             for (const chunk of chunks(mediaRows)) {
-              const { error } = await supabase
+              console.log(`[GMB Sync API] Upserting chunk of ${chunk.length} media items...`);
+              
+              const { data, error } = await supabase
                 .from('gmb_media')
                 .upsert(chunk, { 
                   onConflict: 'external_media_id',
@@ -1058,12 +1138,17 @@ export async function POST(request: NextRequest) {
                 
               if (error) {
                 console.error('[GMB Sync API] Error upserting media:', error);
+                console.error('[GMB Sync API] Failed chunk sample:', JSON.stringify(chunk[0], null, 2));
               } else {
-                console.log(`[GMB Sync API] Upserted ${chunk.length} media items`);
+                upsertedCount += chunk.length;
+                console.log(`[GMB Sync API] Successfully upserted ${chunk.length} media items (total: ${upsertedCount})`);
               }
             }
             
+            console.log(`[GMB Sync API] Completed media sync: ${upsertedCount}/${mediaRows.length} items saved`);
             counts.media += media.length;
+          } else {
+            console.log(`[GMB Sync API] No media found for location ${location.id}`);
           }
 
           mediaNextPageToken = nextPageToken;
