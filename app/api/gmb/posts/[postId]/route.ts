@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { errorResponse, successResponse } from '@/lib/utils/api-response';
+import { logServerActivity } from '@/server/services/activity';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,15 +50,14 @@ export async function DELETE(
       return errorResponse('DATABASE_ERROR', 'Failed to delete post', 500);
     }
 
-    // Log activity
-    await supabase
-      .from('activity_logs')
-      .insert({
-        user_id: user.id,
-        activity_type: 'post_deleted',
-        activity_message: `Deleted GMB post: ${post.title || 'Untitled'}`,
-        metadata: { post_id: postId }
-      });
+    // Log activity (unified)
+    await logServerActivity({
+      userId: user.id,
+      type: 'post_deleted',
+      message: `Deleted GMB post: ${post.title || 'Untitled'}`,
+      metadata: { post_id: postId },
+      actionable: false,
+    });
 
     return successResponse({
       message: 'Post deleted successfully'
@@ -133,6 +133,14 @@ export async function PATCH(
       console.error('[Posts API] Error updating post:', updateError);
       return errorResponse('DATABASE_ERROR', 'Failed to update post', 500);
     }
+
+    // Log activity (unified)
+    await logServerActivity({
+      userId: user.id,
+      type: 'post_updated',
+      message: `Updated GMB post: ${updatedPost.title || 'Untitled'}`,
+      metadata: { post_id: postId },
+    });
 
     return successResponse({
       post: updatedPost,

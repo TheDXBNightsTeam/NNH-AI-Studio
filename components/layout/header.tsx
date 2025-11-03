@@ -169,13 +169,14 @@ return 'Recently';
 }
 };
 
-const pathSegments = pathname.split('/').filter(Boolean);
+const safePath = pathname || '/';
+const pathSegments = safePath.split('/').filter(Boolean);
 const breadcrumbs = pathSegments.map((segment, index) => {
-const path = `/${pathSegments.slice(0, index + 1).join('/')}`;
-return {
-name: routeNames[path] || segment.charAt(0).toUpperCase() + segment.slice(1),
-path,
-};
+  const path = `/${pathSegments.slice(0, index + 1).join('/')}`;
+  return {
+    name: routeNames[path] || segment.charAt(0).toUpperCase() + segment.slice(1),
+    path,
+  };
 });
 
 return (

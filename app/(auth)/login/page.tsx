@@ -98,7 +98,7 @@ const LoginButton = ({ isLoading }: { isLoading: boolean }) => {
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectedFrom') || '/dashboard';
+  const redirectTo = (searchParams?.get('redirectedFrom') as string | null) ?? '/dashboard';
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

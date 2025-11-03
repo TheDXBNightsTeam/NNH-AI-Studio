@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { logServerActivity } from "@/server/services/activity";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    // Optional auth check for logging purposes
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
     const base = process.env.NEXT_PUBLIC_BASE_URL || "https://nnh.ae";
     const res = await fetch(`${base}/api/youtube/analytics`, { cache: "no-store" });
     const js = await res.json();
@@ -18,6 +24,18 @@ export async function GET() {
     months.forEach((m: string, i: number) => {
       csv += `${m},${views[i] || 0},${vids[i] || 0}\n`;
     });
+
+    // Unified activity log: YouTube analytics export
+    if (user) {
+      try {
+        await logServerActivity({
+          userId: user.id,
+          type: "youtube_analytics_exported",
+          message: "Exported YouTube analytics CSV",
+          metadata: { months: months.length },
+        });
+      } catch {}
+    }
 
     return new NextResponse(csv, {
       headers: {

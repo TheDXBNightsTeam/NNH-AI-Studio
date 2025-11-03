@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { logServerActivity } from "@/server/services/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -136,6 +137,20 @@ export async function GET(req: NextRequest) {
         `${baseUrl}/youtube-dashboard#error=${encodeURIComponent("Failed to save tokens")}`
       );
     }
+
+    // Unified activity log: YouTube connected
+    try {
+      await logServerActivity({
+        userId: stateRecord.user_id,
+        type: "youtube_connected",
+        message: "Connected YouTube account",
+        metadata: {
+          channel_id: channel?.id || null,
+          channel_title: channel?.snippet?.title || null,
+          email: userinfo?.email || null,
+        },
+      });
+    } catch {}
 
     return NextResponse.redirect(`${baseUrl}/youtube-dashboard#success=true`);
   } catch (e: any) {

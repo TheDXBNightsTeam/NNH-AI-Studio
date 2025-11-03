@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { logServerActivity } from '@/server/services/activity'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300 // 5 minutes for large video uploads
@@ -240,6 +241,15 @@ export async function POST(request: NextRequest) {
       console.error('[YouTube Upload] Database save error:', dbError)
       // Don't fail if DB save fails, video is already on YouTube
     }
+
+    try {
+      await logServerActivity({
+        userId: user.id,
+        type: 'youtube_video_uploaded',
+        message: `Uploaded YouTube video ${uploadedVideo.id}`,
+        metadata: { videoId: uploadedVideo.id, privacy, hasThumbnail: Boolean(thumbnailFile), tagsCount: tags.length },
+      })
+    } catch {}
 
     return NextResponse.json({
       ok: true,

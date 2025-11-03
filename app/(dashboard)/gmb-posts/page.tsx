@@ -9,6 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
 import { ArrowLeft, Calendar, Image as ImageIcon, Loader2, Send, Timer, Sparkles, Upload } from 'lucide-react';
+import { toast } from 'sonner';
+import { ActivityFeed } from '@/components/dashboard/activity-feed'
+import { logActivity } from '@/lib/services/activity'
 
 type LocationItem = { id: string; location_name: string };
 
@@ -29,6 +32,7 @@ export default function GMBPostsPage() {
   const [saving, setSaving] = useState(false);
   // حالة جديدة لتعقب تحميل الميديا
   const [mediaUploading, setMediaUploading] = useState(false);
+  // استخدام خدمة التسجيل الموحّدة عبر المشروع
 
   const [locationId, setLocationId] = useState<string>('');
   const [title, setTitle] = useState('');
@@ -53,17 +57,19 @@ export default function GMBPostsPage() {
       const j = await res.json();
       if (j?.title) setTitle(j.title);
       if (j?.description) setContent(j.description);
-      // إذا كان التوليد بالذكاء الاصطناعي لا يتضمن CTA، نحافظ على CTA فارغاً
-      // if (j?.hashtags && typeof j.hashtags === 'string') setCta(``); // تم إزالة هذا السطر ليتطابق مع التحسينات
-    } catch (e: any) {
-      alert(e.message);
+      toast.success('تم توليد المحتوى بالذكاء الاصطناعي', { description: 'راجع النص قبل الحفظ أو النشر', duration: 4500 });
+      logActivity({ type: 'ai', message: '🎨 Generated GMB post content using AI', metadata: { prompt: (content || title).substring(0, 100) } })
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : String(e)
+      toast.error('حدث خطأ أثناء توليد المحتوى', { description: 'تحقق من اتصالك بالإنترنت ثم حاول مرة أخرى', duration: 7000 });
+      logActivity({ type: 'ai', message: '❌ AI content generation failed', metadata: { error: errorMsg } })
     } finally {
       setGenLoading(false);
     }
   };
 
   useEffect(() => {
-    (async () => {
+    const fetchData = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -73,7 +79,7 @@ export default function GMBPostsPage() {
         .select('id, location_name')
         .eq('user_id', user.id)
         .order('location_name');
-      setLocations((data ?? []) as any);
+      setLocations((data ?? []) as { id: string; location_name: string }[]);
       setLoading(false);
       // fetch posts
       try {
@@ -83,8 +89,9 @@ export default function GMBPostsPage() {
       } finally {
         setListLoading(false);
       }
-    })();
-  }, []);
+    };
+    fetchData();
+  }, [supabase]);
 
   const handleSave = async () => {
     // يجب أن يكون ctaUrl مطلوباً إذا تم تحديد CTA، لكننا سنسمح بالحفظ بدونها الآن
@@ -101,17 +108,19 @@ export default function GMBPostsPage() {
           mediaUrl: mediaUrl || undefined,
           // إرسال قيمة CTA فقط إذا كانت محددة
           callToAction: cta || undefined,
-          // إرسال CTA URL فقط إذا تم تحديد CTA URL أو إذا كان CTA محددًا
-          callToActionUrl: (cta && ctaUrl) || undefined, 
+          callToActionUrl: (cta && ctaUrl) || undefined,
           scheduledAt: schedule || undefined,
         }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || 'Failed to save post');
-      alert('Post saved successfully');
+      toast.success('تم حفظ المنشور بنجاح!', { description: 'يمكنك نشره الآن أو العودة لاحقاً', duration: 5000 });
+      logActivity({ type: 'post_saved', message: '💾 Saved GMB post to drafts', metadata: { locationId, hasMedia: Boolean(mediaUrl), hasCta: Boolean(cta), contentLength: content.length } })
       return j.post?.id as string | undefined;
-    } catch (e: any) {
-      alert(e.message);
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : String(e)
+      toast.error('تعذر حفظ المنشور', { description: 'تحقق من اتصالك أو حاول بعد قليل', duration: 6500 });
+      logActivity({ type: 'post', message: '❌ Post save failed', metadata: { error: errorMsg } })
     } finally {
       setSaving(false);
     }
@@ -120,7 +129,7 @@ export default function GMBPostsPage() {
   const handlePublish = async () => {
     if (!locationId || !content.trim()) return;
     // التأكد من أن لدينا saved post id أولاً
-    let postId = await handleSave();
+    const postId = await handleSave();
     if (!postId) return;
     try {
       setSaving(true); // نستخدم حالة الحفظ هنا أيضًا للإشارة إلى العمل الجاري
@@ -131,7 +140,8 @@ export default function GMBPostsPage() {
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || 'Failed to publish');
-      alert('Published to Google successfully');
+      toast.success('تم النشر على Google بنجاح!', { description: 'قد يستغرق الظهور بضع دقائق', duration: 6000 });
+      logActivity({ type: 'post', message: '✅ Published GMB post to Google', metadata: { postId, hasMedia: Boolean(mediaUrl), hasCta: Boolean(cta) } })
       // مسح النموذج بعد النشر
       setTitle('');
       setContent('');
@@ -143,8 +153,10 @@ export default function GMBPostsPage() {
       const r = await fetch('/api/gmb/posts/list');
       const jj = await r.json();
       if (r.ok) setPosts(jj.items || []);
-    } catch (e: any) {
-      alert(e.message);
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : String(e)
+      toast.error('تعذر النشر على Google', { description: 'تحقق من الاتصال أو أعد المحاولة لاحقاً', duration: 7000 });
+      logActivity({ type: 'post', message: '❌ Post publish failed', metadata: { error: errorMsg } })
     } finally {
       setSaving(false);
     }
@@ -160,10 +172,18 @@ export default function GMBPostsPage() {
       formData.append('file', file);
       const res = await fetch('/api/upload/image', { method: 'POST', body: formData });
       const j = await res.json();
-      if (res.ok && j.url) setMediaUrl(j.url);
-      else alert(j.error || 'Upload failed');
-    } catch (e: any) {
-      alert(e.message);
+      if (res.ok && j.url) {
+        setMediaUrl(j.url);
+        toast.success('تم رفع الصورة', { description: 'سيتم استخدامها في المنشور', duration: 4000 });
+        logActivity({ type: 'post', message: '📸 Uploaded image for GMB post', metadata: { fileSize: file.size, fileName: file.name } })
+      } else {
+        toast.error(j.error ? `فشل رفع الصورة: ${j.error}` : 'فشل رفع الصورة. جرب صورة بحجم أقل أو تحقق من الاتصال.', { duration: 7000 });
+        logActivity({ type: 'post', message: '❌ Image upload failed', metadata: { error: j.error } })
+      }
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : String(e)
+      toast.error('حدث خطأ أثناء رفع الصورة', { description: 'تحقق من الاتصال أو نوع الملف', duration: 6500 });
+      logActivity({ type: 'post', message: '❌ Image upload error', metadata: { error: errorMsg } })
     } finally {
       setMediaUploading(false);
     }
@@ -171,29 +191,40 @@ export default function GMBPostsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-2 py-4 sm:px-6 sm:py-8">
         <div className="mb-6 flex items-center justify-between">
           <Link href="/home" className="text-muted-foreground hover:text-primary inline-flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" /> Back to Home
           </Link>
         </div>
 
-        <Card className="border border-primary/20 glass-strong">
+  <Card className="border border-primary/20 glass-strong">
           <CardHeader>
-            <CardTitle>GMB Post Composer</CardTitle>
-            <CardDescription>Create and schedule Business Profile posts</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>GMB Post Composer</CardTitle>
+                <CardDescription>Create and schedule Business Profile posts</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" aria-label="Help" title="شرح الوظائف" onClick={() => {
+                window.alert('لإنشاء منشور جديد: اختر الموقع، أدخل المحتوى، أضف صورة أو رابط إذا رغبت، وحدد زر Call to Action وجدولة النشر إذا لزم الأمر. يمكنك توليد المحتوى تلقائياً بالذكاء الاصطناعي عبر زر Generate with AI. بعد الانتهاء، اضغط حفظ أو نشر.');
+              }}>
+                ?
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="grid gap-4">
             {/* Location */}
             <div className="grid gap-2">
-              <label className="text-sm text-muted-foreground">Location</label>
+              <label htmlFor="location-select" className="text-sm text-muted-foreground">Location
+                <span className="ml-2 text-xs text-muted-foreground">اختر الموقع الذي تريد النشر عليه</span>
+              </label>
               <Select onValueChange={setLocationId} value={locationId}>
-                <SelectTrigger>
+                <SelectTrigger id="location-select" aria-label="Select business location">
                   <SelectValue placeholder={loading ? 'Loading locations...' : 'Select a location'} />
                 </SelectTrigger>
                 <SelectContent>
                   {locations.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>
+                    <SelectItem key={l.id} value={l.id} aria-label={l.location_name}>
                       {l.location_name}
                     </SelectItem>
                   ))}
@@ -203,18 +234,24 @@ export default function GMBPostsPage() {
 
             {/* Title */}
             <div className="grid gap-2">
-              <label className="text-sm text-muted-foreground">Title (optional)</label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
+              <label htmlFor="post-title" className="text-sm text-muted-foreground">Title (optional)
+                <span className="ml-2 text-xs text-muted-foreground">يمكنك تركه فارغاً</span>
+              </label>
+              <Input id="post-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" aria-label="Post title" />
             </div>
 
             {/* Content */}
             <div className="grid gap-2">
-              <label className="text-sm text-muted-foreground">Content</label>
+              <label htmlFor="post-content" className="text-sm text-muted-foreground">Content
+                <span className="ml-2 text-xs text-muted-foreground">اكتب نص المنشور أو استخدم الذكاء الاصطناعي</span>
+              </label>
               <Textarea
+                id="post-content"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 rows={6}
                 placeholder="Write your post content..."
+                aria-label="Post content"
               />
               <div className="flex gap-2">
                 <Button
@@ -223,6 +260,7 @@ export default function GMBPostsPage() {
                   variant="outline"
                   className="gap-2"
                   disabled={genLoading}
+                  aria-label="Generate post content with AI"
                 >
                   {genLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Generate with AI
                 </Button>
@@ -231,11 +269,13 @@ export default function GMBPostsPage() {
 
             {/* Media */}
             <div className="grid gap-2">
-              <label className="text-sm text-muted-foreground">Image/Media (optional)</label>
+              <label htmlFor="media-url" className="text-sm text-muted-foreground">Image/Media (optional)
+                <span className="ml-2 text-xs text-muted-foreground">ارفع صورة أو أدخل رابط صورة</span>
+              </label>
               <div className="flex gap-2">
-                <Input value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} placeholder="URL or upload file" disabled={mediaUploading} />
-                <label className="cursor-pointer">
-                  <Button variant="outline" type="button" className="gap-2" asChild disabled={mediaUploading}>
+                <Input id="media-url" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} placeholder="URL or upload file" disabled={mediaUploading} aria-label="Media URL or upload" />
+                <label className="cursor-pointer" htmlFor="media-upload">
+                  <Button variant="outline" type="button" className="gap-2" asChild disabled={mediaUploading} aria-label="Upload image">
                     {mediaUploading ? (
                       <span>
                         <Loader2 className="w-4 h-4 animate-spin" /> Uploading...
@@ -247,17 +287,19 @@ export default function GMBPostsPage() {
                     )}
                   </Button>
                   <input
+                    id="media-upload"
                     type="file"
                     accept="image/*"
                     className="hidden"
                     onChange={handleMediaUpload}
                     disabled={mediaUploading}
+                    aria-label="Upload image file"
                   />
                 </label>
               </div>
               {mediaUrl && (
                 <div className="mt-2">
-                  <img src={mediaUrl} alt="Preview" className="max-w-xs rounded border border-primary/20" />
+                  <img src={mediaUrl} alt="Media preview" className="max-w-xs rounded border border-primary/20" />
                 </div>
               )}
             </div>
@@ -265,7 +307,9 @@ export default function GMBPostsPage() {
             {/* CTA */}
             <div className="grid gap-2 md:grid-cols-2">
               <div className="grid gap-2">
-                <label className="text-sm text-muted-foreground">Call to Action (optional)</label>
+                <label className="text-sm text-muted-foreground">Call to Action (optional)
+                  <span className="ml-2 text-xs text-muted-foreground">زر تفاعل مثل Book أو Order</span>
+                </label>
                 {/* ⭐️ تم استبدال Input بـ Select لتحسين UX */}
                 <Select onValueChange={setCta} value={cta}>
                     <SelectTrigger>
@@ -282,7 +326,9 @@ export default function GMBPostsPage() {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <label className="text-sm text-muted-foreground">CTA URL</label>
+                <label className="text-sm text-muted-foreground">CTA URL
+                  <span className="ml-2 text-xs text-muted-foreground">رابط صفحة الحجز أو الطلب</span>
+                </label>
                 {/* الحقل الآن معطّل إذا لم يتم تحديد CTA */}
                 <Input value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} placeholder="https://..." disabled={!cta} />
               </div>
@@ -291,7 +337,9 @@ export default function GMBPostsPage() {
             {/* Schedule */}
             <div className="grid gap-2 md:grid-cols-2">
               <div className="grid gap-2">
-                <label className="text-sm text-muted-foreground">Schedule (optional)</label>
+                <label className="text-sm text-muted-foreground">Schedule (optional)
+                  <span className="ml-2 text-xs text-muted-foreground">حدد وقت النشر إذا رغبت</span>
+                </label>
                 <div className="flex gap-2">
                   <Input type="datetime-local" value={schedule} onChange={(e) => setSchedule(e.target.value)} />
                   <Button variant="outline" type="button" className="gap-2" disabled>
@@ -301,12 +349,12 @@ export default function GMBPostsPage() {
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
-              <Button onClick={handleSave} disabled={!locationId || !content.trim() || saving} className="gap-2">
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+              <Button onClick={handleSave} disabled={!locationId || !content.trim() || saving} className="gap-2 w-full sm:w-auto">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 Save Post
               </Button>
-              <Button variant="outline" type="button" className="gap-2" onClick={handlePublish} disabled={saving}>
+              <Button variant="outline" type="button" className="gap-2 w-full sm:w-auto" onClick={handlePublish} disabled={saving}>
                 <Timer className="w-4 h-4" /> Publish to Google
               </Button>
             </div>
@@ -327,8 +375,8 @@ export default function GMBPostsPage() {
           </CardContent>
         </Card>
 
-        {/* Recent Posts Card remains the same */}
-        <Card className="border border-primary/20 glass mt-8">
+  {/* Recent Posts Card remains the same */}
+  <Card className="border border-primary/20 glass mt-8">
           <CardHeader>
             <CardTitle>Recent Posts</CardTitle>
             <CardDescription>Your latest drafts and published posts</CardDescription>
@@ -340,7 +388,7 @@ export default function GMBPostsPage() {
               <div className="text-sm text-muted-foreground">No posts yet.</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm min-w-[400px]">
                   <thead className="text-left text-muted-foreground">
                     <tr>
                       <th className="py-2 pr-4">Title</th>
@@ -393,6 +441,11 @@ export default function GMBPostsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Global Activity Feed backed by Supabase */}
+        <div className="mt-8">
+          <ActivityFeed />
+        </div>
       </div>
     </div>
   );

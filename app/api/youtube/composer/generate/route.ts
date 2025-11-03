@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logServerActivity } from "@/server/services/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,15 @@ export async function POST(req: NextRequest) {
     const title = parsed.title || "Untitled video";
     const description = parsed.description || "Description goes here.";
     const hashtags = parsed.hashtags || "";
+    // Unified activity log: AI generation for YouTube content
+    try {
+      await logServerActivity({
+        userId: user.id,
+        type: "youtube_ai_generated",
+        message: "Generated YouTube content via AI",
+        metadata: { tone, hasHashtags: Boolean(hashtags), titleLength: title.length },
+      });
+    } catch {}
     return NextResponse.json({ title, description, hashtags });
   } catch (e:any) {
     return NextResponse.json({ error: e.message || "Generate failed" }, { status:500 });
