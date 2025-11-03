@@ -102,7 +102,7 @@ export function PerformanceSnapshot({ data, aiInsight }: PerformanceSnapshotProp
           </div>
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-2.5">
           {data.map((day, index) => {
             const barHeight = (day.views / maxViews) * 100
             const isPeak = peakDay ? day.day === peakDay.day : false
@@ -116,33 +116,33 @@ export function PerformanceSnapshot({ data, aiInsight }: PerformanceSnapshotProp
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="flex items-center gap-2"
+                className="flex items-center gap-3"
               >
-                <span className="text-xs text-muted-foreground w-8">
+                <span className="text-xs font-medium text-muted-foreground w-9 text-right">
                   {day.day}
                 </span>
                 
-                <div className="flex-1 flex items-center gap-2">
-                  <div className="flex-1 h-6 bg-secondary rounded-sm overflow-hidden relative">
+                <div className="flex-1 flex items-center gap-3">
+                  <div className="flex-1 h-8 bg-secondary rounded-md overflow-hidden relative border border-primary/20">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${barHeight}%` }}
                       transition={{ duration: 0.5, delay: index * 0.05 }}
                       className={cn(
-                        "h-full rounded-sm",
-                        isPeak ? "bg-primary" : "bg-primary/60"
+                        "h-full rounded-md",
+                        isPeak ? "bg-[#FF8C42] shadow-lg shadow-[#FF8C42]/20" : "bg-[#FF8C42]/70"
                       )}
                     />
                   </div>
                   
-                  <div className="flex items-center gap-1 min-w-[80px]">
-                    <span className="text-xs font-medium text-foreground">
+                  <div className="flex items-center gap-2 min-w-[100px] justify-end">
+                    <span className="text-sm font-semibold text-foreground">
                       {day.views}
                     </span>
                     {prevDay && changePercent !== 0 && (
                       <span className={cn(
-                        "text-xs flex items-center",
-                        isUp ? "text-success" : "text-destructive"
+                        "text-xs flex items-center font-medium px-1.5 py-0.5 rounded",
+                        isUp ? "text-success bg-success/10" : "text-destructive bg-destructive/10"
                       )}>
                         {isUp ? (
                           <ArrowUp className="h-3 w-3" />
@@ -153,7 +153,9 @@ export function PerformanceSnapshot({ data, aiInsight }: PerformanceSnapshotProp
                       </span>
                     )}
                     {isPeak && (
-                      <span className="text-xs text-primary">⬆️ Peak</span>
+                      <span className="text-xs font-bold text-[#FF8C42] px-2 py-0.5 bg-[#FF8C42]/10 rounded border border-[#FF8C42]/30">
+                        🔥 Peak
+                      </span>
                     )}
                   </div>
                 </div>

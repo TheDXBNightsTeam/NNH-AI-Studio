@@ -136,7 +136,7 @@ export function SmartChecklist({ tasks, onTaskAction }: SmartChecklistProps) {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="bg-primary/10 hover:bg-primary/20 text-primary border-primary/30 text-xs h-7"
+                          className="bg-primary/10 hover:bg-primary/20 text-primary border-primary/40 text-sm font-medium h-8 px-4 hover:scale-105 transition-transform hover:shadow-lg hover:shadow-primary/20"
                           onClick={() => onTaskAction?.(task.id)}
                         >
                           {task.actionLabel}

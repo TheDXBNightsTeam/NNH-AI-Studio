@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -192,6 +193,15 @@ function RecommendationItem({
 }) {
   const config = priorityConfig[recommendation.priority]
   const Icon = config.icon
+  const router = useRouter()
+
+  const handleClick = () => {
+    if (recommendation.actionUrl) {
+      router.push(recommendation.actionUrl)
+    } else if (recommendation.onAction) {
+      recommendation.onAction()
+    }
+  }
 
   return (
     <motion.div
@@ -199,7 +209,7 @@ function RecommendationItem({
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.05 }}
       className={cn(
-        "p-3 rounded-lg border transition-all hover:shadow-sm",
+        "p-3 rounded-lg border transition-all hover:shadow-sm hover:shadow-primary/20",
         config.bgColor,
         config.borderColor
       )}
@@ -214,11 +224,12 @@ function RecommendationItem({
             size="sm"
             variant="outline"
             className={cn(
-              "h-7 text-xs",
+              "h-9 text-sm font-medium hover:scale-105 transition-transform",
               config.bgColor,
-              config.borderColor
+              config.borderColor,
+              "hover:bg-primary/20 hover:border-primary/50"
             )}
-            onClick={recommendation.onAction}
+            onClick={handleClick}
           >
             {recommendation.actionLabel}
             <ChevronRight className="h-3 w-3 ml-1" />
