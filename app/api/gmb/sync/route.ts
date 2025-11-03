@@ -1058,6 +1058,8 @@ export async function POST(request: NextRequest) {
             category: location.categories?.primaryCategory?.displayName || null,
             website: location.websiteUri || null,
             is_active: true,
+            latitude: latlng?.latitude ?? null,
+            longitude: latlng?.longitude ?? null,
             metadata: enhancedMetadata,
             updated_at: new Date().toISOString(),
           };
