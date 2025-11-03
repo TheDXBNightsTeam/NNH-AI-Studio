@@ -14,6 +14,7 @@ interface LastSyncInfoProps {
   syncSchedule?: string
   onDisconnect?: () => void
   isDisconnecting?: boolean
+  className?: string
 }
 
 export function LastSyncInfo({ 
@@ -22,7 +23,8 @@ export function LastSyncInfo({
   onSync,
   syncSchedule = 'manual',
   onDisconnect,
-  isDisconnecting = false
+  isDisconnecting = false,
+  className
 }: LastSyncInfoProps) {
   const getTimeAgo = () => {
     if (!lastSyncTime) return "Never synced"

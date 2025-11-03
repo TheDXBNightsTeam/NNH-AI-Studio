@@ -10,9 +10,15 @@ import { UserButton } from '@/components/auth/user-button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 
+interface UserProfile {
+  name: string | null;
+  avatarUrl: string | null;
+}
+
 interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
+  userProfile?: UserProfile;
 }
 
 interface NavigationItem {
@@ -108,7 +114,7 @@ const bottomNavigation: NavigationItem[] = [
   },
 ];
 
-export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
+export function Sidebar({ isOpen = true, onClose, userProfile }: SidebarProps) {
   const pathname = usePathname();
   
   // On desktop (lg and above), always show sidebar regardless of isOpen
