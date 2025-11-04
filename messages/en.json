@@ -416,6 +416,36 @@
     "card": {
       "reviews": "Reviews",
       "insights": "Insights"
+    },
+    "healthScore": {
+      "title": "Profile Completeness",
+      "complete": "Complete",
+      "incomplete": "Incomplete",
+      "viewDetails": "View Details",
+      "improve": "Improve Score",
+      "items": {
+        "hours": "Business Hours",
+        "photos": "Photos ({count}/5+)",
+        "description": "Description",
+        "reviews": "Reviews ({count}/10+)",
+        "posts": "Recent Posts",
+        "responses": "Review Responses"
+      },
+      "tips": {
+        "hours": "Add your business hours to help customers know when you're open",
+        "photos": "Upload at least 5 high-quality photos of your business",
+        "description": "Write a compelling description of your business",
+        "reviews": "Encourage customers to leave reviews",
+        "posts": "Post updates regularly to engage with customers",
+        "responses": "Respond to customer reviews to build trust"
+      },
+      "actions": {
+        "addHours": "Add Hours",
+        "uploadPhotos": "Upload Photos",
+        "addDescription": "Add Description",
+        "createPost": "Create Post",
+        "viewReviews": "View Reviews"
+      }
     }
   }
 }
