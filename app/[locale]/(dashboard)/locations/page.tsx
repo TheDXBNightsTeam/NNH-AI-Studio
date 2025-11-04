@@ -9,10 +9,21 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
+import {
   MapPin, Star, TrendingUp, TrendingDown,
   Search, Plus, Edit3, Shield, Eye, BarChart3,
   Loader2, RefreshCw, Layers, MessageSquare, 
-  CheckCircle2, TrendingUpIcon, Users, Sparkles
+  CheckCircle2, TrendingUpIcon, Users, Sparkles,
+  Clock, Camera, FileText, MessageCircle, Megaphone,
+  AlertCircle, ArrowRight, Info
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
@@ -65,6 +76,230 @@ interface LocationInsights {
 const formatLargeNumber = (num: number) => {
   if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
   return num.toString();
+};
+
+// Calculate Health Score Breakdown
+const getHealthScoreBreakdown = (location: Location) => {
+  const hasHours = location.hours && Object.keys(location.hours).length > 0;
+  const hasPhotos = location.photos >= 5;
+  const hasDescription = location.website && location.website.length > 0;
+  const hasEnoughReviews = location.reviewCount >= 10;
+  const hasRecentPosts = location.posts > 0;
+  // Assume 50% response rate for demo (should come from API)
+  const hasGoodResponseRate = location.reviewCount > 0;
+
+  return {
+    items: [
+      { 
+        key: 'hours',
+        icon: Clock,
+        complete: hasHours,
+        points: 20,
+        current: hasHours ? 20 : 0,
+      },
+      {
+        key: 'photos',
+        icon: Camera,
+        complete: hasPhotos,
+        points: 20,
+        current: Math.min(location.photos * 4, 20),
+        count: location.photos,
+      },
+      {
+        key: 'description',
+        icon: FileText,
+        complete: hasDescription,
+        points: 15,
+        current: hasDescription ? 15 : 0,
+      },
+      {
+        key: 'reviews',
+        icon: Star,
+        complete: hasEnoughReviews,
+        points: 15,
+        current: Math.min(location.reviewCount * 1.5, 15),
+        count: location.reviewCount,
+      },
+      {
+        key: 'posts',
+        icon: Megaphone,
+        complete: hasRecentPosts,
+        points: 15,
+        current: hasRecentPosts ? 15 : 0,
+      },
+      {
+        key: 'responses',
+        icon: MessageCircle,
+        complete: hasGoodResponseRate,
+        points: 15,
+        current: hasGoodResponseRate ? 15 : 0,
+      },
+    ],
+    total: location.healthScore,
+  };
+};
+
+// Health Score Details Component
+const HealthScoreDetails = ({ location }: { location: Location }) => {
+  const t = useTranslations('Locations.healthScore');
+  const breakdown = getHealthScoreBreakdown(location);
+  const router = useRouter();
+
+  const getActionButton = (itemKey: string) => {
+    const actions: Record<string, { label: string; onClick: () => void }> = {
+      hours: {
+        label: t('actions.addHours'),
+        onClick: () => router.push(`/locations/${location.id}/edit?section=hours`),
+      },
+      photos: {
+        label: t('actions.uploadPhotos'),
+        onClick: () => router.push(`/locations/${location.id}/edit?section=photos`),
+      },
+      description: {
+        label: t('actions.addDescription'),
+        onClick: () => router.push(`/locations/${location.id}/edit?section=description`),
+      },
+      reviews: {
+        label: t('actions.viewReviews'),
+        onClick: () => router.push(`/reviews?location=${location.id}`),
+      },
+      posts: {
+        label: t('actions.createPost'),
+        onClick: () => router.push(`/gmb-posts?location=${location.id}`),
+      },
+      responses: {
+        label: t('actions.viewReviews'),
+        onClick: () => router.push(`/reviews?location=${location.id}`),
+      },
+    };
+    return actions[itemKey];
+  };
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent">
+          <Info className="w-4 h-4 ml-1 text-muted-foreground hover:text-primary" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-primary" />
+            {t('title')}
+          </DialogTitle>
+          <DialogDescription>
+            {location.name}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* Overall Score */}
+          <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20">
+            <div>
+              <p className="text-sm text-muted-foreground">{t('title')}</p>
+              <p className="text-3xl font-bold text-primary">{breakdown.total}%</p>
+            </div>
+            <Progress value={breakdown.total} className="w-32 h-3" />
+          </div>
+
+          {/* Breakdown Items */}
+          <div className="space-y-4">
+            {breakdown.items.map((item) => {
+              const Icon = item.icon;
+              const action = getActionButton(item.key);
+              const labelKey = `items.${item.key}` as any;
+              const tipKey = `tips.${item.key}` as any;
+
+              return (
+                <div
+                  key={item.key}
+                  className={`p-4 rounded-lg border ${
+                    item.complete
+                      ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900'
+                      : 'bg-muted/50 border-muted'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div
+                        className={`p-2 rounded-lg ${
+                          item.complete
+                            ? 'bg-green-100 dark:bg-green-900/40'
+                            : 'bg-muted'
+                        }`}
+                      >
+                        <Icon
+                          className={`w-5 h-5 ${
+                            item.complete ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+                          }`}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium">
+                            {t(labelKey, { count: item.count || 0 })}
+                          </h4>
+                          {item.complete ? (
+                            <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/40 dark:text-green-400">
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              {t('complete')}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/40 dark:text-orange-400">
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              {t('incomplete')}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {t(tipKey)}
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <Progress value={(item.current / item.points) * 100} className="flex-1 h-2" />
+                          <span className="text-sm font-medium tabular-nums">
+                            {item.current}/{item.points}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    {!item.complete && action && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={action.onClick}
+                        className="flex-shrink-0"
+                      >
+                        {action.label}
+                        <ArrowRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Tips */}
+          {breakdown.total < 100 && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
+              <div className="flex gap-3">
+                <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-1">
+                    {t('improve')}
+                  </h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    Complete the missing items above to improve your profile visibility and attract more customers.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 // Skeleton Card Component
@@ -176,9 +411,11 @@ const LocationCard = ({ location, onEdit, onViewDetails }: {
       <CardContent className="space-y-4">
         {/* Health Score */}
         <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg border border-primary/20">
-          <span className="text-sm font-medium flex items-center gap-1">
-            <Shield className="w-4 h-4 text-primary" /> {t('labels.healthScore')}
-          </span>
+          <div className="flex items-center gap-1">
+            <Shield className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">{t('labels.healthScore')}</span>
+            <HealthScoreDetails location={location} />
+          </div>
           <span className={`text-xl font-bold ${getHealthScoreColor(location.healthScore)}`}>
             {location.healthScore}%
           </span>
