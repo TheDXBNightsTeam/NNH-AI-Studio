@@ -8,7 +8,8 @@ import React from 'react';
 import { 
   Location, 
   formatLargeNumber, 
-  getStatusColor, 
+  getStatusColor,
+  formatSafeDate, 
   getHealthScoreColor, 
   getTrendColor,
   HealthScoreDetails 
@@ -165,7 +166,7 @@ export const LazyLocationCard = ({
 
         {/* Last Sync */}
         <div className="text-xs text-muted-foreground text-center pt-2 border-t">
-          {t('labels.lastSync')}: {location.lastSync.toLocaleTimeString()}
+          {t('labels.lastSync')}: {formatSafeDate(location.lastSync)}
         </div>
       </CardContent>
     </Card>

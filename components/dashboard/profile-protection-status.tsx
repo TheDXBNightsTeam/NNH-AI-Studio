@@ -49,7 +49,14 @@ export function ProfileProtectionStatus() {
           )}
 
           <div className="text-xs text-muted-foreground">
-            Last check: {protectionData.lastCheck.toLocaleTimeString()}
+            Last check: {protectionData.lastCheck 
+              ? typeof protectionData.lastCheck === 'string' 
+                ? new Date(protectionData.lastCheck).toLocaleTimeString()
+                : protectionData.lastCheck instanceof Date 
+                  ? protectionData.lastCheck.toLocaleTimeString()
+                  : 'Never checked'
+              : 'Never checked'
+            }
           </div>
         </div>
 
