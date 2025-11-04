@@ -65,13 +65,21 @@ export async function GET(request: Request) {
   }
 
   try {
-    const userId = user.id;
-    // ... (منطق حساب الفترات الزمنية) ...
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const sixtyDaysAgo = new Date(now);
-    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+  const userId = user.id;
+  // فترات زمنية ديناميكية حسب بارامترات الطلب (start/end)
+  const url = new URL(request.url);
+  const startParam = url.searchParams.get('start');
+  const endParam = url.searchParams.get('end');
+  const now = endParam ? new Date(endParam) : new Date();
+  const defaultStart = new Date();
+  defaultStart.setDate(defaultStart.getDate() - 30);
+  const startCandidate = startParam ? new Date(startParam) : defaultStart;
+  const startOfPeriod = new Date(startCandidate.getFullYear(), startCandidate.getMonth(), startCandidate.getDate());
+  const endOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  const msInDay = 1000 * 60 * 60 * 24;
+  const periodDays = Math.max(1, Math.ceil((endOfPeriod.getTime() - startOfPeriod.getTime()) / msInDay));
+  const prevEnd = new Date(startOfPeriod.getTime() - 1);
+  const prevStart = new Date(prevEnd.getTime() - (periodDays * msInDay) + 1);
 
     // ... (منطق جلب الحسابات والمواقع النشطة) ...
     const { data: activeAccounts } = await supabase
@@ -145,12 +153,12 @@ export async function GET(request: Request) {
     // 2. فلترة المراجعات حسب الفترات الزمنية
     const recentReviews = reviews.filter(r => {
       const reviewDate = new Date(r.review_date || r.created_at);
-      return reviewDate >= thirtyDaysAgo;
+      return reviewDate >= startOfPeriod && reviewDate <= endOfPeriod;
     });
 
     const previousPeriodReviews = reviews.filter(r => {
       const reviewDate = new Date(r.review_date || r.created_at);
-      return reviewDate >= sixtyDaysAgo && reviewDate < thirtyDaysAgo;
+      return reviewDate >= prevStart && reviewDate <= prevEnd;
     });
 
     // 3. حساب متوسط التقييم للفترة الأخيرة (30 يوم)
@@ -185,7 +193,7 @@ export async function GET(request: Request) {
     // 8. حساب Locations Trend (% تغيير في عدد المواقع)
     const recentLocations = activeLocationsData?.filter(loc => {
       const createdDate = new Date(loc.created_at);
-      return createdDate >= thirtyDaysAgo;
+      return createdDate >= startOfPeriod && createdDate <= endOfPeriod;
     }) || [];
 
     const locationsTrend = recentLocations.length > 0
@@ -269,38 +277,34 @@ export async function GET(request: Request) {
     // 3. تحديد النتيجة النهائية (Health Score)
     const healthScore = Math.max(0, Math.min(100, Math.round(score)));
 
-    // ========================================
-    // حساب بيانات المقارنة الشهرية للمخطط البياني
-    // ========================================
-    
-    // جلب بيانات الأسئلة للشهر الحالي والسابق
-    const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+  // ========================================
+  // بيانات المقارنة للفترة الحالية مقابل السابقة
+  // ========================================
 
     const { data: currentMonthQuestions } = await supabase
         .from("gmb_questions")
         .select("id")
         .eq("user_id", userId)
         .in("location_id", activeLocationIds)
-        .gte("created_at", startOfCurrentMonth.toISOString());
+  .gte("created_at", startOfPeriod.toISOString())
+  .lte("created_at", endOfPeriod.toISOString());
 
     const { data: lastMonthQuestions } = await supabase
         .from("gmb_questions")
         .select("id")
         .eq("user_id", userId)
         .in("location_id", activeLocationIds)
-        .gte("created_at", startOfLastMonth.toISOString())
-        .lte("created_at", endOfLastMonth.toISOString());
+  .gte("created_at", prevStart.toISOString())
+  .lte("created_at", prevEnd.toISOString());
 
     const currentMonthReviews = reviews.filter(r => {
       const reviewDate = new Date(r.review_date || r.created_at);
-      return reviewDate >= startOfCurrentMonth;
+      return reviewDate >= startOfPeriod && reviewDate <= endOfPeriod;
     });
 
     const lastMonthReviews = reviews.filter(r => {
       const reviewDate = new Date(r.review_date || r.created_at);
-      return reviewDate >= startOfLastMonth && reviewDate <= endOfLastMonth;
+      return reviewDate >= prevStart && reviewDate <= prevEnd;
     });
 
     const currentMonthRatings = currentMonthReviews.map(r => r.rating).filter(r => r && r > 0);
@@ -358,12 +362,12 @@ export async function GET(request: Request) {
           // حساب التغيير في التقييم
           const recentLocationReviews = reviewsData.filter(r => {
             const reviewDate = new Date(r.review_date || r.created_at);
-            return reviewDate >= thirtyDaysAgo;
+            return reviewDate >= startOfPeriod && reviewDate <= endOfPeriod;
           });
 
           const previousLocationReviews = reviewsData.filter(r => {
             const reviewDate = new Date(r.review_date || r.created_at);
-            return reviewDate >= sixtyDaysAgo && reviewDate < thirtyDaysAgo;
+            return reviewDate >= prevStart && reviewDate <= prevEnd;
           });
 
           const recentLocationRatings = recentLocationReviews.map(r => r.rating).filter(r => r && r > 0);

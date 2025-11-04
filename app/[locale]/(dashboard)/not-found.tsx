@@ -51,11 +51,11 @@ export default function DashboardNotFound() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {[
                 { label: 'Dashboard', href: '/dashboard' },
-                { label: 'Locations', href: '/dashboard/locations' },
-                { label: 'Reviews', href: '/dashboard/reviews' },
-                { label: 'Media', href: '/dashboard/media' },
-                { label: 'Analytics', href: '/dashboard/analytics' },
-                { label: 'Settings', href: '/dashboard/settings' },
+                { label: 'Locations', href: '/locations' },
+                { label: 'Reviews', href: '/reviews' },
+                { label: 'Media', href: '/media' },
+                { label: 'Analytics', href: '/analytics' },
+                { label: 'Settings', href: '/settings' },
               ].map((link) => (
                 <Link
                   key={link.href}

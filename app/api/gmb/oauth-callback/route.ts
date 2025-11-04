@@ -18,11 +18,14 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get('error');
     
     // Handle OAuth errors
+    // Determine locale from cookie (fallback to 'en')
+    const localeCookie = request.cookies.get('NEXT_LOCALE')?.value || 'en';
+
     if (error) {
       console.error('[OAuth Callback] OAuth error:', error);
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       return NextResponse.redirect(
-        `${baseUrl}/dashboard/settings?error=${encodeURIComponent(`OAuth error: ${error}`)}`
+        `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent(`OAuth error: ${error}`)}`
       );
     }
     
@@ -31,7 +34,7 @@ export async function GET(request: NextRequest) {
       console.error('[OAuth Callback] Missing code or state');
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       return NextResponse.redirect(
-        `${baseUrl}/dashboard/settings?error=${encodeURIComponent('Missing authorization code or state')}`
+        `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent('Missing authorization code or state')}`
       );
     }
     
@@ -51,7 +54,7 @@ export async function GET(request: NextRequest) {
       console.error('[OAuth Callback] Invalid state:', stateError);
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       return NextResponse.redirect(
-        `${baseUrl}/dashboard/settings?error=${encodeURIComponent('Invalid or expired authorization state')}`
+        `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent('Invalid or expired authorization state')}`
       );
     }
     
@@ -61,7 +64,7 @@ export async function GET(request: NextRequest) {
       console.error('[OAuth Callback] State has expired');
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       return NextResponse.redirect(
-        `${baseUrl}/dashboard/settings?error=${encodeURIComponent('Authorization state has expired')}`
+        `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent('Authorization state has expired')}`
       );
     }
     
@@ -85,7 +88,7 @@ export async function GET(request: NextRequest) {
     if (!clientId || !clientSecret) {
       console.error('[OAuth Callback] Missing Google OAuth configuration');
       return NextResponse.redirect(
-        `${baseUrl}/dashboard/settings?error=${encodeURIComponent('Server configuration error')}`
+        `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent('Server configuration error')}`
       );
     }
     
@@ -114,7 +117,7 @@ export async function GET(request: NextRequest) {
       console.error('[OAuth Callback] Token exchange failed:', tokenData);
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       return NextResponse.redirect(
-        `${baseUrl}/dashboard/settings?error=${encodeURIComponent(
+        `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent(
           `Token exchange failed: ${tokenData.error_description || tokenData.error}`
         )}`
       );
@@ -138,7 +141,7 @@ export async function GET(request: NextRequest) {
       console.error('[OAuth Callback] Failed to fetch user info');
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       return NextResponse.redirect(
-        `${baseUrl}/dashboard/settings?error=${encodeURIComponent('Failed to fetch user information')}`
+        `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent('Failed to fetch user information')}`
       );
     }
     
@@ -165,7 +168,7 @@ export async function GET(request: NextRequest) {
       console.error('[OAuth Callback] Failed to fetch GMB accounts:', await gmbAccountsResponse.text());
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       return NextResponse.redirect(
-        `${baseUrl}/dashboard/settings?error=${encodeURIComponent('Failed to fetch Google My Business accounts')}`
+        `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent('Failed to fetch Google My Business accounts')}`
       );
     }
     
@@ -178,7 +181,7 @@ export async function GET(request: NextRequest) {
       console.warn('[OAuth Callback] No GMB accounts found for user');
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
       return NextResponse.redirect(
-        `${baseUrl}/dashboard/settings?error=${encodeURIComponent('No Google My Business accounts found')}`
+        `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent('No Google My Business accounts found')}`
       );
     }
     
@@ -202,7 +205,7 @@ export async function GET(request: NextRequest) {
         console.error('[OAuth Callback] Security violation: GMB account already linked to different user');
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
         return NextResponse.redirect(
-          `${baseUrl}/dashboard/settings?error=${encodeURIComponent('This Google My Business account is already linked to another user')}`
+          `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent('This Google My Business account is already linked to another user')}`
         );
       }
       
@@ -236,7 +239,7 @@ export async function GET(request: NextRequest) {
         console.error('[OAuth Callback] Error upserting account:', upsertError);
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
         return NextResponse.redirect(
-          `${baseUrl}/dashboard/settings?error=${encodeURIComponent(
+          `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent(
             `Failed to save account: ${upsertError?.message || 'Unknown error'}`
           )}`
         );
@@ -337,20 +340,21 @@ export async function GET(request: NextRequest) {
     if (!savedAccountId) {
       console.error('[OAuth Callback] No account was saved');
       return NextResponse.redirect(
-        `${baseUrl}/dashboard/settings?error=${encodeURIComponent('Failed to save any account')}`
+        `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent('Failed to save any account')}`
       );
     }
     
     // Redirect to dashboard settings with success message
-    const redirectUrl = `${baseUrl}/dashboard/settings?connected=true`;
+  const redirectUrl = `${baseUrl}/${localeCookie}/settings?connected=true`;
     console.log('[OAuth Callback] Redirecting to:', redirectUrl);
     return NextResponse.redirect(redirectUrl);
     
   } catch (error: any) {
     console.error('[OAuth Callback] Unexpected error:', error);
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const localeCookie = request.cookies.get('NEXT_LOCALE')?.value || 'en';
     return NextResponse.redirect(
-      `${baseUrl}/dashboard/settings?error=${encodeURIComponent(
+      `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent(
         error.message || 'An unexpected error occurred'
       )}`
     );

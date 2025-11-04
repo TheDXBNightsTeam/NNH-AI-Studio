@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/lib/navigation';
 
 interface KeyboardShortcut {
   key: string;
@@ -47,31 +47,31 @@ export function useNavigationShortcuts() {
     {
       key: 'l',
       metaKey: true,
-      action: () => router.push('/dashboard/locations'),
+  action: () => router.push('/locations'),
       description: 'Go to Locations',
     },
     {
       key: 'r',
       metaKey: true,
-      action: () => router.push('/dashboard/reviews'),
+  action: () => router.push('/reviews'),
       description: 'Go to Reviews',
     },
     {
       key: 'p',
       metaKey: true,
-      action: () => router.push('/dashboard/posts'),
+  action: () => router.push('/posts'),
       description: 'Go to Posts',
     },
     {
       key: 'a',
       metaKey: true,
-      action: () => router.push('/dashboard/analytics'),
+  action: () => router.push('/analytics'),
       description: 'Go to Analytics',
     },
     {
       key: ',',
       metaKey: true,
-      action: () => router.push('/dashboard/settings'),
+  action: () => router.push('/settings'),
       description: 'Go to Settings',
     },
   ];
