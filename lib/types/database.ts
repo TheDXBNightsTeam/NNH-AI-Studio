@@ -21,18 +21,21 @@ export interface GMBLocation {
   gmb_account_id: string
   user_id: string
   location_id: string
+  normalized_location_id: string
   location_name: string
   address?: string
   phone?: string
   website?: string
   category?: string
-  rating: number
-  review_count: number
-  response_rate: number
+  type?: string
+  rating?: number | null
+  review_count?: number
+  response_rate?: number
   is_active: boolean
-  is_syncing: boolean
+  is_syncing?: boolean
   latitude?: number | null
   longitude?: number | null
+  business_hours?: Record<string, any>
   metadata: Record<string, any>
   ai_insights?: string
   created_at: string
@@ -44,13 +47,18 @@ export interface GMBLocationWithRating {
   gmb_account_id: string
   user_id: string
   location_id: string
+  normalized_location_id: string
   location_name: string
   address?: string
   phone?: string
   website?: string
   category?: string
+  type?: string
   is_active: boolean
-  is_syncing: boolean
+  is_syncing?: boolean
+  latitude?: number | null
+  longitude?: number | null
+  business_hours?: Record<string, any>
   metadata: Record<string, any>
   ai_insights?: string
   created_at: string
