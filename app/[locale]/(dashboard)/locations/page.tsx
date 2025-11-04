@@ -114,10 +114,10 @@ export default function LocationsPage() {
   const getOverallStats = () => {
     if (!locations.length) return { totalViews: 0, totalClicks: 0, avgRating: 0, avgHealthScore: 0 };
     
-    const totalViews = locations.reduce((sum: number, loc: LocationType) => sum + loc.insights.views, 0);
-    const totalClicks = locations.reduce((sum: number, loc: LocationType) => sum + loc.insights.clicks, 0);
-    const avgRating = locations.reduce((sum: number, loc: LocationType) => sum + loc.rating, 0) / locations.length;
-    const avgHealthScore = locations.reduce((sum: number, loc: LocationType) => sum + loc.healthScore, 0) / locations.length;
+    const totalViews = locations.reduce((sum: number, loc: LocationType) => sum + (loc.insights?.views || 0), 0);
+    const totalClicks = locations.reduce((sum: number, loc: LocationType) => sum + (loc.insights?.clicks || 0), 0);
+    const avgRating = locations.reduce((sum: number, loc: LocationType) => sum + (loc.rating || 0), 0) / locations.length;
+    const avgHealthScore = locations.reduce((sum: number, loc: LocationType) => sum + (loc.healthScore || 0), 0) / locations.length;
     
     return { totalViews, totalClicks, avgRating, avgHealthScore };
   };

@@ -22,6 +22,18 @@ import {
 import { useTranslations } from 'next-intl';
 import { Link } from '@/lib/navigation';
 
+// Helper function to safely access insights
+const getSafeInsights = (location: Location) => {
+  return {
+    views: location.insights?.views || 0,
+    clicks: location.insights?.clicks || 0,
+    calls: location.insights?.calls || 0,
+    viewsTrend: location.insights?.viewsTrend || 0,
+    clicksTrend: location.insights?.clicksTrend || 0,
+    callsTrend: location.insights?.callsTrend || 0,
+  };
+};
+
 // Placeholder for when we extract components
 // For now, these return the skeleton components
 
@@ -53,12 +65,12 @@ export const LazyLocationCard = ({
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                <span className="font-medium text-foreground">{location.rating.toFixed(1)}</span>
-                <span>({formatLargeNumber(location.reviewCount)})</span>
+                <span className="font-medium text-foreground">{(location.rating || 0).toFixed(1)}</span>
+                <span>({formatLargeNumber(location.reviewCount || 0)})</span>
               </div>
               <div className="flex items-center gap-1">
                 <MapPin className="w-4 h-4" />
-                <span className="truncate max-w-[150px]">{location.address.split(',')[0]}</span>
+                <span className="truncate max-w-[150px]">{(location.address || '').split(',')[0] || 'No address'}</span>
               </div>
             </div>
           </div>
@@ -81,54 +93,54 @@ export const LazyLocationCard = ({
             <span className="text-sm font-medium">{t('labels.healthScore')}</span>
             <HealthScoreDetails location={location} />
           </div>
-          <span className={`text-xl font-bold ${getHealthScoreColor(location.healthScore)}`}>
+          <span className={`text-xl font-bold ${getHealthScoreColor(location.healthScore || 0)}`}>
             {location.healthScore}%
           </span>
         </div>
 
-        {/* Quick Stats */}
+        {/* Insights Grid */}
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center p-2 rounded-lg border border-muted">
-            <div className="text-base font-bold text-foreground">{formatLargeNumber(location.insights.views)}</div>
+            <div className="text-base font-bold text-foreground">{formatLargeNumber(getSafeInsights(location).views)}</div>
             <div className="text-xs text-muted-foreground">{t('labels.views')}</div>
             <div className="flex items-center justify-center gap-1 text-xs">
-              {location.insights.viewsTrend > 0 ? (
-                <TrendingUp className={`w-3 h-3 ${getTrendColor(location.insights.viewsTrend)}`} />
+              {getSafeInsights(location).viewsTrend > 0 ? (
+                <TrendingUp className={`w-3 h-3 ${getTrendColor(getSafeInsights(location).viewsTrend)}`} />
               ) : (
-                <TrendingDown className={`w-3 h-3 ${getTrendColor(location.insights.viewsTrend)}`} />
+                <TrendingDown className={`w-3 h-3 ${getTrendColor(getSafeInsights(location).viewsTrend)}`} />
               )}
-              <span className={getTrendColor(location.insights.viewsTrend)}>
-                {Math.abs(location.insights.viewsTrend)}%
+              <span className={getTrendColor(getSafeInsights(location).viewsTrend)}>
+                {Math.abs(getSafeInsights(location).viewsTrend)}%
               </span>
             </div>
           </div>
 
           <div className="text-center p-2 rounded-lg border border-muted">
-            <div className="text-base font-bold text-foreground">{formatLargeNumber(location.insights.clicks)}</div>
+            <div className="text-base font-bold text-foreground">{formatLargeNumber(getSafeInsights(location).clicks)}</div>
             <div className="text-xs text-muted-foreground">{t('labels.clicks')}</div>
             <div className="flex items-center justify-center gap-1 text-xs">
-              {location.insights.clicksTrend > 0 ? (
-                <TrendingUp className={`w-3 h-3 ${getTrendColor(location.insights.clicksTrend)}`} />
+              {getSafeInsights(location).clicksTrend > 0 ? (
+                <TrendingUp className={`w-3 h-3 ${getTrendColor(getSafeInsights(location).clicksTrend)}`} />
               ) : (
-                <TrendingDown className={`w-3 h-3 ${getTrendColor(location.insights.clicksTrend)}`} />
+                <TrendingDown className={`w-3 h-3 ${getTrendColor(getSafeInsights(location).clicksTrend)}`} />
               )}
-              <span className={getTrendColor(location.insights.clicksTrend)}>
-                {Math.abs(location.insights.clicksTrend)}%
+              <span className={getTrendColor(getSafeInsights(location).clicksTrend)}>
+                {Math.abs(getSafeInsights(location).clicksTrend)}%
               </span>
             </div>
           </div>
 
           <div className="text-center p-2 rounded-lg border border-muted">
-            <div className="text-base font-bold text-foreground">{formatLargeNumber(location.insights.calls)}</div>
+            <div className="text-base font-bold text-foreground">{formatLargeNumber(getSafeInsights(location).calls)}</div>
             <div className="text-xs text-muted-foreground">{t('labels.calls')}</div>
             <div className="flex items-center justify-center gap-1 text-xs">
-              {location.insights.callsTrend > 0 ? (
-                <TrendingUp className={`w-3 h-3 ${getTrendColor(location.insights.callsTrend)}`} />
+              {getSafeInsights(location).callsTrend > 0 ? (
+                <TrendingUp className={`w-3 h-3 ${getTrendColor(getSafeInsights(location).callsTrend)}`} />
               ) : (
-                <TrendingDown className={`w-3 h-3 ${getTrendColor(location.insights.callsTrend)}`} />
+                <TrendingDown className={`w-3 h-3 ${getTrendColor(getSafeInsights(location).callsTrend)}`} />
               )}
-              <span className={getTrendColor(location.insights.callsTrend)}>
-                {Math.abs(location.insights.callsTrend)}%
+              <span className={getTrendColor(getSafeInsights(location).callsTrend)}>
+                {Math.abs(getSafeInsights(location).callsTrend)}%
               </span>
             </div>
           </div>
@@ -136,14 +148,14 @@ export const LazyLocationCard = ({
 
         {/* Attributes */}
         <div className="flex flex-wrap gap-1">
-          {location.attributes.slice(0, 3).map((attr, index) => (
+          {(location.attributes || []).slice(0, 3).map((attr, index) => (
             <Badge key={index} variant="secondary" className="text-xs">
               {attr}
             </Badge>
           ))}
-          {location.attributes.length > 3 && (
+          {(location.attributes || []).length > 3 && (
             <Badge variant="secondary" className="text-xs">
-              {t('labels.attributesMore', { count: location.attributes.length - 3 })}
+              {t('labels.attributesMore', { count: (location.attributes || []).length - 3 })}
             </Badge>
           )}
         </div>
@@ -153,7 +165,7 @@ export const LazyLocationCard = ({
           <Button size="sm" variant="outline" className="flex-1" asChild>
             <Link href={`/reviews?location=${location.id}`}>
               <MessageSquare className="w-4 h-4 mr-1" />
-              {t('card.reviews')} ({formatLargeNumber(location.reviewCount)})
+              {t('card.reviews')} ({formatLargeNumber(location.reviewCount || 0)})
             </Link>
           </Button>
           <Button size="sm" variant="outline" className="flex-1" asChild>
@@ -166,7 +178,7 @@ export const LazyLocationCard = ({
 
         {/* Last Sync */}
         <div className="text-xs text-muted-foreground text-center pt-2 border-t">
-          {t('labels.lastSync')}: {formatSafeDate(location.lastSync)}
+          {t('labels.lastSync')}: {formatSafeDate(location.lastSync || null)}
         </div>
       </CardContent>
     </Card>
