@@ -391,6 +391,19 @@
       "defaultMessage": "Get started by adding your first business location",
       "addFirst": "Add Your First Location"
     },
+    "noAccount": {
+      "title": "Connect Your Google My Business Account",
+      "subtitle": "Start managing your business locations by connecting your GMB account",
+      "benefits": {
+        "title": "What you can do:",
+        "manage": "Manage all your business locations in one place",
+        "respond": "Respond to customer reviews with AI assistance",
+        "track": "Track performance and insights across locations",
+        "optimize": "Optimize your business profiles for better visibility"
+      },
+      "connectButton": "Connect Google My Business",
+      "learnMore": "Learn More"
+    },
     "labels": {
       "views": "Views",
       "clicks": "Clicks",

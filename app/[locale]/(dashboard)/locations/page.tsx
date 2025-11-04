@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   MapPin, Star, TrendingUp, TrendingDown,
   Search, Plus, Edit3, Shield, Eye, BarChart3,
-  Loader2, RefreshCw, Layers, MessageSquare
+  Loader2, RefreshCw, Layers, MessageSquare, 
+  CheckCircle2, TrendingUpIcon, Users, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
@@ -283,12 +284,27 @@ export default function LocationsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [hasGmbAccount, setHasGmbAccount] = useState<boolean | null>(null);
   const router = useRouter();
 
   const fetchLocations = async () => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Check if user has GMB account first
+      const accountRes = await fetch('/api/gmb/accounts');
+      const accountData = await accountRes.json();
+      const hasAccount = accountData && accountData.length > 0;
+      setHasGmbAccount(hasAccount);
+      
+      // If no account, don't fetch locations
+      if (!hasAccount) {
+        setLocations([]);
+        setTotalCount(0);
+        setLoading(false);
+        return;
+      }
       
       // Build query params
       const params = new URLSearchParams({
@@ -357,6 +373,136 @@ export default function LocationsPage() {
   };
 
   const stats = getOverallStats();
+
+  // Show No GMB Account state
+  if (!loading && hasGmbAccount === false) {
+    return (
+      <div className="space-y-6">
+        {/* Hero Card */}
+        <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background">
+          <CardContent className="p-12">
+            <div className="max-w-3xl mx-auto text-center space-y-6">
+              {/* Icon */}
+              <div className="flex justify-center">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full"></div>
+                  <div className="relative bg-primary/10 p-6 rounded-full">
+                    <MapPin className="w-16 h-16 text-primary" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Title & Subtitle */}
+              <div className="space-y-3">
+                <h1 className="text-4xl font-bold tracking-tight">{t('noAccount.title')}</h1>
+                <p className="text-xl text-muted-foreground">{t('noAccount.subtitle')}</p>
+              </div>
+
+              {/* Benefits Grid */}
+              <div className="mt-8 mb-8">
+                <h3 className="text-lg font-semibold mb-6 text-primary">{t('noAccount.benefits.title')}</h3>
+                <div className="grid md:grid-cols-2 gap-4 text-left">
+                  <div className="flex gap-3 p-4 rounded-lg bg-background border border-primary/10 hover:border-primary/30 transition-colors">
+                    <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">{t('noAccount.benefits.manage')}</span>
+                  </div>
+                  <div className="flex gap-3 p-4 rounded-lg bg-background border border-primary/10 hover:border-primary/30 transition-colors">
+                    <Sparkles className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">{t('noAccount.benefits.respond')}</span>
+                  </div>
+                  <div className="flex gap-3 p-4 rounded-lg bg-background border border-primary/10 hover:border-primary/30 transition-colors">
+                    <TrendingUpIcon className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">{t('noAccount.benefits.track')}</span>
+                  </div>
+                  <div className="flex gap-3 p-4 rounded-lg bg-background border border-primary/10 hover:border-primary/30 transition-colors">
+                    <Shield className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">{t('noAccount.benefits.optimize')}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
+                <Button 
+                  size="lg" 
+                  className="w-full sm:w-auto text-base px-8"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/gmb/create-auth-url');
+                      const data = await res.json();
+                      if (data.authUrl) {
+                        window.location.href = data.authUrl;
+                      } else {
+                        toast.error('Failed to create auth URL');
+                      }
+                    } catch (error) {
+                      toast.error('Failed to connect');
+                    }
+                  }}
+                >
+                  <Users className="w-5 h-5 mr-2" />
+                  {t('noAccount.connectButton')}
+                </Button>
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => router.push('/features')}
+                >
+                  {t('noAccount.learnMore')}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Feature Preview Cards */}
+        <div className="grid md:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader>
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-3">
+                <MapPin className="w-6 h-6 text-primary" />
+              </div>
+              <CardTitle className="text-lg">Multi-Location Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Manage all your business locations from a single, unified dashboard with real-time updates.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-3">
+                <Star className="w-6 h-6 text-primary" />
+              </div>
+              <CardTitle className="text-lg">AI-Powered Reviews</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Respond to customer reviews instantly with AI-generated, personalized responses.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-3">
+                <BarChart3 className="w-6 h-6 text-primary" />
+              </div>
+              <CardTitle className="text-lg">Advanced Analytics</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Track performance metrics, customer insights, and growth trends across all locations.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
