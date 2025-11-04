@@ -144,7 +144,7 @@ export function LocationPerformance() {
                   <span className="text-sm text-muted-foreground">{location.reviews_count || 0} reviews</span>
                 </div>
               </div>
-              <Badge className="bg-green-500/20 text-green-500 border-green-500/30 flex items-center gap-1">
+              <Badge className="bg-success/20 text-success border-success/30 flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" />+{Math.floor(Math.random() * 20)}%
               </Badge>
             </motion.div>

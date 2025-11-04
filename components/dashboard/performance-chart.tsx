@@ -60,7 +60,7 @@ export function PerformanceChart() {
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[300px]">
           <div className="text-center text-muted-foreground">
-            <AlertCircle className="w-12 h-12 mx-auto mb-2 text-red-500" />
+            <AlertCircle className="w-12 h-12 mx-auto mb-2 text-destructive" />
             <p className="text-sm">{error}</p>
           </div>
         </CardContent>

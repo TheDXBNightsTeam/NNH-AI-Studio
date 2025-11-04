@@ -41,7 +41,7 @@ export function MetricCard({ title, value, change, period, isLoading }: MetricCa
           <p className="text-3xl font-bold text-foreground">{value}</p>
           <div
             className={`flex items-center gap-1 text-sm font-medium ${
-              isNeutral ? "text-muted-foreground" : isPositive ? "text-green-500" : "text-red-500"
+              isNeutral ? "text-muted-foreground" : isPositive ? "text-success" : "text-destructive"
             }`}
           >
             {isNeutral ? (

@@ -173,7 +173,7 @@ export function LocationCard({ location, index }: LocationCardProps) {
                 className="w-3 h-3 rounded-full bg-gradient-to-r from-primary to-accent"
               />
             ) : (
-              <div className="w-3 h-3 rounded-full bg-green-500" />
+              <div className="w-3 h-3 rounded-full bg-success" />
             )}
           </div>
 
@@ -220,19 +220,19 @@ export function LocationCard({ location, index }: LocationCardProps) {
                       </Badge>
                     )}
                     {isOpen && (
-                      <Badge variant="default" className="bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
+                      <Badge variant="default" className="bg-success/20 text-success border-success/30">
                         <CheckCircle2 className="w-3 h-3 mr-1" />
                         Open
                       </Badge>
                     )}
                     {hasPendingEdits && (
-                      <Badge variant="outline" className="bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30">
+                      <Badge variant="outline" className="bg-warning/20 text-warning border-warning/30">
                         <AlertCircle className="w-3 h-3 mr-1" />
                         Pending Edits
                       </Badge>
                     )}
                     {hasVoiceOfMerchant && (
-                      <Badge variant="outline" className="bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30">
+                      <Badge variant="outline" className="bg-info/20 text-info border-info/30">
                         <MessageCircle className="w-3 h-3 mr-1" />
                         Voice of Merchant
                       </Badge>

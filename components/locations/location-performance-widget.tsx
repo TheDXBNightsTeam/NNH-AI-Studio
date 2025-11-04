@@ -159,7 +159,7 @@ export function LocationPerformanceWidget({ locationId, compact = false }: Locat
           <span className="text-muted-foreground">{metrics.clicks.toLocaleString()}</span>
         </div>
         {metrics.impressionsChange !== 0 && (
-          <div className={`flex items-center gap-1 ${metrics.impressionsChange > 0 ? 'text-green-500' : 'text-red-500'}`}>
+          <div className={`flex items-center gap-1 ${metrics.impressionsChange > 0 ? 'text-success' : 'text-destructive'}`}>
             <TrendingUp className={`h-3 w-3 ${metrics.impressionsChange < 0 ? 'rotate-180' : ''}`} />
             <span>{metrics.impressionsChange > 0 ? '+' : ''}{metrics.impressionsChange.toFixed(0)}%</span>
           </div>
@@ -184,7 +184,7 @@ export function LocationPerformanceWidget({ locationId, compact = false }: Locat
             </div>
             <p className="text-lg font-semibold text-foreground">{metrics.impressions.toLocaleString()}</p>
             {metrics.impressionsChange !== 0 && (
-              <p className={`text-xs ${metrics.impressionsChange > 0 ? 'text-green-500' : 'text-red-500'}`}>
+              <p className={`text-xs ${metrics.impressionsChange > 0 ? 'text-success' : 'text-destructive'}`}>
                 {metrics.impressionsChange > 0 ? '+' : ''}{metrics.impressionsChange.toFixed(1)}%
               </p>
             )}
@@ -197,7 +197,7 @@ export function LocationPerformanceWidget({ locationId, compact = false }: Locat
             </div>
             <p className="text-lg font-semibold text-foreground">{metrics.clicks.toLocaleString()}</p>
             {metrics.clicksChange !== 0 && (
-              <p className={`text-xs ${metrics.clicksChange > 0 ? 'text-green-500' : 'text-red-500'}`}>
+              <p className={`text-xs ${metrics.clicksChange > 0 ? 'text-success' : 'text-destructive'}`}>
                 {metrics.clicksChange > 0 ? '+' : ''}{metrics.clicksChange.toFixed(1)}%
               </p>
             )}

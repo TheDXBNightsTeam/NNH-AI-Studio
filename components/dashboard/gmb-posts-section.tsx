@@ -944,8 +944,8 @@ export function GMBPostsSection() {
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
-                                {postType === 'event' && <CalendarClock className="h-4 w-4 text-blue-500" />}
-                                {postType === 'offer' && <Gift className="h-4 w-4 text-green-500" />}
+                                {postType === 'event' && <CalendarClock className="h-4 w-4 text-info" />}
+                                {postType === 'offer' && <Gift className="h-4 w-4 text-success" />}
                                 {postType === 'whats_new' && <Sparkles className="h-4 w-4 text-primary" />}
                                 <Badge variant={
                                   post.status === 'published' ? 'default' :

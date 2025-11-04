@@ -122,7 +122,7 @@ export function YoutubeDashboardSidebar({ activeTab, setActiveTab, user }: Sideb
               >
                 <h1 className="text-lg font-bold whitespace-nowrap">
                   <span className="text-primary">NNH</span>
-                  <span className="text-red-500 ml-1">YouTube</span>
+                  <span className="text-destructive ml-1">YouTube</span>
                 </h1>
               </motion.div>
             )}

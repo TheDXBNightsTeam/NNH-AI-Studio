@@ -110,7 +110,7 @@ export function RealtimeUpdatesIndicator({
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   exit={{ scale: 0 }}
-                  className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full"
+                  className="absolute -top-1 -right-1 w-2 h-2 bg-success rounded-full"
                 />
               )}
             </AnimatePresence>
@@ -128,7 +128,7 @@ export function RealtimeUpdatesIndicator({
             
             {!isRefreshing && (
               <div className="flex items-center gap-1 mt-1">
-                <CheckCircle2 className="w-3 h-3 text-green-500" />
+                <CheckCircle2 className="w-3 h-3 text-success" />
                 <span className="text-xs text-muted-foreground">
                   {isArabic 
                     ? `التحديث التالي في ${formatNextRefresh(nextRefresh)}`

@@ -275,14 +275,14 @@ export function LocationMapDashboard() {
                         {'status' in selectedMarker ? selectedMarker.name : `Competitor: ${selectedMarker.name}`}
                     </h4>
                     <p className="text-xs flex items-center gap-1 mt-1">
-                        <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" /> 
+                        <Star className="w-3 h-3 text-warning fill-warning" /> 
                         Rating: {selectedMarker.rating.toFixed(1) || 'N/A'}
                     </p>
                     {'status' in selectedMarker && (
                         <p className={cn("text-xs mt-1", 
-                            selectedMarker.status === 'Suspended' ? 'text-red-500' : 
-                            selectedMarker.status === 'Needs Attention' ? 'text-yellow-600' : 
-                            'text-green-600')}>
+                            selectedMarker.status === 'Suspended' ? 'text-destructive' : 
+                            selectedMarker.status === 'Needs Attention' ? 'text-warning' : 
+                            'text-success')}>
                             Status: {selectedMarker.status}
                         </p>
                     )}
@@ -295,7 +295,7 @@ export function LocationMapDashboard() {
     </GoogleMap>
   );
 
-  if (mapLoadError) return <div className="p-8 text-center text-red-500">Error loading maps. Check your API key.</div>;
+  if (mapLoadError) return <div className="p-8 text-center text-destructive">Error loading maps. Check your API key.</div>;
   if (!isLoaded) return <div className="p-8 text-center text-muted-foreground">Loading Map...</div>;
 
 
@@ -381,8 +381,8 @@ export function LocationMapDashboard() {
           </Button>
 
           {/* ⭐️ لوحة التنبيهات الجغرافية (Geo-Alerts) - الميزة المساعدة الجديدة ⭐️ */}
-          <Card className="border border-yellow-500/30 bg-yellow-500/10 mt-4 p-3 space-y-2">
-            <h4 className="text-sm font-semibold text-yellow-500 flex items-center gap-1">
+          <Card className="border border-warning/30 bg-warning/10 mt-4 p-3 space-y-2">
+            <h4 className="text-sm font-semibold text-warning flex items-center gap-1">
                 <AlertTriangle className="w-4 h-4" /> Geo-Alerts
             </h4>
             {filteredLocations.filter(l => l.status === 'Needs Attention').length > 0 && (
@@ -430,7 +430,7 @@ export function LocationMapDashboard() {
             {loadingData ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Loading locations...</div>
             ) : errorData ? (
-                <div className="text-sm text-red-500">Error: {errorData}</div>
+                <div className="text-sm text-destructive">Error: {errorData}</div>
             ) : (
                 <div className="max-h-60 overflow-y-auto space-y-2">
                     {filteredLocations.length === 0 ? (
@@ -451,7 +451,7 @@ export function LocationMapDashboard() {
                                     <div onClick={() => setSelectedMarker(loc)}>
                                         <p className="font-medium text-sm">{loc.name}</p>
                                         <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                                            <Star className="w-3 h-3 text-warning fill-warning" />
                                             {loc.rating.toFixed(1) || 'N/A'} ({loc.status})
                                         </p>
                                     </div>

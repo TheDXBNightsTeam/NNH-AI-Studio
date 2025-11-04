@@ -160,9 +160,9 @@ export function AIInsightsWidget() {
       case "insight":
         return <Lightbulb className="h-4 w-4 text-primary" />
       case "recommendation":
-        return <TrendingUp className="h-4 w-4 text-blue-500" />
+        return <TrendingUp className="h-4 w-4 text-info" />
       case "warning":
-        return <AlertCircle className="h-4 w-4 text-orange-500" />
+        return <AlertCircle className="h-4 w-4 text-warning" />
     }
   }
 
@@ -171,9 +171,9 @@ export function AIInsightsWidget() {
       case "insight":
         return "bg-primary/10 border-primary/30"
       case "recommendation":
-        return "bg-blue-500/10 border-blue-500/30"
+        return "bg-info/10 border-info/30"
       case "warning":
-        return "bg-orange-500/10 border-orange-500/30"
+        return "bg-warning/10 border-warning/30"
     }
   }
 
@@ -228,7 +228,7 @@ export function AIInsightsWidget() {
                         </Button>
                       </div>
                       {insight.priority === "high" && (
-                        <Badge variant="outline" className="mt-2 text-xs bg-red-500/20 text-red-500 border-red-500/30">
+                        <Badge variant="outline" className="mt-2 text-xs bg-destructive/20 text-destructive border-destructive/30">
                           High Priority
                         </Badge>
                       )}

@@ -124,7 +124,7 @@ export function GoogleUpdatedInfo({ location }: GoogleUpdatedInfoProps) {
                     </Label>
                     <div className="flex flex-wrap gap-2">
                       {googleUpdated.pendingMask.split(',').map((field: string, idx: number) => (
-                        <Badge key={idx} variant="outline" className="bg-yellow-500/20 border-yellow-500/30 text-yellow-600 dark:text-yellow-400">
+                        <Badge key={idx} variant="outline" className="bg-warning/20 border-warning/30 text-warning">
                           {field.trim()}
                         </Badge>
                       ))}
