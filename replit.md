@@ -10,6 +10,51 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### November 4, 2025 - Bilingual Support (English/Arabic) with RTL Layout
+
+**Implementation**: Complete internationalization (i18n) system using next-intl for Next.js 14 App Router, supporting English and Arabic with automatic RTL layout switching.
+
+**Technical Changes**:
+1. **Migration from Pages Router to App Router i18n**:
+   - Removed incompatible next-i18next (Pages Router only)
+   - Installed and configured next-intl for App Router compatibility
+   - Migrated app directory structure from `app/` to `app/[locale]/` pattern
+
+2. **Locale-Aware Routing**:
+   - Created `lib/navigation.ts` using `createNavigation` from next-intl for locale-preserving navigation
+   - All Link components and usePathname hooks now import from `@/lib/navigation` (not next/link or next/navigation)
+   - Routes automatically prefixed with locale: `/en/dashboard`, `/ar/dashboard`, etc.
+
+3. **Translation System**:
+   - Created `messages/en.json` and `messages/ar.json` with nested keys structure
+   - Translated Homepage (hero, features, CTA buttons, navigation)
+   - Translated Dashboard sidebar navigation (7 tabs)
+   - Components use `useTranslations('Namespace')` hook for dynamic text rendering
+
+4. **RTL Support for Arabic**:
+   - Root layout (`app/layout.tsx`) dynamically sets `dir="rtl"` for Arabic locale
+   - CSS automatically mirrors layout for right-to-left reading direction
+   - No manual CSS overrides needed - Tailwind handles directionality
+
+5. **Language Switcher Component**:
+   - Designed with Pure Black + Electric Orange theme
+   - Shows globe icon (🌐) with EN/AR toggle buttons
+   - Active language highlighted with orange background
+   - Integrated in both landing page navbar and dashboard sidebar
+   - Uses `useRouter` from next/navigation for manual locale switching
+
+6. **Middleware Enhancement**:
+   - Updated `middleware.ts` to handle both locale detection AND Supabase authentication
+   - Locale detection based on Accept-Language header with fallback to 'en'
+   - Public routes (/, /pricing, /contact, /about) accessible without auth
+   - Protected routes (/dashboard/*) require authentication
+
+**Sidebar Active State Fix**: Updated sidebar to import `usePathname` from `@/lib/navigation` instead of `next/navigation` to ensure active navigation highlighting works correctly with locale-prefixed paths.
+
+**Testing**: ✅ Both English (/en) and Arabic (/ar) routes working, ✅ RTL layout active for Arabic, ✅ Language switcher functional, ✅ No compilation errors, ✅ Clean logs.
+
+**Future Work**: Auth pages (login, signup) and remaining dashboard pages still need translation. Currently only homepage and sidebar navigation are fully bilingual.
+
 ### November 2, 2025 - Deployment Fixes (TypeScript Compilation)
 
 **Critical Bug Fixes**: Fixed 3 blocking TypeScript compilation errors preventing deployment:
