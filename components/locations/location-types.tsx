@@ -24,22 +24,22 @@ import {
 export interface Location {
   id: string;
   name: string;
-  address: string;
-  phone: string;
-  website: string;
-  rating: number;
-  reviewCount: number;
+  address?: string;
+  phone?: string;
+  website?: string;
+  rating?: number;
+  reviewCount?: number;
   status: 'verified' | 'pending' | 'suspended';
-  category: string;
-  coordinates: { lat: number; lng: number };
-  hours: BusinessHours;
-  attributes: string[];
-  photos: number;
-  posts: number;
-  healthScore: number;
-  visibility: number;
-  lastSync: Date | string | null;
-  insights: LocationInsights;
+  category?: string;
+  coordinates?: { lat: number; lng: number };
+  hours?: BusinessHours;
+  attributes?: string[];
+  photos?: number;
+  posts?: number;
+  healthScore?: number;
+  visibility?: number;
+  lastSync?: Date | string | null;
+  insights?: LocationInsights;
   // Extended fields for comprehensive health score
   additionalCategories?: string[];
   menuLink?: string;
@@ -113,14 +113,14 @@ export const getHealthScoreBreakdown = (location: Location) => {
   const hasOpeningDate = location.openingDate && location.openingDate.length > 0;
   const hasHours = location.hours && Object.keys(location.hours).length > 0;
   const hasAttributes = location.attributes && location.attributes.length > 0;
-  const hasPhotos = location.photos >= 5;
+  const hasPhotos = (location.photos || 0) >= 5;
   const hasVideos = (location.videos || 0) > 0;
   const hasLogo = location.hasLogo || false;
   const hasMenuPhotos = (location.menuPhotos || 0) > 0;
   const hasDescription = hasWebsite; // Using website as proxy for description
-  const hasEnoughReviews = location.reviewCount >= 10;
-  const hasRecentPosts = location.posts > 0;
-  const hasGoodResponseRate = location.reviewCount > 0;
+  const hasEnoughReviews = (location.reviewCount || 0) >= 10;
+  const hasRecentPosts = (location.posts || 0) > 0;
+  const hasGoodResponseRate = (location.reviewCount || 0) > 0;
   const hasQnA = location.qnaEnabled || false;
   const hasAutoReply = location.autoReplyEnabled || false;
   const hasProtection = location.profileProtection || false;
