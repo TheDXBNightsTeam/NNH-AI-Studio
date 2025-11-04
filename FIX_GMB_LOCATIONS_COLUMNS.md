@@ -10,6 +10,7 @@
 | `response_rate` | ✅ نعم (8+ مواقع) | ❌ لا |
 | `is_syncing` | ✅ نعم (5+ مواقع) | ❌ لا |
 | `ai_insights` | ✅ نعم (3+ مواقع) | ❌ لا |
+| `status` | ✅ نعم (4+ مواقع) | ❌ لا |
 
 ---
 
@@ -50,10 +51,12 @@ sql/fix_gmb_locations_missing_columns.sql
    - `response_rate` (DECIMAL) - معدل الرد على التقييمات
    - `is_syncing` (BOOLEAN) - حالة المزامنة
    - `ai_insights` (TEXT) - رؤى الذكاء الاصطناعي
+   - `status` (TEXT) - حالة الموقع (verified/pending/suspended)
 
 2. ✅ **حساب القيم الحالية:**
    - `review_count` = عدد التقييمات من `gmb_reviews`
    - `response_rate` = نسبة التقييمات التي تم الرد عليها
+   - `status` = `verified` للمواقع النشطة، `pending` للباقي
 
 3. ✅ **إنشاء Triggers تلقائية:**
    - عند إضافة تقييم جديد → تحديث `review_count`
@@ -64,6 +67,7 @@ sql/fix_gmb_locations_missing_columns.sql
    - `idx_gmb_locations_review_count`
    - `idx_gmb_locations_response_rate`
    - `idx_gmb_locations_is_syncing`
+   - `idx_gmb_locations_status`
 
 ---
 
@@ -77,15 +81,16 @@ SELECT
   review_count,
   response_rate,
   is_syncing,
+  status,
   ai_insights
 FROM gmb_locations
 LIMIT 2;
 ```
 
-| location_name | review_count | response_rate | is_syncing | ai_insights |
-|--------------|--------------|---------------|------------|-------------|
-| The DXB Night Club | 468 | 85.50 | false | null |
-| Xo Club Dubai | 0 | 0.00 | false | null |
+| location_name | review_count | response_rate | is_syncing | status | ai_insights |
+|--------------|--------------|---------------|------------|---------|-------------|
+| The DXB Night Club | 468 | 85.50 | false | verified | null |
+| Xo Club Dubai | 0 | 0.00 | false | pending | null |
 
 ---
 
@@ -111,7 +116,7 @@ LIMIT 2;
 
 ## 🎯 الخلاصة
 
-**المشكلة:** الكود يستخدم 4 أعمدة غير موجودة في قاعدة البيانات
+**المشكلة:** الكود يستخدم 5 أعمدة غير موجودة في قاعدة البيانات
 
 **الحل:** تشغيل `sql/fix_gmb_locations_missing_columns.sql`
 
@@ -119,6 +124,7 @@ LIMIT 2;
 - ✅ الكود سيعمل بدون أخطاء
 - ✅ الإحصائيات ستتحدث تلقائياً
 - ✅ الأداء محسّن بـ Indexes
+- ✅ حالة الموقع (status) ستعمل بشكل صحيح
 
 ---
 
