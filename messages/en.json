@@ -1,0 +1,74 @@
+{
+  "HomePage": {
+    "rating": "4.9 out of 5",
+    "trustedBy": "Trusted by 1,000+ Businesses",
+    "hero": {
+      "title": "Manage Your Google My Business & YouTube Channels Like a Pro",
+      "subtitle": "The ultimate AI-powered platform for managing multiple GMB locations, YouTube channels, responding to reviews with AI, creating content, and growing your online presence all from one dashboard.",
+      "getStarted": "Get Started Free",
+      "signIn": "Sign In"
+    },
+    "nav": {
+      "features": "Features",
+      "howItWorks": "How It Works",
+      "pricing": "Pricing",
+      "contact": "Contact",
+      "signIn": "Sign In"
+    }
+  },
+  "Dashboard": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "locations": "Locations",
+      "reviews": "Reviews",
+      "posts": "Posts",
+      "insights": "Insights",
+      "youtube": "YouTube",
+      "settings": "Settings"
+    },
+    "stats": {
+      "locations": "Locations",
+      "rating": "Average Rating",
+      "reviews": "Total Reviews",
+      "responseRate": "Response Rate",
+      "healthScore": "Health Score"
+    },
+    "welcome": "Welcome Back",
+    "lastSync": "Last Sync",
+    "syncNow": "Sync Now",
+    "disconnect": "Disconnect",
+    "connectGMB": "Connect GMB Account",
+    "noAccount": "No GMB account connected yet"
+  },
+  "Reviews": {
+    "title": "Reviews Management",
+    "filters": {
+      "all": "All Reviews",
+      "pending": "Pending",
+      "responded": "Responded",
+      "highPriority": "High Priority"
+    },
+    "actions": {
+      "reply": "Reply",
+      "aiGenerate": "Generate with AI",
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "empty": "No reviews found",
+    "aiCopilot": "AI Copilot"
+  },
+  "Common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "actions": "Actions"
+  }
+}
