@@ -71,17 +71,19 @@ The platform is currently **LIVE IN PRODUCTION** on Replit:
 npm install
 
 # 2. Start dev server for testing
-npm run dev                    # Runs on :5000
+npm run dev                    # Runs on :5001 (configured in package.json)
 
 # 3. Make your changes and test thoroughly
 
 # 4. Clean up project (remove unnecessary files)
-# Delete any unused files, temp files, or redundant code
+npm run clean                  # Removes .next and cache files
+# Also delete any unused files, temp files, or redundant code
 # Check for .DS_Store, node_modules leftovers, unused components
 
 # 5. Run checks before committing
 npm run lint                   # Check for code issues
 npm run build                  # Verify production build works
+npm run rebuild                # Clean + build if needed
 
 # 6. Commit and push to GitHub
 git add .
@@ -89,7 +91,7 @@ git commit -m "Description of changes"
 git push origin main           # ⚠️ Auto-deploys to production!
 ```
 
-**Port conflict?** Kill existing process: `lsof -ti:5000 | xargs kill -9`
+**Port conflict?** Kill existing process: `lsof -ti:5001 | xargs kill -9` (note: port 5001, not 5000)
 
 ⚠️ **CRITICAL WORKFLOW:** Clean project → Test locally → Run lint & build checks → Push to GitHub → Auto-deploy to Replit production
 
@@ -169,8 +171,23 @@ toast.error("Something went wrong")
 4. Server actions - Throw errors, caught by error boundaries
 
 ### 5. **API Route Structure**
+**Standard pattern** with `withAuth` wrapper (recommended):
 ```typescript
-export const dynamic = 'force-dynamic' // Disable caching
+import { withAuth } from '@/lib/api/auth-middleware'
+
+export const dynamic = 'force-dynamic'
+
+export const GET = withAuth(async (request: Request, user: any) => {
+  // User is already authenticated
+  const supabase = await createClient()
+  // Implementation
+  return NextResponse.json({ data })
+})
+```
+
+**Manual auth pattern** (for special cases):
+```typescript
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
@@ -206,6 +223,14 @@ export async function GET(request: NextRequest) {
 ### Scheduled Jobs
 - Configured in `vercel.json` crons
 - Example: `/api/gmb/scheduled-sync` runs hourly for data sync
+
+### CSS & Styling Architecture
+- **Tailwind CSS 4** with `@tailwindcss/postcss` (no config file needed)
+- **CSS Variables** system in `app/globals.css` for theme colors
+- **Glass effect:** `glass-strong` class for glassmorphism cards
+- **Color system:** Pure black background with electric orange accents
+- **Typography:** Dark theme enforced, white text on black backgrounds
+- **Animations:** Framer Motion for page transitions, `tw-animate-css` for utility animations
 
 ## Common Pitfalls
 
