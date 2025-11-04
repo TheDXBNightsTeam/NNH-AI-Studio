@@ -22,9 +22,24 @@ interface ProcessedStats {
   totalReviews: number;
   reviewsTrend: number;
   responseRate: number;
+  pendingReviews: number;
+  unansweredQuestions: number;
   // حقول الذكاء الاصطناعي الجديدة
   healthScore: number;
   bottlenecks: Bottleneck[];
+  // بيانات المقارنة الشهرية
+  monthlyComparison: {
+    current: {
+      reviews: number;
+      rating: number;
+      questions: number;
+    };
+    previous: {
+      reviews: number;
+      rating: number;
+      questions: number;
+    };
+  };
 }
 
 /**
@@ -72,7 +87,12 @@ export async function GET(request: Request) {
     if (activeLocationIds.length === 0) {
         const zeroStats: ProcessedStats = {
             totalLocations: 0, locationsTrend: 0, recentAverageRating: 0, allTimeAverageRating: 0, ratingTrend: 0,
-            totalReviews: 0, reviewsTrend: 0, responseRate: 0, healthScore: 0, bottlenecks: [],
+            totalReviews: 0, reviewsTrend: 0, responseRate: 0, pendingReviews: 0, unansweredQuestions: 0,
+            healthScore: 0, bottlenecks: [],
+            monthlyComparison: {
+              current: { reviews: 0, rating: 0, questions: 0 },
+              previous: { reviews: 0, rating: 0, questions: 0 }
+            }
         };
         return NextResponse.json(zeroStats);
     }
@@ -85,6 +105,20 @@ export async function GET(request: Request) {
         .in("location_id", activeLocationIds);
 
     const reviews = allReviews || [];
+
+    // 💡 جلب عدد الأسئلة غير المجاب عنها
+    const { data: unansweredQuestionsData } = await supabase
+        .from("gmb_questions")
+        .select("id")
+        .eq("user_id", userId)
+        .in("location_id", activeLocationIds)
+        .is("answer_text", null);
+
+    const unansweredQuestions = unansweredQuestionsData?.length || 0;
+
+    // 💡 حساب المراجعات المعلقة (بدون رد)
+    const pendingReviewsData = reviews.filter(r => !r.review_reply || r.review_reply.trim() === '');
+    const pendingReviews = pendingReviewsData.length;
 
     // ========================================
     // حساب الإحصائيات الأساسية
@@ -167,15 +201,8 @@ export async function GET(request: Request) {
         });
     }
 
-    // b. تقييم الأسئلة (Q&A) - جلب فعلي من قاعدة البيانات
-    const { data: unansweredQuestions } = await supabase
-        .from("gmb_questions")
-        .select("id")
-        .eq("user_id", userId)
-        .in("location_id", activeLocationIds)
-        .is("answer_text", null);
-    
-    const questionCount = unansweredQuestions?.length || 0;
+    // b. تقييم الأسئلة (Q&A) - استخدام البيانات المحسوبة مسبقاً
+    const questionCount = unansweredQuestions;
     
     if (questionCount > 0) {
         score -= Math.min(10, questionCount * 3);
@@ -232,6 +259,60 @@ export async function GET(request: Request) {
     const healthScore = Math.max(0, Math.min(100, Math.round(score)));
 
     // ========================================
+    // حساب بيانات المقارنة الشهرية للمخطط البياني
+    // ========================================
+    
+    // جلب بيانات الأسئلة للشهر الحالي والسابق
+    const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    const { data: currentMonthQuestions } = await supabase
+        .from("gmb_questions")
+        .select("id")
+        .eq("user_id", userId)
+        .in("location_id", activeLocationIds)
+        .gte("created_at", startOfCurrentMonth.toISOString());
+
+    const { data: lastMonthQuestions } = await supabase
+        .from("gmb_questions")
+        .select("id")
+        .eq("user_id", userId)
+        .in("location_id", activeLocationIds)
+        .gte("created_at", startOfLastMonth.toISOString())
+        .lte("created_at", endOfLastMonth.toISOString());
+
+    const currentMonthReviews = reviews.filter(r => {
+      const reviewDate = new Date(r.review_date || r.created_at);
+      return reviewDate >= startOfCurrentMonth;
+    });
+
+    const lastMonthReviews = reviews.filter(r => {
+      const reviewDate = new Date(r.review_date || r.created_at);
+      return reviewDate >= startOfLastMonth && reviewDate <= endOfLastMonth;
+    });
+
+    const currentMonthRatings = currentMonthReviews.map(r => r.rating).filter(r => r && r > 0);
+    const lastMonthRatings = lastMonthReviews.map(r => r.rating).filter(r => r && r > 0);
+
+    const monthlyComparison = {
+      current: {
+        reviews: currentMonthReviews.length,
+        rating: currentMonthRatings.length > 0 
+          ? parseFloat((currentMonthRatings.reduce((sum, r) => sum + r, 0) / currentMonthRatings.length).toFixed(2))
+          : 0,
+        questions: currentMonthQuestions?.length || 0
+      },
+      previous: {
+        reviews: lastMonthReviews.length,
+        rating: lastMonthRatings.length > 0
+          ? parseFloat((lastMonthRatings.reduce((sum, r) => sum + r, 0) / lastMonthRatings.length).toFixed(2))
+          : 0,
+        questions: lastMonthQuestions?.length || 0
+      }
+    };
+
+    // ========================================
     // إرجاع الإحصائيات النهائية
     // ========================================
     const finalStats: ProcessedStats = {
@@ -243,7 +324,10 @@ export async function GET(request: Request) {
         totalReviews,
         reviewsTrend,
         responseRate,
+        pendingReviews,
+        unansweredQuestions,
         healthScore,
+        monthlyComparison,
         bottlenecks: bottlenecks.sort((a, b) => {
             const severityOrder = { high: 3, medium: 2, low: 1 };
             return severityOrder[b.severity] - severityOrder[a.severity];

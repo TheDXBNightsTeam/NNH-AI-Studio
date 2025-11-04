@@ -9,6 +9,9 @@ import { StatsCards } from '@/components/dashboard/stats-cards';
 import { LastSyncInfo } from '@/components/dashboard/last-sync-info';
 import { WeeklyTasksWidget } from '@/components/dashboard/weekly-tasks-widget';
 import { BottlenecksWidget } from '@/components/dashboard/bottlenecks-widget';
+import { QuickActionsBar } from '@/components/dashboard/quick-actions-bar';
+import { RealtimeUpdatesIndicator } from '@/components/dashboard/realtime-updates-indicator';
+import { PerformanceComparisonChart } from '@/components/dashboard/performance-comparison-chart';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Zap, ShieldCheck, Loader2, Star, MapPin, CheckCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -26,6 +29,20 @@ interface DashboardStats {
   responseRate: number;
   responseTarget: number;
   healthScore: number;
+  pendingReviews: number;
+  unansweredQuestions: number;
+  monthlyComparison?: {
+    current: {
+      reviews: number;
+      rating: number;
+      questions: number;
+    };
+    previous: {
+      reviews: number;
+      rating: number;
+      questions: number;
+    };
+  };
   bottlenecks: Array<{
     type: 'Response' | 'Content' | 'Compliance' | 'Reviews' | 'General';
     count: number;
@@ -265,6 +282,8 @@ export default function DashboardPage() {
     responseRate: 0,
     responseTarget: 100,
     healthScore: 0,
+    pendingReviews: 0,
+    unansweredQuestions: 0,
     bottlenecks: [],
   });
 
@@ -274,6 +293,7 @@ export default function DashboardPage() {
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [lastDataUpdate, setLastDataUpdate] = useState<Date | null>(null);
 
   const fetchDashboardData = async () => {
     try {
@@ -329,6 +349,9 @@ export default function DashboardPage() {
             responseRate: newStats.responseRate || 0,
             responseTarget: 100,
             healthScore: newStats.healthScore || 0,
+            pendingReviews: newStats.pendingReviews || 0,
+            unansweredQuestions: newStats.unansweredQuestions || 0,
+            monthlyComparison: newStats.monthlyComparison,
             bottlenecks: newStats.bottlenecks || [],
           });
         }
@@ -339,6 +362,7 @@ export default function DashboardPage() {
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
+      setLastDataUpdate(new Date());
     }
   };
 
@@ -467,16 +491,17 @@ export default function DashboardPage() {
             Proactive risk and growth orchestration dashboard
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchDashboardData}
-          disabled={loading}
-        >
-          <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
-          Refresh
-        </Button>
       </div>
+
+      {/* Real-time Updates Indicator */}
+      {gmbConnected && (
+        <RealtimeUpdatesIndicator
+          lastUpdated={lastDataUpdate}
+          onRefresh={fetchDashboardData}
+          isRefreshing={loading}
+          autoRefreshInterval={5}
+        />
+      )}
 
       {/* GMB Connection Status */}
       {gmbConnected && (
@@ -496,6 +521,16 @@ export default function DashboardPage() {
 
       {/* GMB Setup Prompt */}
       {!gmbConnected && <GMBSetupPrompt />}
+
+      {/* Quick Actions Bar - Only show when connected */}
+      {gmbConnected && (
+        <QuickActionsBar 
+          pendingReviews={stats.pendingReviews}
+          unansweredQuestions={stats.unansweredQuestions}
+          onSync={handleSync}
+          isSyncing={syncing}
+        />
+      )}
 
       {/* Health Score and Stats */}
       <div className="grid gap-4 lg:grid-cols-5">
@@ -519,6 +554,15 @@ export default function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* Performance Comparison Chart */}
+      {gmbConnected && stats.monthlyComparison && (
+        <PerformanceComparisonChart
+          currentMonthData={stats.monthlyComparison.current}
+          previousMonthData={stats.monthlyComparison.previous}
+          loading={loading}
+        />
+      )}
     </div>
   );
 }
