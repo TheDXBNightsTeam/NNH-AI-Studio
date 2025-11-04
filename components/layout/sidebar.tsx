@@ -10,6 +10,7 @@ import { UserButton } from '@/components/auth/user-button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import LanguageSwitcher from '@/components/ui/LanguageSwitcher';
+import { useTranslations } from 'next-intl';
 
 interface UserProfile {
   name: string | null;
@@ -23,100 +24,101 @@ interface SidebarProps {
 }
 
 interface NavigationItem {
-  name: string;
+  nameKey: string;
   href: string;
   icon: any;
   badge?: string | number;
 }
 
-const navigation: NavigationItem[] = [
-  {
-    name: 'Dashboard',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    name: 'Locations',
-    href: '/locations',
-    icon: MapPin,
-  },
-  {
-    name: 'Reviews',
-    href: '/reviews',
-    icon: Star,
-  },
-  {
-    name: 'Questions',
-    href: '/questions',
-    icon: MessageSquare,
-  },
-  {
-    name: 'GMB Posts',
-    href: '/gmb-posts',
-    icon: FileText,
-  },
-  {
-    name: 'Calendar',
-    href: '/calendar',
-    icon: Calendar,
-  },
-  {
-    name: 'Media',
-    href: '/media',
-    icon: Image,
-  },
-  {
-    name: 'Analytics',
-    href: '/analytics',
-    icon: BarChart3,
-  },
-  {
-    name: 'Grid Tracking',
-    href: '/grid-tracking',
-    icon: Grid3x3,
-  },
-  {
-    name: 'Features',
-    href: '/features',
-    icon: Layers,
-  },
-  {
-    name: 'Automation',
-    href: '/automation',
-    icon: Zap,
-  },
-  {
-    name: 'Approvals',
-    href: '/approvals',
-    icon: CheckSquare,
-  },
-  {
-    name: 'Webhooks',
-    href: '/webhooks',
-    icon: Webhook,
-  },
-  {
-    name: 'Team',
-    href: '/team',
-    icon: Users,
-  },
-];
-
-const bottomNavigation: NavigationItem[] = [
-  {
-    name: 'YouTube Posts',
-    href: '/youtube-posts',
-    icon: Youtube,
-  },
-  {
-    name: 'Settings',
-    href: '/settings',
-    icon: Settings,
-  },
-];
-
 export function Sidebar({ isOpen = true, onClose, userProfile }: SidebarProps) {
   const pathname = usePathname();
+  const t = useTranslations('Dashboard');
+  
+  const navigation: NavigationItem[] = [
+    {
+      nameKey: 'nav.dashboard',
+      href: '/dashboard',
+      icon: LayoutDashboard,
+    },
+    {
+      nameKey: 'nav.locations',
+      href: '/locations',
+      icon: MapPin,
+    },
+    {
+      nameKey: 'nav.reviews',
+      href: '/reviews',
+      icon: Star,
+    },
+    {
+      nameKey: 'nav.questions',
+      href: '/questions',
+      icon: MessageSquare,
+    },
+    {
+      nameKey: 'nav.gmbPosts',
+      href: '/gmb-posts',
+      icon: FileText,
+    },
+    {
+      nameKey: 'nav.calendar',
+      href: '/calendar',
+      icon: Calendar,
+    },
+    {
+      nameKey: 'nav.media',
+      href: '/media',
+      icon: Image,
+    },
+    {
+      nameKey: 'nav.analytics',
+      href: '/analytics',
+      icon: BarChart3,
+    },
+    {
+      nameKey: 'nav.gridTracking',
+      href: '/grid-tracking',
+      icon: Grid3x3,
+    },
+    {
+      nameKey: 'nav.features',
+      href: '/features',
+      icon: Layers,
+    },
+    {
+      nameKey: 'nav.automation',
+      href: '/automation',
+      icon: Zap,
+    },
+    {
+      nameKey: 'nav.approvals',
+      href: '/approvals',
+      icon: CheckSquare,
+    },
+    {
+      nameKey: 'nav.webhooks',
+      href: '/webhooks',
+      icon: Webhook,
+    },
+    {
+      nameKey: 'nav.team',
+      href: '/team',
+      icon: Users,
+    },
+  ];
+
+  const bottomNavigation: NavigationItem[] = [
+    {
+      nameKey: 'nav.youtubePosts',
+      href: '/youtube-posts',
+      icon: Youtube,
+    },
+    {
+      nameKey: 'nav.settings',
+      href: '/settings',
+      icon: Settings,
+    },
+  ];
   
   // On desktop (lg and above), always show sidebar regardless of isOpen
   // On mobile, hide/show based on isOpen
@@ -153,9 +155,9 @@ export function Sidebar({ isOpen = true, onClose, userProfile }: SidebarProps) {
               <MapPin className="h-6 w-6" />
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-bold">GMB Dashboard</span>
+              <span className="text-lg font-bold">{t('title')}</span>
               <span className="text-xs text-muted-foreground">
-                Manage your business
+                {t('subtitle')}
               </span>
             </div>
           </div>
@@ -167,7 +169,7 @@ export function Sidebar({ isOpen = true, onClose, userProfile }: SidebarProps) {
                 const Icon = item.icon;
 
                 return (
-                  <Link key={item.name} href={item.href} onClick={onClose}>
+                  <Link key={item.nameKey} href={item.href} onClick={onClose}>
                     <motion.div
                       whileHover={{ x: 4 }}
                       whileTap={{ scale: 0.98 }}
@@ -179,7 +181,7 @@ export function Sidebar({ isOpen = true, onClose, userProfile }: SidebarProps) {
                       )}
                     >
                       <Icon className="h-5 w-5 shrink-0" />
-                      <span className="flex-1">{item.name}</span>
+                      <span className="flex-1">{t(item.nameKey)}</span>
                       {item.badge && (
                         <span
                           className={cn(
@@ -206,7 +208,7 @@ export function Sidebar({ isOpen = true, onClose, userProfile }: SidebarProps) {
                 const Icon = item.icon;
 
                 return (
-                  <Link key={item.name} href={item.href} onClick={onClose}>
+                  <Link key={item.nameKey} href={item.href} onClick={onClose}>
                     <motion.div
                       whileHover={{ x: 4 }}
                       whileTap={{ scale: 0.98 }}
@@ -218,7 +220,7 @@ export function Sidebar({ isOpen = true, onClose, userProfile }: SidebarProps) {
                       )}
                     >
                       <Icon className="h-5 w-5 shrink-0" />
-                      <span className="flex-1">{item.name}</span>
+                      <span className="flex-1">{t(item.nameKey)}</span>
                     </motion.div>
                   </Link>
                 );
