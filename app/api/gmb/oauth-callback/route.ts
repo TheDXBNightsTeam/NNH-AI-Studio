@@ -322,7 +322,8 @@ export async function GET(request: NextRequest) {
                 const { error: updateError } = await supabase
                   .from('gmb_locations')
                   .update(locationData)
-                  .eq('location_id', location.name);
+                  .eq('location_name', location.name)
+                  .eq('gmb_account_id', savedAccountId);
                   
                 if (updateError) {
                   console.error(`[OAuth Callback] Error updating location after insert conflict:`, updateError);
