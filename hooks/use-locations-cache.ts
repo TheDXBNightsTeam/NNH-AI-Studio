@@ -272,7 +272,7 @@ export function useLocationsData(filters: any = {}, page = 1, pageSize = CACHE_C
         }, {} as Record<string, string>)
       });
       
-      const response = await fetch(`/api/gmb/locations?${params}`);
+      const response = await fetch(`/api/locations/list-data?${params}`);
       if (!response.ok) {
         throw new Error(`Failed to fetch locations: ${response.statusText}`);
       }
@@ -291,7 +291,7 @@ export function useLocationsStats() {
   return useLocationsCachedFetch(
     'locations:stats',
     async () => {
-      const response = await fetch('/api/gmb/locations/stats');
+      const response = await fetch('/api/dashboard/stats');
       if (!response.ok) {
         throw new Error(`Failed to fetch stats: ${response.statusText}`);
       }
@@ -308,7 +308,7 @@ export function useLocationDetails(locationId: string) {
   return useLocationsCachedFetch(
     `location:${locationId}`,
     async () => {
-      const response = await fetch(`/api/gmb/locations/${locationId}`);
+      const response = await fetch(`/api/gmb/location/${locationId}`);
       if (!response.ok) {
         throw new Error(`Failed to fetch location: ${response.statusText}`);
       }
@@ -327,7 +327,7 @@ export function useLocationReviews(locationId: string, page = 1) {
   return useLocationsCachedFetch(
     `reviews:${locationId}:${page}`,
     async () => {
-      const response = await fetch(`/api/gmb/locations/${locationId}/reviews?page=${page}`);
+      const response = await fetch(`/api/reviews?location=${locationId}&page=${page}`);
       if (!response.ok) {
         throw new Error(`Failed to fetch reviews: ${response.statusText}`);
       }
@@ -346,7 +346,7 @@ export function useLocationHealth(locationId: string) {
   return useLocationsCachedFetch(
     `health:${locationId}`,
     async () => {
-      const response = await fetch(`/api/gmb/locations/${locationId}/health`);
+      const response = await fetch(`/api/gmb/location/${locationId}/health`);
       if (!response.ok) {
         throw new Error(`Failed to fetch health data: ${response.statusText}`);
       }
@@ -388,7 +388,7 @@ export const locationsCacheUtils = {
     const key = `location:${locationId}`;
     if (!locationsCache.get(key)) {
       try {
-        const response = await fetch(`/api/gmb/locations/${locationId}`);
+        const response = await fetch(`/api/gmb/location/${locationId}`);
         if (response.ok) {
           const data = await response.json();
           locationsCache.set(key, data, CACHE_CONFIG.LOCATIONS_TTL);
