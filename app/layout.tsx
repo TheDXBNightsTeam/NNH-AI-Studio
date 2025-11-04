@@ -2,12 +2,10 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ["latin"] })
 
 const getBaseUrl = () => {
-  // Metadata is only used server-side, so we can safely use env vars
   if (process.env.NEXT_PUBLIC_BASE_URL) {
     return process.env.NEXT_PUBLIC_BASE_URL
   }
@@ -41,10 +39,9 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html className="dark">
       <body className={inter.className}>
         {children}
-        <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
   )
