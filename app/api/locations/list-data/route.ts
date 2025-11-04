@@ -18,6 +18,25 @@ async function handler(request: Request, user: any): Promise<Response> {
   const limit = parseInt(searchParams.get('limit') || '50', 10)
   const offset = parseInt(searchParams.get('offset') || '0', 10)
 
+  // Get active GMB accounts first
+  const { data: activeAccounts } = await supabase
+    .from("gmb_accounts")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("is_active", true);
+
+  const activeAccountIds = activeAccounts?.map(acc => acc.id) || [];
+
+  // If no active accounts, return empty
+  if (activeAccountIds.length === 0) {
+    return NextResponse.json({
+      data: [],
+      total: 0,
+      limit,
+      offset,
+    });
+  }
+
   // Build query
   let query = supabase
     .from('gmb_locations')
@@ -42,6 +61,7 @@ async function handler(request: Request, user: any): Promise<Response> {
       created_at
     `, { count: 'exact' })
     .eq('user_id', user.id)
+    .in('gmb_account_id', activeAccountIds)
 
   // Apply filters
   if (search) {
