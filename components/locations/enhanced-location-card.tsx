@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Star, MapPin, Heart, Eye, Phone, MessageSquare, 
   BarChart3, Edit3, CheckCircle2, TrendingUp
@@ -22,16 +23,40 @@ export const EnhancedLocationCard: React.FC<EnhancedLocationCardProps> = ({
   onEdit 
 }) => {
   const t = useTranslations('Locations');
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [loadingImages, setLoadingImages] = useState(true);
 
-  // Get cover image (first photo or gradient fallback)
-  const coverImage = location.photos && location.photos > 0 
-    ? `/api/locations/${location.id}/cover` 
-    : null;
+  // Fetch cover and logo images
+  useEffect(() => {
+    const fetchImages = async () => {
+      try {
+        setLoadingImages(true);
+        
+        // Fetch cover image
+        const coverRes = await fetch(`/api/locations/${location.id}/cover`);
+        if (coverRes.ok) {
+          const coverData = await coverRes.json();
+          setCoverUrl(coverData.url);
+        }
 
-  // Get logo
-  const logoUrl = location.hasLogo 
-    ? `/api/locations/${location.id}/logo`
-    : null;
+        // Fetch logo image
+        const logoRes = await fetch(`/api/locations/${location.id}/logo`);
+        if (logoRes.ok) {
+          const logoData = await logoRes.json();
+          setLogoUrl(logoData.url);
+        }
+      } catch (error) {
+        console.error('Failed to fetch images:', error);
+      } finally {
+        setLoadingImages(false);
+      }
+    };
+
+    if (location.id) {
+      fetchImages();
+    }
+  }, [location.id]);
 
   // Safe insights access
   const insights = location.insights || {
@@ -48,34 +73,36 @@ export const EnhancedLocationCard: React.FC<EnhancedLocationCardProps> = ({
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 glass-strong">
       {/* Cover Image Section */}
-      <div className="relative h-32 bg-gradient-to-r from-orange-600 via-orange-500 to-orange-400">
-        {coverImage ? (
+      <div className="relative h-32 overflow-hidden rounded-t-lg">
+        {loadingImages ? (
+          <Skeleton className="w-full h-full" />
+        ) : coverUrl ? (
           <img 
-            src={coverImage} 
-            alt={location.name}
+            src={coverUrl} 
+            alt={location.name || 'Cover'} 
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-r from-orange-600/20 via-orange-500/20 to-orange-400/20 backdrop-blur-sm" />
+          // Gradient fallback if no cover image
+          <div className="absolute inset-0 gradient-orange opacity-80" />
         )}
-        
-        {/* Logo positioned over cover */}
-        <div className="absolute -bottom-12 left-6">
-          <div className="w-24 h-24 rounded-xl border-4 border-background bg-card overflow-hidden shadow-xl">
-            {logoUrl ? (
-              <img 
-                src={logoUrl} 
-                alt={`${location.name} logo`}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
-                <span className="text-2xl font-bold text-white">
-                  {location.name.charAt(0)}
-                </span>
-              </div>
-            )}
-          </div>
+      </div>
+
+      {/* Logo positioned over cover image */}
+      <div className="absolute left-6 top-24 z-10">
+        <div className="w-24 h-24 rounded-lg border-4 border-background bg-muted flex items-center justify-center overflow-hidden">
+          {loadingImages ? (
+            <Skeleton className="w-full h-full rounded-lg" />
+          ) : logoUrl ? (
+            <img 
+              src={logoUrl} 
+              alt={location.name || 'Logo'} 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            // Fallback icon if no logo
+            <MapPin className="w-10 h-10 text-muted-foreground" />
+          )}
         </div>
       </div>
 
