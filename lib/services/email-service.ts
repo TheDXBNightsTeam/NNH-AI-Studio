@@ -1,3 +1,12 @@
+/**
+ * IMPORTANT: This service uses Node.js APIs (nodemailer) that are not compatible with Edge Runtime.
+ * For client-side usage or Edge Runtime compatibility, please use the API route at:
+ * /api/email/send
+ * 
+ * Or use the email-client.ts wrapper which calls the API route properly.
+ * This file should only be imported in Node.js runtime contexts (API routes with runtime: 'nodejs')
+ */
+
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({

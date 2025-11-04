@@ -11,7 +11,7 @@
   "private": true,
   "scripts": {
     "build": "unset NODE_ENV && next build",
-    "dev": "next dev -p 5001 -H 0.0.0.0",
+    "dev": "next dev -p 5000 -H 0.0.0.0",
     "lint": "eslint .",
     "start": "unset NODE_ENV && next start -p 5001 -H 0.0.0.0",
     "clean": "rm -rf .next node_modules/.cache",
@@ -51,6 +51,7 @@
     "@sendgrid/mail": "^8.1.6",
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
+    "@types/nodemailer": "^7.0.3",
     "@types/styled-components": "^5.1.35",
     "autoprefixer": "^10.4.20",
     "chart.js": "^4.5.1",
