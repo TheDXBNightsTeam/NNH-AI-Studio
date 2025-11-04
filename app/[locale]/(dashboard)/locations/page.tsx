@@ -17,7 +17,7 @@ Loader2, RefreshCw, ExternalLink, Copy, QrCode, Layers, LayoutGrid
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import Link from 'next/link';
+import { Link } from '@/lib/navigation';
 
 // Types (تم الاحتفاظ بالواجهات كما هي)
 interface Location {

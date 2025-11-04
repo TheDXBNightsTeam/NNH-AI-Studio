@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, Zap, ShieldCheck, TrendingUp, AlertTriangle, Loader2, Star, MapPin, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
+import { Link } from '@/lib/navigation';
 
 interface DashboardStats {
   totalLocations: number;

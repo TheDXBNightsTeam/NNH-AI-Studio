@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import Link from 'next/link';
+import { Link } from '@/lib/navigation';
 import { ArrowLeft, Calendar, Image as ImageIcon, Loader2, Send, Timer, Sparkles, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { ActivityFeed } from '@/components/dashboard/activity-feed'

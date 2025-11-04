@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ReviewResponseCockpit } from '@/components/reviews/ReviewResponseCockpit';
 import { BarChart3, MessageSquare, ShieldCheck, Sparkles, AlertTriangle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
+import { Link } from '@/lib/navigation';
 
 // ⭐️ مكون بطاقة التحليل العاطفي (Sentiment Analysis Card) ⭐️
 const SentimentAnalysisCard = () => {
