@@ -228,10 +228,12 @@ export function Sidebar({ isOpen = true, onClose, userProfile }: SidebarProps) {
           </ScrollArea>
 
           <div className="border-t p-4 space-y-3">
-            <LanguageSwitcher />
-            <div className="flex items-center gap-3 rounded-lg bg-accent/50 p-3">
+            {/* Account box first for better ergonomics; subtle glass styling */}
+            <div className="flex items-center gap-3 rounded-lg glass-strong p-3">
               <UserButton />
             </div>
+            {/* Language switcher below to avoid accidental taps near profile */}
+            <LanguageSwitcher />
           </div>
         </div>
       </motion.aside>
