@@ -38,7 +38,7 @@ export interface Location {
   posts: number;
   healthScore: number;
   visibility: number;
-  lastSync: Date;
+  lastSync: Date | string | null;
   insights: LocationInsights;
   // Extended fields for comprehensive health score
   additionalCategories?: string[];
@@ -466,3 +466,38 @@ export const HealthScoreDetails = ({ location }: { location: Location }) => {
     </Dialog>
   );
 };
+
+// Utility functions for safe date handling
+export function formatSafeDate(dateValue: Date | string | null): string {
+  if (!dateValue) return 'Never synced';
+  
+  try {
+    const date = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
+    
+    if (!(date instanceof Date) || isNaN(date.getTime())) {
+      return 'Invalid date';
+    }
+    
+    return date.toLocaleTimeString();
+  } catch (error) {
+    console.warn('Date formatting error:', error);
+    return 'Invalid date';
+  }
+}
+
+export function formatSafeDatetime(dateValue: Date | string | null): string {
+  if (!dateValue) return 'Never synced';
+  
+  try {
+    const date = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
+    
+    if (!(date instanceof Date) || isNaN(date.getTime())) {
+      return 'Invalid date';
+    }
+    
+    return date.toLocaleString();
+  } catch (error) {
+    console.warn('Datetime formatting error:', error);
+    return 'Invalid date';
+  }
+}
