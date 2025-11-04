@@ -1,10 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-export async function withAuth(
-  handler: (request: NextRequest, user: any) => Promise<NextResponse>
+// Generic auth wrapper compatible with Next.js App Router route handlers
+// Ensures the returned function matches (request: Request) => Promise<Response>
+export function withAuth(
+  handler: (request: Request, user: any) => Promise<Response>
 ) {
-  return async (request: NextRequest) => {
+  return async (request: Request): Promise<Response> => {
     try {
       const supabase = await createClient()
       const { data: { user }, error } = await supabase.auth.getUser()
