@@ -352,5 +352,57 @@
     "filter": "فلترة",
     "sort": "ترتيب",
     "actions": "إجراءات"
+  },
+  "Locations": {
+    "title": "إدارة المواقع",
+    "subtitle": "إدارة ومراقبة جميع مواقع نشاطك التجاري",
+    "actions": {
+      "syncAll": "مزامنة الكل",
+      "syncing": "جاري المزامنة...",
+      "mapView": "عرض الخريطة",
+      "addLocation": "إضافة موقع",
+      "reviews": "التقييمات",
+      "insights": "الإحصائيات",
+      "edit": "تعديل"
+    },
+    "stats": {
+      "totalLocations": "إجمالي المواقع",
+      "totalViews": "إجمالي المشاهدات",
+      "avgRating": "متوسط التقييم",
+      "avgHealthScore": "متوسط نسبة الصحة",
+      "acrossPlatforms": "عبر جميع المنصات",
+      "last30Days": "آخر 30 يوم",
+      "acrossLocations": "عبر جميع المواقع",
+      "optimizationScore": "درجة التحسين"
+    },
+    "filters": {
+      "searchPlaceholder": "ابحث عن المواقع...",
+      "status": "الحالة",
+      "allStatus": "كل الحالات",
+      "verified": "موثق",
+      "pending": "قيد الانتظار",
+      "suspended": "معلق",
+      "category": "الفئة",
+      "allCategories": "كل الفئات"
+    },
+    "empty": {
+      "title": "لا توجد مواقع",
+      "filteredMessage": "جرّب تعديل المرشحات أو عبارة البحث",
+      "defaultMessage": "ابدأ بإضافة أول موقع لنشاطك التجاري",
+      "addFirst": "أضف أول موقع لك"
+    },
+    "labels": {
+      "views": "المشاهدات",
+      "clicks": "النقرات",
+      "calls": "المكالمات",
+      "directions": "الاتجاهات",
+      "healthScore": "نسبة الصحة",
+      "attributesMore": "+{count} المزيد",
+      "lastSync": "آخر مزامنة"
+    },
+    "card": {
+      "reviews": "التقييمات",
+      "insights": "الإحصائيات"
+    }
   }
 }

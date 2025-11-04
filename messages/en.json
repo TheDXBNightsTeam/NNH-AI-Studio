@@ -352,5 +352,57 @@
     "filter": "Filter",
     "sort": "Sort",
     "actions": "Actions"
+  },
+  "Locations": {
+    "title": "Location Management",
+    "subtitle": "Manage and monitor all your business locations",
+    "actions": {
+      "syncAll": "Sync All",
+      "syncing": "Syncing...",
+      "mapView": "Map View",
+      "addLocation": "Add Location",
+      "reviews": "Reviews",
+      "insights": "Insights",
+      "edit": "Edit"
+    },
+    "stats": {
+      "totalLocations": "Total Locations",
+      "totalViews": "Total Views",
+      "avgRating": "Avg Rating",
+      "avgHealthScore": "Avg Health Score",
+      "acrossPlatforms": "Across all platforms",
+      "last30Days": "Last 30 days",
+      "acrossLocations": "Across all locations",
+      "optimizationScore": "Optimization score"
+    },
+    "filters": {
+      "searchPlaceholder": "Search locations...",
+      "status": "Status",
+      "allStatus": "All Status",
+      "verified": "Verified",
+      "pending": "Pending",
+      "suspended": "Suspended",
+      "category": "Category",
+      "allCategories": "All Categories"
+    },
+    "empty": {
+      "title": "No locations found",
+      "filteredMessage": "Try adjusting your filters or search term",
+      "defaultMessage": "Get started by adding your first business location",
+      "addFirst": "Add Your First Location"
+    },
+    "labels": {
+      "views": "Views",
+      "clicks": "Clicks",
+      "calls": "Calls",
+      "directions": "Directions",
+      "healthScore": "Health Score",
+      "attributesMore": "+{count} more",
+      "lastSync": "Last sync"
+    },
+    "card": {
+      "reviews": "Reviews",
+      "insights": "Insights"
+    }
   }
 }
