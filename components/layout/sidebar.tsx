@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { UserButton } from '@/components/auth/user-button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import LanguageSwitcher from '@/components/ui/LanguageSwitcher';
 
 interface UserProfile {
   name: string | null;
@@ -225,7 +226,8 @@ export function Sidebar({ isOpen = true, onClose, userProfile }: SidebarProps) {
             </nav>
           </ScrollArea>
 
-          <div className="border-t p-4">
+          <div className="border-t p-4 space-y-3">
+            <LanguageSwitcher />
             <div className="flex items-center gap-3 rounded-lg bg-accent/50 p-3">
               <UserButton />
             </div>
