@@ -75,7 +75,30 @@ BEGIN
 END $$;
 
 -- ========================================
--- 5. تحديث البيانات الموجودة
+-- 5. إضافة عمود status (حالة الموقع)
+-- ========================================
+
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'gmb_locations' 
+    AND column_name = 'status'
+  ) THEN
+    ALTER TABLE gmb_locations ADD COLUMN status TEXT DEFAULT 'pending' 
+      CHECK (status IN ('verified', 'pending', 'suspended'));
+    COMMENT ON COLUMN gmb_locations.status IS 'حالة الموقع - Location verification status';
+  END IF;
+END $$;
+
+-- تحديث المواقع النشطة إلى verified
+UPDATE gmb_locations 
+SET status = 'verified' 
+WHERE is_active = true AND (status IS NULL OR status = 'pending');
+
+-- ========================================
+-- 6. تحديث البيانات الموجودة
 -- ========================================
 
 -- حساب review_count من جدول gmb_reviews
@@ -101,7 +124,7 @@ SET response_rate = (
 WHERE response_rate = 0 OR response_rate IS NULL;
 
 -- ========================================
--- 6. إنشاء Indexes للأداء
+-- 7. إنشاء Indexes للأداء
 -- ========================================
 
 CREATE INDEX IF NOT EXISTS idx_gmb_locations_review_count 
@@ -114,8 +137,11 @@ CREATE INDEX IF NOT EXISTS idx_gmb_locations_is_syncing
   ON gmb_locations(is_syncing) 
   WHERE is_syncing = true;
 
+CREATE INDEX IF NOT EXISTS idx_gmb_locations_status 
+  ON gmb_locations(status);
+
 -- ========================================
--- 7. إنشاء Function لتحديث التقييمات تلقائياً
+-- 8. إنشاء Function لتحديث التقييمات تلقائياً
 -- ========================================
 
 CREATE OR REPLACE FUNCTION update_location_review_stats()
@@ -172,7 +198,7 @@ CREATE TRIGGER trigger_update_location_review_stats_delete
   EXECUTE FUNCTION update_location_review_stats();
 
 -- ========================================
--- 9. التحقق من النجاح
+-- 10. التحقق من النجاح
 -- ========================================
 
 SELECT 
@@ -183,7 +209,7 @@ SELECT
 FROM information_schema.columns
 WHERE table_schema = 'public' 
   AND table_name = 'gmb_locations'
-  AND column_name IN ('review_count', 'response_rate', 'is_syncing', 'ai_insights')
+  AND column_name IN ('review_count', 'response_rate', 'is_syncing', 'ai_insights', 'status')
 ORDER BY column_name;
 
 -- عرض الإحصائيات

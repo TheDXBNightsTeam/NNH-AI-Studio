@@ -33,6 +33,7 @@ export interface GMBLocation {
   response_rate?: number
   is_active: boolean
   is_syncing?: boolean
+  status?: 'verified' | 'pending' | 'suspended'
   latitude?: number | null
   longitude?: number | null
   business_hours?: Record<string, any>
@@ -56,6 +57,7 @@ export interface GMBLocationWithRating {
   type?: string
   is_active: boolean
   is_syncing?: boolean
+  status?: 'verified' | 'pending' | 'suspended'
   latitude?: number | null
   longitude?: number | null
   business_hours?: Record<string, any>
