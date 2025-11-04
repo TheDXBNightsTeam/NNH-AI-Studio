@@ -1,13 +1,13 @@
 // Locations list API for the Locations tab
 // Returns a normalized list of locations with insights and health/visibility scores
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/api/auth-middleware'
 import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-async function handler(request: NextRequest, user: any) {
+async function handler(request: Request, user: any): Promise<Response> {
   const supabase = await createClient()
 
   // Parse query parameters for filtering and pagination
