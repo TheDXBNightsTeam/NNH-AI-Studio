@@ -97,8 +97,8 @@ NNH AI Studio is a comprehensive SaaS platform for managing Google My Business l
 
 ```bash
 # Clone repository
-git clone https://github.com/NNH-AI-Studio/nnh_new.git
-cd nnh_new
+git clone https://github.com/NNH-AI-Studio/NNH-AI-Studio.git
+cd NNH-AI-Studio
 
 # Install dependencies
 npm install
@@ -301,6 +301,8 @@ See [MVP_LAUNCH_PLAN.md](./MVP_LAUNCH_PLAN.md) for details.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+**Repository:** https://github.com/NNH-AI-Studio/NNH-AI-Studio
+
 ---
 
 ## 📄 License
@@ -314,7 +316,7 @@ Proprietary - NNH AI Studio © 2025
 - **Website**: [nnh.ae](https://nnh.ae)
 - **Email**: info@nnh.ae
 - **Phone**: +971 543 6655 48
-- **WhatsApp**: +971 58 883 9119
+- **WhatsApp**: +971 543 6655 48
 
 ---
 
@@ -322,7 +324,7 @@ Proprietary - NNH AI Studio © 2025
 
 **Made with ❤️ by NNH AI Studio**
 
-[Documentation](./MVP_LAUNCH_PLAN.md) · [Issues](https://github.com/NNH-AI-Studio/nnh_new/issues) · [Features](./LEGACY_COMPARISON.md)
+[Documentation](./MVP_LAUNCH_PLAN.md) · [Issues](https://github.com/NNH-AI-Studio/NNH-AI-Studio/issues) · [Features](./LEGACY_COMPARISON.md)
 
 </div>
 
