@@ -1,6 +1,13 @@
 {
-  "name": "my-v0-project",
+  "name": "nnh-ai-studio",
   "version": "0.1.0",
+  "description": "Professional GMB & YouTube Management Platform",
+  "author": "NNH AI Studio <info@nnh.ae>",
+  "homepage": "https://nnh.ae",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NNH-AI-Studio/NNH-AI-Studio.git"
+  },
   "private": true,
   "scripts": {
     "build": "unset NODE_ENV && next build",
