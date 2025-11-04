@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { Link, usePathname } from '@/lib/navigation';
 import { motion } from 'framer-motion';
 import { LayoutDashboard, MapPin, Star, FileText, ChartBar as BarChart3, Settings, Zap, Users, Image, Calendar, Webhook, CheckSquare, Grid3x3, MessageSquare, Layers, Youtube } from 'lucide-react';
 import { cn } from '@/lib/utils';

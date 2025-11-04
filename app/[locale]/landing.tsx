@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
+import { Link } from "@/lib/navigation"
 import { ArrowRight, BarChart3, MapPin, MessageSquare, Sparkles, Check, Play, Activity, Video, Star, Shield, Globe, Users, TrendingUp, Award, Headphones, Building2, Briefcase, Zap, ChevronDown, ChevronUp, Clock } from "lucide-react"
 import { useState } from "react"
 import { useTranslations } from 'next-intl'
@@ -61,7 +61,7 @@ export default function LandingPage() {
               <a href="#pricing" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 {t('nav.pricing')}
               </a>
-              <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              <Link href="/pricing/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 {t('nav.contact')}
               </Link>
               <LanguageSwitcher />
@@ -595,7 +595,7 @@ export default function LandingPage() {
                 </li>
               </ul>
               <Button asChild variant="outline" className="w-full border-primary/30 hover:bg-primary/10 bg-transparent">
-                <Link href="/contact">Contact Sales</Link>
+                <Link href="/pricing/contact">Contact Sales</Link>
               </Button>
             </div>
           </div>
@@ -691,7 +691,7 @@ export default function LandingPage() {
                 </li>
               </ul>
               <Button asChild variant="outline" className="w-full">
-                <Link href="/contact">Contact Sales →</Link>
+                <Link href="/pricing/contact">Contact Sales →</Link>
               </Button>
             </div>
           </div>
@@ -793,7 +793,7 @@ export default function LandingPage() {
                 variant="outline"
                 className="border-primary/30 text-foreground hover:bg-primary/10 text-lg px-8 bg-transparent"
               >
-                <Link href="/contact">{t('cta.scheduleDemo')}</Link>
+                <Link href="/pricing/contact">{t('cta.scheduleDemo')}</Link>
               </Button>
             </div>
             <div className="grid md:grid-cols-3 gap-6 pt-8 max-w-2xl mx-auto">
@@ -859,7 +859,7 @@ export default function LandingPage() {
               <h4 className="text-sm font-semibold">Resources</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
-                  <Link href="/contact" className="hover:text-primary transition-colors">
+                  <Link href="/pricing/contact" className="hover:text-primary transition-colors">
                     Contact
                   </Link>
                 </li>
@@ -869,7 +869,7 @@ export default function LandingPage() {
                   </a>
                 </li>
                 <li>
-                  <Link href="/contact" className="hover:text-primary transition-colors">
+                  <Link href="/pricing/contact" className="hover:text-primary transition-colors">
                     Book a Demo
                   </Link>
                 </li>
