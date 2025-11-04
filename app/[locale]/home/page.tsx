@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
+import { Link } from '@/lib/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import Link from 'next/link'
 import { 
   ArrowRight, Building2, BarChart3, MessageSquare, LogOut, 
   Star, TrendingUp, Zap, Shield, Clock, Users,
@@ -37,18 +37,21 @@ export default async function HomePage() {
     redirect('/auth/login')
   }
 
+  const userId = user!.id
+  const userEmail = user?.email || ''
+
   // Get user profile
   const { data: profile } = await supabase
     .from('profiles')
     .select('full_name, email')
-    .eq('user_id', user.id)
+  .eq('user_id', userId)
     .single()
 
   // Fetch real stats from database
   const { count: locationsCount } = await supabase
     .from('gmb_locations')
     .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
+  .eq('user_id', userId)
 
   const { count: reviewsCount } = await supabase
     .from('gmb_reviews')
@@ -59,7 +62,7 @@ export default async function HomePage() {
   let averageRating = '0.0'
   try {
     const { data: rpcData } = await supabase
-      .rpc('calculate_average_rating', { p_user_id: user.id })
+  .rpc('calculate_average_rating', { p_user_id: userId })
       .single()
     
     if (rpcData && typeof rpcData === 'object' && 'avg' in rpcData) {
@@ -70,7 +73,7 @@ export default async function HomePage() {
     const { data: reviews } = await supabase
       .from('gmb_reviews')
       .select('star_rating')
-      .eq('user_id', user.id)
+  .eq('user_id', userId)
       .limit(1000)
     
     if (reviews && reviews.length > 0) {
@@ -82,13 +85,13 @@ export default async function HomePage() {
   const { count: accountsCount } = await supabase
     .from('gmb_accounts')
     .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
+  .eq('user_id', userId)
 
   // Fetch YouTube stats
   const { data: youtubeToken } = await supabase
     .from('oauth_tokens')
     .select('metadata')
-    .eq('user_id', user.id)
+  .eq('user_id', userId)
     .eq('provider', 'youtube')
     .maybeSingle()
 
@@ -127,7 +130,7 @@ export default async function HomePage() {
                   NNH - AI Studio
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  Welcome back, {profile?.full_name || user.email}
+                  Welcome back, {profile?.full_name || userEmail}
                 </p>
               </div>
             </div>
@@ -207,7 +210,7 @@ export default async function HomePage() {
                     Connect your Google My Business account or YouTube channel to start managing your online presence.
                   </p>
                   <div className="flex gap-3 justify-center pt-4">
-                    <Link href="/dashboard/settings">
+                    <Link href="/settings">
                       <Button className="gap-2 gradient-orange hover:opacity-90">
                         <Building2 className="w-4 h-4" />
                         Connect GMB
@@ -516,8 +519,8 @@ export default async function HomePage() {
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {[
                   { icon: Building2, label: 'GMB Dashboard', href: '/dashboard' },
-                  { icon: BarChart3, label: 'View Analytics', href: '/dashboard/analytics' },
-                  { icon: MessageSquare, label: 'Manage Reviews', href: '/dashboard/reviews' },
+                  { icon: BarChart3, label: 'View Analytics', href: '/analytics' },
+                  { icon: MessageSquare, label: 'Manage Reviews', href: '/reviews' },
                   { icon: Play, label: 'YouTube Dashboard', href: '/youtube-dashboard' },
                   { icon: Sparkles, label: 'GMB Posts', href: '/gmb-posts' },
                   { icon: Sparkles, label: 'YouTube Posts', href: '/youtube-posts' }
@@ -565,7 +568,7 @@ export default async function HomePage() {
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li><Link href="/features" className="hover:text-primary transition-colors">Features</Link></li>
                   <li><Link href="/pricing" className="hover:text-primary transition-colors">Pricing</Link></li>
-                  <li><Link href="/dashboard/analytics" className="hover:text-primary transition-colors">Analytics</Link></li>
+                  <li><Link href="/analytics" className="hover:text-primary transition-colors">Analytics</Link></li>
                   <li><Link href="/youtube-dashboard" className="hover:text-primary transition-colors">YouTube Dashboard</Link></li>
                 </ul>
               </div>
@@ -584,7 +587,7 @@ export default async function HomePage() {
                 <h5 className="font-semibold mb-4">Support</h5>
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li><Link href="/dashboard" className="hover:text-primary transition-colors">GMB Dashboard</Link></li>
-                  <li><Link href="/dashboard/settings" className="hover:text-primary transition-colors">Settings</Link></li>
+                  <li><Link href="/settings" className="hover:text-primary transition-colors">Settings</Link></li>
                   <li><Link href="/contact" className="hover:text-primary transition-colors">Contact Support</Link></li>
                 </ul>
               </div>

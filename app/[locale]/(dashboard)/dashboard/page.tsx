@@ -15,6 +15,9 @@ import { PerformanceComparisonChart } from '@/components/dashboard/performance-c
 import { LocationHighlightsCarousel } from '@/components/dashboard/location-highlights-carousel';
 import { AIInsightsCard } from '@/components/dashboard/ai-insights-card';
 import { Button } from '@/components/ui/button';
+import { DateRangeControls, type DateRange } from '@/components/dashboard/date-range-controls';
+import { ExportShareBar } from '@/components/dashboard/export-share-bar';
+import { GamificationWidget } from '@/components/dashboard/gamification-widget';
 import { RefreshCw, Zap, ShieldCheck, Loader2, Star, MapPin, CheckCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -305,6 +308,7 @@ export default function DashboardPage() {
   const [syncing, setSyncing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [lastDataUpdate, setLastDataUpdate] = useState<Date | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange>({ preset: '30d', start: null, end: null });
 
   const fetchDashboardData = async () => {
     try {
@@ -356,7 +360,22 @@ export default function DashboardPage() {
 
       // Fetch real stats from API with safe defaults
       if (hasActiveAccount) {
-        const statsRes = await fetch('/api/dashboard/stats');
+        const params = new URLSearchParams();
+        const now = new Date();
+        if (dateRange.preset !== 'custom') {
+          const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          let start = new Date(end);
+          if (dateRange.preset === '7d') start.setDate(end.getDate() - 7);
+          if (dateRange.preset === '30d') start.setDate(end.getDate() - 30);
+          if (dateRange.preset === '90d') start.setDate(end.getDate() - 90);
+          params.set('start', start.toISOString());
+          params.set('end', end.toISOString());
+        } else if (dateRange.start && dateRange.end) {
+          params.set('start', dateRange.start.toISOString());
+          params.set('end', dateRange.end.toISOString());
+        }
+
+        const statsRes = await fetch(`/api/dashboard/stats?${params.toString()}`);
         if (statsRes.ok) {
           const newStats = await statsRes.json();
           setStats({
@@ -521,7 +540,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-print-root>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">AI Command Center</h1>
@@ -539,6 +558,26 @@ export default function DashboardPage() {
           isRefreshing={loading}
           autoRefreshInterval={5}
         />
+      )}
+
+      {/* Date Range Controls & Export/Share */}
+      {gmbConnected && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <DateRangeControls
+            value={dateRange}
+            onChange={setDateRange}
+            onApply={fetchDashboardData}
+          />
+          <ExportShareBar
+            getShareParams={() => {
+              const params: Record<string, string> = {};
+              if (dateRange.preset) params.preset = dateRange.preset;
+              if (dateRange.start) params.start = dateRange.start.toISOString();
+              if (dateRange.end) params.end = dateRange.end.toISOString();
+              return params;
+            }}
+          />
+        </div>
       )}
 
       {/* GMB Connection Status */}
@@ -609,20 +648,31 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* AI Insights */}
+      {/* AI Insights + Gamification */}
       {gmbConnected && (
-        <AIInsightsCard
-          stats={{
-            totalReviews: stats.totalReviews,
-            averageRating: stats.averageRating,
-            responseRate: stats.responseRate,
-            pendingReviews: stats.pendingReviews,
-            unansweredQuestions: stats.unansweredQuestions,
-            ratingTrend: stats.ratingTrend,
-            reviewsTrend: stats.reviewsTrend
-          }}
-          loading={loading}
-        />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <AIInsightsCard
+            stats={{
+              totalReviews: stats.totalReviews,
+              averageRating: stats.averageRating,
+              responseRate: stats.responseRate,
+              pendingReviews: stats.pendingReviews,
+              unansweredQuestions: stats.unansweredQuestions,
+              ratingTrend: stats.ratingTrend,
+              reviewsTrend: stats.reviewsTrend
+            }}
+            loading={loading}
+          />
+          <GamificationWidget
+            stats={{
+              healthScore: stats.healthScore,
+              responseRate: stats.responseRate,
+              averageRating: stats.averageRating,
+              totalReviews: stats.totalReviews,
+              pendingReviews: stats.pendingReviews,
+            }}
+          />
+        </div>
       )}
     </div>
   );

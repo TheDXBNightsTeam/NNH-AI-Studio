@@ -48,13 +48,13 @@ export function PerformanceComparisonChart({
   // تحضير البيانات للمخطط
   const chartData: PerformanceData[] = [
     {
-      month: isArabic ? 'الشهر السابق' : 'Last Month',
+      month: isArabic ? 'الفترة السابقة' : 'Previous Period',
       reviews: previousMonthData.reviews,
       rating: previousMonthData.rating * 20, // تحويل من 5 إلى 100 للتناسق
       questions: previousMonthData.questions,
     },
     {
-      month: isArabic ? 'هذا الشهر' : 'This Month',
+      month: isArabic ? 'هذه الفترة' : 'This Period',
       reviews: currentMonthData.reviews,
       rating: currentMonthData.rating * 20,
       questions: currentMonthData.questions,

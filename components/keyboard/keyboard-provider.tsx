@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/lib/navigation';
 import { toast } from 'sonner';
 import { useKeyboardShortcut, useSequenceShortcut } from '@/lib/hooks/use-keyboard-shortcut';
 import { ShortcutsModal } from './shortcuts-modal';
@@ -70,27 +70,27 @@ export function KeyboardProvider({ children, onCommandPaletteOpen }: KeyboardPro
   });
 
   useSequenceShortcut(['g', 'l'], () => {
-    router.push('/dashboard/locations');
+    router.push('/locations');
     toast.success('Navigated to Locations');
   });
 
   useSequenceShortcut(['g', 'r'], () => {
-    router.push('/dashboard/reviews');
+    router.push('/reviews');
     toast.success('Navigated to Reviews');
   });
 
   useSequenceShortcut(['g', 'p'], () => {
-    router.push('/dashboard/posts');
+    router.push('/posts');
     toast.success('Navigated to Posts');
   });
 
   useSequenceShortcut(['g', 'a'], () => {
-    router.push('/dashboard/analytics');
+    router.push('/analytics');
     toast.success('Navigated to Analytics');
   });
 
   useSequenceShortcut(['g', 's'], () => {
-    router.push('/dashboard/settings');
+    router.push('/settings');
     toast.success('Navigated to Settings');
   });
 
