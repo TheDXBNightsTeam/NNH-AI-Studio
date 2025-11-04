@@ -316,7 +316,17 @@ export default function DashboardPage() {
       } = await supabase.auth.getUser();
 
       if (authError || !authUser) {
-        console.error("Authentication error:", authError);
+        // Handle expired/invalid sessions gracefully
+        const msg = authError?.message || '';
+        const isExpired = msg.includes('session') || msg.includes('expired') || msg.includes('Invalid Refresh Token') || (authError as any)?.code === 'session_expired';
+        if (isExpired) {
+          try {
+            await supabase.auth.signOut();
+          } catch {}
+          toast.error('Session expired. Please sign in again.');
+        } else if (authError) {
+          console.error('Authentication error:', authError);
+        }
         router.push("/auth/login");
         return;
       }
@@ -366,6 +376,22 @@ export default function DashboardPage() {
             locationHighlights: newStats.locationHighlights || [],
             bottlenecks: newStats.bottlenecks || [],
           });
+        } else if (statsRes.status === 401) {
+          // Unauthenticated from API -> sign out and redirect
+          try {
+            await supabase.auth.signOut();
+          } catch {}
+          toast.error('Your session has expired. Please sign in again.');
+          router.push('/auth/login');
+          return;
+        } else {
+          // Other API error
+          let msg = 'Failed to load dashboard stats';
+          try {
+            const err = await statsRes.json();
+            msg = err?.error || msg;
+          } catch {}
+          toast.error(msg);
         }
       }
 
