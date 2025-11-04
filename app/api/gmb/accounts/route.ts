@@ -18,12 +18,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Fetch GMB accounts for this user from oauth_tokens table
+    // Fetch GMB accounts for this user from gmb_accounts table
     const { data: accounts, error: dbError } = await supabase
-      .from('oauth_tokens')
-      .select('id, provider, account_id, account_name, email, created_at, expires_at')
+      .from('gmb_accounts')
+      .select('id, account_id, account_name, email, is_active, last_sync, created_at, token_expires_at')
       .eq('user_id', user.id)
-      .eq('provider', 'google_business')
       .order('created_at', { ascending: false })
 
     if (dbError) {
