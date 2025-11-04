@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { ArrowRight, BarChart3, MapPin, MessageSquare, Sparkles, Check, Play, Activity, Video, Star, Shield, Globe, Users, TrendingUp, Award, Headphones, Building2, Briefcase, Zap, ChevronDown, ChevronUp, Clock } from "lucide-react"
 import { useState } from "react"
+import { useTranslations } from 'next-intl'
 import LanguageSwitcher from "@/components/ui/LanguageSwitcher"
 
 export default function LandingPage() {
+  const t = useTranslations('HomePage')
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
   const toggleFaq = (index: number) => {
@@ -15,24 +17,24 @@ export default function LandingPage() {
 
   const faqs = [
     {
-      question: "Can NNH AI Studio help me create & verify my Business Location?",
-      answer: "Yes! NNH AI Studio provides comprehensive assistance for creating, verifying, and managing your Google Business Profile locations. Our platform guides you through the entire process and helps you secure your listings."
+      question: t('faq.questions.q1.question'),
+      answer: t('faq.questions.q1.answer')
     },
     {
-      question: "Which Directories are synced with NNH AI Studio?",
-      answer: "NNH AI Studio integrates with major directories including Google My Business, YouTube, Bing, Apple Maps, ChatGPT, Instagram, Facebook, and many more. We continuously add new integrations to ensure maximum visibility."
+      question: t('faq.questions.q2.question'),
+      answer: t('faq.questions.q2.answer')
     },
     {
-      question: "How can NNH AI Studio help my Business Rank better on Local Search?",
-      answer: "NNH AI Studio helps improve your local search rankings through AI-powered content optimization, review management, keyword tracking, profile enhancement, and real-time analytics. Our platform provides personalized tasks and recommendations to boost your visibility."
+      question: t('faq.questions.q3.question'),
+      answer: t('faq.questions.q3.answer')
     },
     {
-      question: "Does NNH AI Studio help with Reviews & Reputation Management?",
-      answer: "Absolutely! NNH AI Studio offers AI-powered review response generation, sentiment analysis, review monitoring, and automated reply suggestions. Manage all your reviews and maintain a positive online reputation from one dashboard."
+      question: t('faq.questions.q4.question'),
+      answer: t('faq.questions.q4.answer')
     },
     {
-      question: "Do you have solutions for Brands & Agencies with Multiple Locations?",
-      answer: "Yes! NNH AI Studio offers specialized solutions for agencies and multi-location brands, including white-label dashboards, bulk verification assistance, team collaboration tools, advanced analytics, and custom pricing plans tailored to your needs."
+      question: t('faq.questions.q5.question'),
+      answer: t('faq.questions.q5.answer')
     }
   ]
 
@@ -51,16 +53,16 @@ export default function LandingPage() {
               </div>
             <nav className="hidden md:flex items-center gap-6">
               <a href="#features" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                Features
+                {t('nav.features')}
               </a>
               <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                How It Works
+                {t('nav.howItWorks')}
               </a>
               <a href="#pricing" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                Pricing
+                {t('nav.pricing')}
               </a>
               <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                Contact
+                {t('nav.contact')}
               </Link>
               <LanguageSwitcher />
               <Button
@@ -69,7 +71,7 @@ export default function LandingPage() {
                 size="sm"
                 className="border-primary/30 text-foreground hover:bg-primary/10 bg-transparent"
               >
-                <Link href="/auth/login">Sign In</Link>
+                <Link href="/auth/login">{t('nav.signIn')}</Link>
               </Button>
             </nav>
             {/* Mobile Navigation */}
@@ -81,7 +83,7 @@ export default function LandingPage() {
                 size="sm"
                 className="border-primary/30 text-foreground hover:bg-primary/10 bg-transparent"
               >
-                <Link href="/auth/login">Sign In</Link>
+                <Link href="/auth/login">{t('nav.signIn')}</Link>
               </Button>
             </div>
           </div>
@@ -102,14 +104,14 @@ export default function LandingPage() {
                   <Star key={i} className="w-4 h-4 text-primary fill-primary" />
                 ))}
               </div>
-              <span className="text-sm font-medium text-primary">4.9 out of 5</span>
-              <span className="text-sm text-muted-foreground">• Trusted by 1,000+ Businesses</span>
+              <span className="text-sm font-medium text-primary">{t('rating')}</span>
+              <span className="text-sm text-muted-foreground">• {t('trustedBy')}</span>
             </div>
             <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-gradient">
-              Manage Your Google My Business & YouTube Channels Like a Pro
+              {t('hero.title')}
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              The ultimate AI-powered platform for managing multiple GMB locations, YouTube channels, responding to reviews with AI, creating content, and growing your online presence all from one dashboard.
+              {t('hero.subtitle')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
@@ -118,7 +120,7 @@ export default function LandingPage() {
                 className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white text-lg px-8"
               >
                 <Link href="/auth/signup">
-                  Get Started Free
+                  {t('hero.getStarted')}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
@@ -128,7 +130,7 @@ export default function LandingPage() {
                 variant="outline"
                 className="border-primary/30 text-foreground hover:bg-primary/10 text-lg px-8 bg-transparent"
               >
-                <Link href="/auth/login">Sign In</Link>
+                <Link href="/auth/login">{t('hero.signIn')}</Link>
               </Button>
             </div>
           </div>
@@ -139,17 +141,17 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-4">
                 <MapPin className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Multi-Location Management</h3>
-              <p className="text-muted-foreground text-sm">Manage all your GMB locations from one powerful dashboard</p>
+              <h3 className="text-xl font-semibold mb-2">{t('features.multiLocation.title')}</h3>
+              <p className="text-muted-foreground text-sm">{t('features.multiLocation.description')}</p>
             </div>
 
             <div className="p-6 rounded-2xl bg-card border border-primary/30 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
               <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-4">
                 <Play className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">YouTube Management</h3>
+              <h3 className="text-xl font-semibold mb-2">{t('features.youtubeManagement.title')}</h3>
               <p className="text-muted-foreground text-sm">
-                Manage your YouTube channel, videos, comments, and analytics from one place
+                {t('features.youtubeManagement.description')}
               </p>
             </div>
 
@@ -157,9 +159,9 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-4">
                 <MessageSquare className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">AI-Powered Reviews</h3>
+              <h3 className="text-xl font-semibold mb-2">{t('features.aiReviews.title')}</h3>
               <p className="text-muted-foreground text-sm">
-                Generate intelligent responses to reviews with advanced AI
+                {t('features.aiReviews.description')}
               </p>
             </div>
 
@@ -167,40 +169,40 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-4">
                 <BarChart3 className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Advanced Analytics</h3>
-              <p className="text-muted-foreground text-sm">Track performance with detailed insights and reports for both GMB and YouTube</p>
+              <h3 className="text-xl font-semibold mb-2">{t('features.analytics.title')}</h3>
+              <p className="text-muted-foreground text-sm">{t('features.analytics.description')}</p>
             </div>
 
             <div className="p-6 rounded-2xl bg-card border border-primary/30 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
               <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-4">
                 <Video className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Video Analytics</h3>
-              <p className="text-muted-foreground text-sm">Analyze video performance, engagement rates, and audience insights</p>
+              <h3 className="text-xl font-semibold mb-2">{t('features.videoAnalytics.title')}</h3>
+              <p className="text-muted-foreground text-sm">{t('features.videoAnalytics.description')}</p>
             </div>
 
             <div className="p-6 rounded-2xl bg-card border border-primary/30 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
               <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-4">
                 <Activity className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Real-time Monitoring</h3>
-              <p className="text-muted-foreground text-sm">Monitor comments, reviews, and engagement across all platforms in real-time</p>
+              <h3 className="text-xl font-semibold mb-2">{t('features.monitoring.title')}</h3>
+              <p className="text-muted-foreground text-sm">{t('features.monitoring.description')}</p>
             </div>
 
             <div className="p-6 rounded-2xl bg-card border border-primary/30 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
               <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-4">
                 <Sparkles className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">AI Content Studio</h3>
-              <p className="text-muted-foreground text-sm">Create engaging posts, videos, and content with AI assistance</p>
+              <h3 className="text-xl font-semibold mb-2">{t('features.aiStudio.title')}</h3>
+              <p className="text-muted-foreground text-sm">{t('features.aiStudio.description')}</p>
             </div>
 
             <div className="p-6 rounded-2xl bg-card border border-primary/30 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20">
               <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-4">
                 <MessageSquare className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Comment Management</h3>
-              <p className="text-muted-foreground text-sm">Manage and respond to YouTube comments efficiently with AI-powered tools</p>
+              <h3 className="text-xl font-semibold mb-2">{t('features.commentManagement.title')}</h3>
+              <p className="text-muted-foreground text-sm">{t('features.commentManagement.description')}</p>
             </div>
           </div>
         </div>
@@ -212,23 +214,23 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-6 max-w-6xl mx-auto">
             <div className="flex flex-col items-center text-center gap-2">
               <Shield className="w-8 h-8 text-primary" />
-              <p className="text-sm text-muted-foreground">Money back guarantee</p>
+              <p className="text-sm text-muted-foreground">{t('trustIndicators.moneyBack')}</p>
             </div>
             <div className="flex flex-col items-center text-center gap-2">
               <Globe className="w-8 h-8 text-primary" />
-              <p className="text-sm text-muted-foreground">Works in every country</p>
+              <p className="text-sm text-muted-foreground">{t('trustIndicators.worldwide')}</p>
             </div>
             <div className="flex flex-col items-center text-center gap-2">
               <Check className="w-8 h-8 text-primary" />
-              <p className="text-sm text-muted-foreground">No long-term commitment</p>
+              <p className="text-sm text-muted-foreground">{t('trustIndicators.noCommitment')}</p>
             </div>
             <div className="flex flex-col items-center text-center gap-2">
               <Users className="w-8 h-8 text-primary" />
-              <p className="text-sm text-muted-foreground">Trusted by 1,000+ Businesses</p>
+              <p className="text-sm text-muted-foreground">{t('trustIndicators.trusted')}</p>
             </div>
             <div className="flex flex-col items-center text-center gap-2">
               <Headphones className="w-8 h-8 text-primary" />
-              <p className="text-sm text-muted-foreground">24/7 Support</p>
+              <p className="text-sm text-muted-foreground">{t('trustIndicators.support')}</p>
             </div>
           </div>
         </div>
@@ -238,29 +240,29 @@ export default function LandingPage() {
       <section className="py-24 bg-gradient-to-b from-card/50 to-transparent">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <span className="text-sm font-semibold text-primary mb-4 block">OUR PROMISE</span>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Level up your Local SEO</h2>
+            <span className="text-sm font-semibold text-primary mb-4 block">{t('stats.title')}</span>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">{t('stats.subtitle')}</h2>
           </div>
           <div className="grid md:grid-cols-4 gap-8 max-w-6xl mx-auto">
             <div className="text-center p-6 rounded-2xl bg-card border border-primary/30">
               <TrendingUp className="w-12 h-12 text-primary mx-auto mb-4" />
-              <div className="text-4xl font-bold mb-2">2X</div>
-              <p className="text-muted-foreground">More Storefront Visits</p>
+              <div className="text-4xl font-bold mb-2">{t('stats.storefrontVisits.value')}</div>
+              <p className="text-muted-foreground">{t('stats.storefrontVisits.label')}</p>
             </div>
             <div className="text-center p-6 rounded-2xl bg-card border border-primary/30">
               <BarChart3 className="w-12 h-12 text-primary mx-auto mb-4" />
-              <div className="text-4xl font-bold mb-2">+300%</div>
-              <p className="text-muted-foreground">Local Impressions</p>
+              <div className="text-4xl font-bold mb-2">{t('stats.impressions.value')}</div>
+              <p className="text-muted-foreground">{t('stats.impressions.label')}</p>
             </div>
             <div className="text-center p-6 rounded-2xl bg-card border border-primary/30">
               <Activity className="w-12 h-12 text-primary mx-auto mb-4" />
-              <div className="text-4xl font-bold mb-2">+60%</div>
-              <p className="text-muted-foreground">More Phone Calls</p>
+              <div className="text-4xl font-bold mb-2">{t('stats.phoneCalls.value')}</div>
+              <p className="text-muted-foreground">{t('stats.phoneCalls.label')}</p>
             </div>
             <div className="text-center p-6 rounded-2xl bg-card border border-primary/30">
               <Star className="w-12 h-12 text-primary mx-auto mb-4" />
-              <div className="text-4xl font-bold mb-2">+150%</div>
-              <p className="text-muted-foreground">Reviews Growth</p>
+              <div className="text-4xl font-bold mb-2">{t('stats.reviews.value')}</div>
+              <p className="text-muted-foreground">{t('stats.reviews.label')}</p>
             </div>
           </div>
         </div>
@@ -269,9 +271,9 @@ export default function LandingPage() {
       <section id="how-it-works" className="py-24 bg-gradient-to-b from-transparent to-card/50">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">How It Works</h2>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">{t('howItWorks.title')}</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Get started in minutes and transform your Google My Business and YouTube management
+              {t('howItWorks.subtitle')}
             </p>
           </div>
 
@@ -281,9 +283,9 @@ export default function LandingPage() {
                 <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                   <span className="text-3xl font-bold text-white">1</span>
                 </div>
-                <h3 className="text-2xl font-semibold">Connect Your Accounts</h3>
+                <h3 className="text-2xl font-semibold">{t('howItWorks.step1.title')}</h3>
                 <p className="text-muted-foreground">
-                  Link your Google My Business accounts and YouTube channels, import all your locations and videos in seconds
+                  {t('howItWorks.step1.description')}
                 </p>
               </div>
               <div className="hidden md:block absolute top-10 -right-4 w-8 h-0.5 bg-gradient-to-r from-primary to-transparent" />
@@ -294,9 +296,9 @@ export default function LandingPage() {
                 <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                   <span className="text-3xl font-bold text-white">2</span>
                 </div>
-                <h3 className="text-2xl font-semibold">Manage & Respond</h3>
+                <h3 className="text-2xl font-semibold">{t('howItWorks.step2.title')}</h3>
                 <p className="text-muted-foreground">
-                  Monitor reviews and comments, respond with AI assistance, manage all locations and YouTube content from one dashboard
+                  {t('howItWorks.step2.description')}
                 </p>
               </div>
               <div className="hidden md:block absolute top-10 -right-4 w-8 h-0.5 bg-gradient-to-r from-primary to-transparent" />
@@ -306,9 +308,9 @@ export default function LandingPage() {
               <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                 <span className="text-3xl font-bold text-white">3</span>
               </div>
-              <h3 className="text-2xl font-semibold">Grow Your Business</h3>
+              <h3 className="text-2xl font-semibold">{t('howItWorks.step3.title')}</h3>
               <p className="text-muted-foreground">
-                Track analytics, optimize performance, and watch your online presence grow
+                {t('howItWorks.step3.description')}
               </p>
             </div>
           </div>
@@ -319,10 +321,10 @@ export default function LandingPage() {
       <section className="py-24 bg-card/30">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <span className="text-sm font-semibold text-primary mb-4 block">CUSTOMER LOVE</span>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Our Customers Get Results</h2>
+            <span className="text-sm font-semibold text-primary mb-4 block">{t('testimonials.title')}</span>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">{t('testimonials.heading')}</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              See What Our Customers Have To Say About Us
+              {t('testimonials.subtitle')}
             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
@@ -334,15 +336,15 @@ export default function LandingPage() {
                 ))}
               </div>
               <p className="text-muted-foreground mb-6">
-                "NNH AI Studio helped us drastically scale our visibility across search and map listings. With a 900% boost in impressions and a massive rise in website clicks, our local SEO has never been stronger."
+                {t('testimonials.testimonial1.quote')}
               </p>
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
                   <Users className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <p className="font-semibold">John Smith</p>
-                  <p className="text-sm text-muted-foreground">CEO, Local Business Co.</p>
+                  <p className="font-semibold">{t('testimonials.testimonial1.name')}</p>
+                  <p className="text-sm text-muted-foreground">{t('testimonials.testimonial1.role')}</p>
                 </div>
               </div>
               <div className="mt-6 pt-6 border-t border-primary/20 grid grid-cols-2 gap-4">
@@ -364,25 +366,25 @@ export default function LandingPage() {
                 ))}
               </div>
               <p className="text-muted-foreground mb-6">
-                "With NNH AI Studio, we enhanced our discoverability for health seekers. The rise in call clicks and impressions directly reflects the platform's efficiency in reaching intent-driven users."
+                {t('testimonials.testimonial2.quote')}
               </p>
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
                   <Users className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <p className="font-semibold">Sarah Johnson</p>
-                  <p className="text-sm text-muted-foreground">Marketing Director, Health Solutions</p>
+                  <p className="font-semibold">{t('testimonials.testimonial2.name')}</p>
+                  <p className="text-sm text-muted-foreground">{t('testimonials.testimonial2.role')}</p>
                 </div>
               </div>
               <div className="mt-6 pt-6 border-t border-primary/20 grid grid-cols-2 gap-4">
                 <div>
                   <div className="text-2xl font-bold text-primary">250%</div>
-                  <p className="text-sm text-muted-foreground">Search Impressions</p>
+                  <p className="text-sm text-muted-foreground">{t('testimonials.testimonial2.stat1Label')}</p>
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-primary">240%</div>
-                  <p className="text-sm text-muted-foreground">Call Clicks</p>
+                  <p className="text-sm text-muted-foreground">{t('testimonials.testimonial2.stat2Label')}</p>
                 </div>
               </div>
             </div>
@@ -393,9 +395,9 @@ export default function LandingPage() {
       <section className="py-24 bg-card/30">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Powerful Dashboard</h2>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">{t('dashboard.title')}</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Everything you need to manage your Google My Business locations and YouTube channels in one beautiful interface
+              {t('dashboard.subtitle')}
             </p>
           </div>
 
@@ -413,7 +415,7 @@ export default function LandingPage() {
                     <div className="flex-1 h-2 rounded-full bg-primary/30">
                       <div className="h-full w-3/4 rounded-full bg-gradient-to-r from-primary to-accent" />
                     </div>
-                    <span className="text-sm text-muted-foreground">Real-time Analytics</span>
+                    <span className="text-sm text-muted-foreground">{t('dashboard.realTimeAnalytics')}</span>
                   </div>
                 </div>
               </div>
@@ -426,10 +428,10 @@ export default function LandingPage() {
       <section className="py-24 bg-gradient-to-b from-card/30 to-transparent">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <span className="text-sm font-semibold text-primary mb-4 block">Free Tool Feature</span>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Free Google My Business Optimization Tools</h2>
+            <span className="text-sm font-semibold text-primary mb-4 block">{t('freeTools.title')}</span>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">{t('freeTools.heading')}</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Harness the power of Generative AI to Improve Local SEO of your Google My Business Profile for Free
+              {t('freeTools.subtitle')}
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
@@ -480,9 +482,9 @@ export default function LandingPage() {
       <section id="pricing" className="py-24">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Simple, Transparent Pricing</h2>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">{t('pricing.heading')}</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Choose the perfect plan for your business needs
+              {t('pricing.subtitle')}
             </p>
           </div>
 
@@ -604,10 +606,10 @@ export default function LandingPage() {
       <section className="py-24 bg-gradient-to-b from-transparent to-card/50">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <span className="text-sm font-semibold text-primary mb-4 block">MADE FOR ALL</span>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Features Designed for teams of every type & size</h2>
+            <span className="text-sm font-semibold text-primary mb-4 block">{t('solutions.title')}</span>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">{t('solutions.heading')}</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              NNH AI Studio is designed for every type of team and their needs.
+              {t('solutions.subtitle')}
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
@@ -700,10 +702,10 @@ export default function LandingPage() {
       <section className="py-24 bg-gradient-to-b from-card/50 to-transparent">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <span className="text-sm font-semibold text-primary mb-4 block">Integrations</span>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Direct Integration With Directories</h2>
+            <span className="text-sm font-semibold text-primary mb-4 block">{t('integrations.title')}</span>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">{t('integrations.heading')}</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Link your Business Profiles with Multiple Directories, CRMs & more
+              {t('integrations.subtitle')}
             </p>
           </div>
           <div className="grid grid-cols-4 md:grid-cols-8 gap-8 max-w-6xl mx-auto items-center justify-items-center">
@@ -739,8 +741,8 @@ export default function LandingPage() {
       <section id="faq" className="py-24 bg-gradient-to-b from-transparent to-card/50">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <span className="text-sm font-semibold text-primary mb-4 block">FAQs</span>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Frequently Asked Questions</h2>
+            <span className="text-sm font-semibold text-primary mb-4 block">{t('faq.title')}</span>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">{t('faq.heading')}</h2>
           </div>
           <div className="max-w-3xl mx-auto space-y-4">
             {faqs.map((faq, index) => (
@@ -770,9 +772,9 @@ export default function LandingPage() {
       <section className="py-24 bg-gradient-to-br from-primary/20 via-transparent to-accent/20">
         <div className="container mx-auto px-6">
           <div className="max-w-4xl mx-auto text-center space-y-8">
-            <h2 className="text-4xl md:text-6xl font-bold">Try NNH AI Studio for Free today</h2>
+            <h2 className="text-4xl md:text-6xl font-bold">{t('cta.title')}</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Find out if NNH AI Studio helps your Local Business Grow with <span className="text-primary font-semibold">7 Days Free Trial. No Credit Card Required.</span>
+              {t('cta.subtitle')} <span className="text-primary font-semibold">{t('cta.trial')}</span>
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
@@ -781,7 +783,7 @@ export default function LandingPage() {
                 className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white text-lg px-8"
               >
                 <Link href="/auth/signup">
-                  Start Free Trial
+                  {t('cta.startTrial')}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
@@ -791,21 +793,21 @@ export default function LandingPage() {
                 variant="outline"
                 className="border-primary/30 text-foreground hover:bg-primary/10 text-lg px-8 bg-transparent"
               >
-                <Link href="/contact">Schedule Demo</Link>
+                <Link href="/contact">{t('cta.scheduleDemo')}</Link>
               </Button>
             </div>
             <div className="grid md:grid-cols-3 gap-6 pt-8 max-w-2xl mx-auto">
               <div className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card/50 border border-primary/20">
                 <Headphones className="w-8 h-8 text-primary" />
-                <p className="font-semibold">Dedicated Business Coach</p>
+                <p className="font-semibold">{t('cta.coach')}</p>
               </div>
               <div className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card/50 border border-primary/20">
                 <Sparkles className="w-8 h-8 text-primary" />
-                <p className="font-semibold">Access All Features</p>
+                <p className="font-semibold">{t('cta.features')}</p>
               </div>
               <div className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card/50 border border-primary/20">
                 <Clock className="w-8 h-8 text-primary" />
-                <p className="font-semibold">24/7 Real Time Support</p>
+                <p className="font-semibold">{t('cta.support')}</p>
               </div>
             </div>
           </div>
