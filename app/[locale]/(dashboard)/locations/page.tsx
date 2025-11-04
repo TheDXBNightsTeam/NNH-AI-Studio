@@ -959,7 +959,7 @@ export default function LocationsPage() {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-destructive">Failed to load locations</h3>
+                <h3 className="font-semibold text-destructive">{t('errors.loadFailed')}</h3>
                 <p className="text-sm text-muted-foreground mt-1">{error}</p>
               </div>
               <Button 
@@ -971,7 +971,7 @@ export default function LocationsPage() {
                 }}
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
-                Retry
+                {t('actions.retry')}
               </Button>
             </div>
           </CardContent>
