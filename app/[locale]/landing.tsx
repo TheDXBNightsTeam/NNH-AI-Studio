@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { ArrowRight, BarChart3, MapPin, MessageSquare, Sparkles, Check, Play, Activity, Video, Star, Shield, Globe, Users, TrendingUp, Award, Headphones, Building2, Briefcase, Zap, ChevronDown, ChevronUp, Clock } from "lucide-react"
 import { useState } from "react"
+import LanguageSwitcher from "@/components/ui/LanguageSwitcher"
 
 export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
@@ -48,7 +49,7 @@ export default function LandingPage() {
                 />
                 <span className="text-xl font-bold">NNH AI Studio</span>
               </div>
-            <nav className="hidden md:flex items-center gap-8">
+            <nav className="hidden md:flex items-center gap-6">
               <a href="#features" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 Features
               </a>
@@ -61,6 +62,7 @@ export default function LandingPage() {
               <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 Contact
               </Link>
+              <LanguageSwitcher />
               <Button
                 asChild
                 variant="outline"
@@ -70,8 +72,9 @@ export default function LandingPage() {
                 <Link href="/auth/login">Sign In</Link>
               </Button>
             </nav>
-            {/* Mobile Sign In button */}
-            <div className="md:hidden">
+            {/* Mobile Navigation */}
+            <div className="md:hidden flex items-center gap-3">
+              <LanguageSwitcher />
               <Button
                 asChild
                 variant="outline"
