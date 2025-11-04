@@ -130,7 +130,7 @@ export const EnhancedLocationCard: React.FC<EnhancedLocationCardProps> = ({
                 {location.name}
               </h3>
               {location.status === 'verified' && (
-                <Badge variant="default" className="bg-green-500/20 text-green-400 border-green-500/30 gap-1">
+                <Badge variant="default" className="bg-success/20 text-success border-success/30 gap-1">
                   <CheckCircle2 className="w-3 h-3" />
                   Verified
                 </Badge>
@@ -140,7 +140,7 @@ export const EnhancedLocationCard: React.FC<EnhancedLocationCardProps> = ({
             {/* Rating */}
             <div className="flex items-center gap-2 mb-2">
               <div className="flex items-center gap-1">
-                <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
+                <Star className="w-4 h-4 fill-warning text-warning" />
                 <span className="font-semibold text-foreground">{rating.toFixed(1)}</span>
               </div>
               <span className="text-sm text-muted-foreground">

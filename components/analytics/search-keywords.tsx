@@ -185,7 +185,7 @@ export function SearchKeywords() {
                   <p className="font-medium text-foreground truncate">{keyword.search_keyword}</p>
                 </div>
               </div>
-              <Badge className="bg-green-500/20 text-green-500 border-green-500/30 flex items-center gap-1 ml-2">
+              <Badge className="bg-success/20 text-success border-success/30 flex items-center gap-1 ml-2">
                 <TrendingUp className="w-3 h-3" />
                 {keyword.impressions_count.toLocaleString()}
               </Badge>

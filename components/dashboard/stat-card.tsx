@@ -55,7 +55,7 @@ export function StatCard({
   }, [numericValue])
 
   const changeColor =
-    changeType === "positive" ? "text-green-500" : changeType === "negative" ? "text-red-500" : "text-muted-foreground"
+    changeType === "positive" ? "text-success" : changeType === "negative" ? "text-destructive" : "text-muted-foreground"
 
   // Render rating with stars if it's the Average Rating card
   const isRating = title.toLowerCase().includes("rating")
@@ -94,7 +94,7 @@ export function StatCard({
                         className={cn(
                           "h-5 w-5",
                           star <= Math.round(ratingValue)
-                            ? "fill-yellow-400 text-yellow-400"
+                            ? "fill-warning text-warning"
                             : "fill-muted text-muted-foreground"
                         )}
                       />

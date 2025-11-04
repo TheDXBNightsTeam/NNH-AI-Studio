@@ -244,19 +244,19 @@ export function LocationProfileEnhanced({ location, onRefresh }: LocationProfile
                     </Badge>
                   )}
                   {isOpen && (
-                    <Badge className="bg-green-500/90 text-white border-green-400/50">
+                    <Badge className="bg-success/90 text-white border-success/50">
                       <CheckCircle2 className="w-3 h-3 mr-1" />
                       Open
                     </Badge>
                   )}
                   {hasVoiceOfMerchant && (
-                    <Badge className="bg-blue-500/90 text-white border-blue-400/50">
+                    <Badge className="bg-info/90 text-white border-info/50">
                       <MessageCircle className="w-3 h-3 mr-1" />
                       Voice of Merchant
                     </Badge>
                   )}
                   {hasPendingEdits && (
-                    <Badge className="bg-yellow-500/90 text-white border-yellow-400/50">
+                    <Badge className="bg-warning/90 text-white border-warning/50">
                       <AlertCircle className="w-3 h-3 mr-1" />
                       Pending Edits
                     </Badge>

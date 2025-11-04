@@ -83,22 +83,22 @@ export const formatLargeNumber = (num: number) => {
 
 export const getStatusColor = (status: string) => {
   switch (status) {
-    case 'verified': return 'bg-green-500/20 text-green-700 border-green-500/50';
-    case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/50';
-    case 'suspended': return 'bg-red-500/20 text-red-700 border-red-500/50';
-    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/50';
+    case 'verified': return 'bg-success/20 text-success border-success/50';
+    case 'pending': return 'bg-warning/20 text-warning border-warning/50';
+    case 'suspended': return 'bg-destructive/20 text-destructive border-destructive/50';
+    default: return 'bg-muted/20 text-muted-foreground border-muted/50';
   }
 };
 
 export const getHealthScoreColor = (score: number) => {
-  if (score >= 80) return 'text-green-500';
-  if (score >= 60) return 'text-yellow-500';
-  return 'text-red-500';
+  if (score >= 80) return 'text-success';
+  if (score >= 60) return 'text-warning';
+  return 'text-destructive';
 };
 
 export const getTrendColor = (trend: number) => {
-  if (trend > 0) return 'text-green-500';
-  if (trend < 0) return 'text-red-500';
+  if (trend > 0) return 'text-success';
+  if (trend < 0) return 'text-destructive';
   return 'text-muted-foreground';
 };
 

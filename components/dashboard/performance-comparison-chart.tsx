@@ -77,16 +77,16 @@ export function PerformanceComparisonChart({
       icon: MessageSquare,
       current: currentMonthData.reviews,
       change: reviewsChange,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-500/10'
+      color: 'text-info',
+      bgColor: 'bg-info/10'
     },
     {
       label: isArabic ? 'التقييم' : 'Rating',
       icon: Star,
       current: currentMonthData.rating.toFixed(1),
       change: ratingChange,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-500/10'
+      color: 'text-warning',
+      bgColor: 'bg-warning/10'
     },
     {
       label: isArabic ? 'الأسئلة' : 'Questions',
@@ -145,9 +145,9 @@ export function PerformanceComparisonChart({
                 <div className="flex items-center justify-between mb-2">
                   <Icon className={cn("w-4 h-4", metric.color)} />
                   {isPositive ? (
-                    <TrendingUp className="w-4 h-4 text-green-500" />
+                    <TrendingUp className="w-4 h-4 text-success" />
                   ) : (
-                    <TrendingDown className="w-4 h-4 text-red-500" />
+                    <TrendingDown className="w-4 h-4 text-destructive" />
                   )}
                 </div>
                 <div className="text-2xl font-bold">{metric.current}</div>

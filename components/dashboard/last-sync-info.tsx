@@ -44,9 +44,9 @@ export function LastSyncInfo({
       ? (Date.now() - lastSyncTime.getTime()) / (1000 * 60 * 60)
       : Infinity
     
-    if (hoursSinceSync < 1) return "text-green-500"
-    if (hoursSinceSync < 24) return "text-yellow-500"
-    return "text-orange-500"
+    if (hoursSinceSync < 1) return "text-success"
+    if (hoursSinceSync < 24) return "text-warning"
+    return "text-warning"
   }
 
   const getSyncStatusIcon = () => {
@@ -121,7 +121,7 @@ export function LastSyncInfo({
                 variant="outline"
                 onClick={onDisconnect}
                 disabled={isSyncing || isDisconnecting}
-                className="flex-shrink-0 whitespace-nowrap bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/30"
+                className="flex-shrink-0 whitespace-nowrap bg-destructive/10 hover:bg-destructive/20 text-destructive border-destructive/30"
               >
                 <Unlink className={cn(
                   "h-4 w-4 mr-2",

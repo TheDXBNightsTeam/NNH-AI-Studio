@@ -218,7 +218,7 @@ className={cn(
 collapsed && !isMobile && "justify-center px-2"
 )}
 >
-<Youtube className="h-5 w-5 text-red-500" />
+<Youtube className="h-5 w-5 text-destructive" />
 {(!collapsed || isMobile) && <span className="font-medium">YouTube</span>}
 </Button>
 </Link>

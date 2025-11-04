@@ -139,28 +139,28 @@ export function AIInsightsCard({ stats, loading = false, locale = 'en' }: AIInsi
 
   const typeConfig = {
     positive: {
-      bgColor: 'bg-green-500/10',
-      borderColor: 'border-green-500/30',
-      textColor: 'text-green-600',
-      iconBg: 'bg-green-500/20'
+      bgColor: 'bg-success/10',
+      borderColor: 'border-success/30',
+      textColor: 'text-success',
+      iconBg: 'bg-success/20'
     },
     warning: {
-      bgColor: 'bg-yellow-500/10',
-      borderColor: 'border-yellow-500/30',
-      textColor: 'text-yellow-600',
-      iconBg: 'bg-yellow-500/20'
+      bgColor: 'bg-warning/10',
+      borderColor: 'border-warning/30',
+      textColor: 'text-warning',
+      iconBg: 'bg-warning/20'
     },
     info: {
-      bgColor: 'bg-blue-500/10',
-      borderColor: 'border-blue-500/30',
-      textColor: 'text-blue-600',
-      iconBg: 'bg-blue-500/20'
+      bgColor: 'bg-info/10',
+      borderColor: 'border-info/30',
+      textColor: 'text-info',
+      iconBg: 'bg-info/20'
     },
     action: {
-      bgColor: 'bg-purple-500/10',
-      borderColor: 'border-purple-500/30',
-      textColor: 'text-purple-600',
-      iconBg: 'bg-purple-500/20'
+      bgColor: 'bg-primary/10',
+      borderColor: 'border-primary/30',
+      textColor: 'text-primary',
+      iconBg: 'bg-primary/20'
     }
   };
 

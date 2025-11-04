@@ -356,10 +356,10 @@ export function LocationsList() {
 
   if (error) {
     return (
-      <Card className="bg-card border-red-500/30">
+      <Card className="bg-card border-destructive/30">
         <CardContent className="p-12">
           <div className="flex flex-col items-center text-center space-y-4">
-            <MapPin className="w-12 h-12 text-red-500" />
+            <MapPin className="w-12 h-12 text-destructive" />
             <div>
               <h3 className="text-lg font-semibold text-foreground">Error Loading Locations</h3>
               <p className="text-muted-foreground mt-2">{error}</p>

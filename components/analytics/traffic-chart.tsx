@@ -178,20 +178,21 @@ export function TrafficChart({ dateRange = "30" }: TrafficChartProps) {
         {hasData ? (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 107, 53, 0.1)" />
+              {/* Using design system colors: --primary: #FF6B00, --info: #3B82F6, --muted-foreground: #94A3B8 */}
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 107, 0, 0.1)" />
               <XAxis 
                 dataKey="date" 
-                stroke="#999999" 
+                stroke="#94A3B8" 
                 style={{ fontSize: "12px" }}
                 angle={-45}
                 textAnchor="end"
                 height={60}
               />
-              <YAxis stroke="#999999" style={{ fontSize: "12px" }} />
+              <YAxis stroke="#94A3B8" style={{ fontSize: "12px" }} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "#0a0a0a",
-                  border: "1px solid rgba(255, 107, 53, 0.3)",
+                  border: "1px solid rgba(255, 107, 0, 0.3)",
                   borderRadius: "8px",
                   color: "#ffffff",
                 }}
@@ -201,9 +202,9 @@ export function TrafficChart({ dateRange = "30" }: TrafficChartProps) {
               <Line 
                 type="monotone" 
                 dataKey="impressions" 
-                stroke="#3b82f6" 
+                stroke="#3B82F6" 
                 strokeWidth={2} 
-                dot={{ fill: "#3b82f6", r: 4 }} 
+                dot={{ fill: "#3B82F6", r: 4 }} 
               />
             </LineChart>
           </ResponsiveContainer>

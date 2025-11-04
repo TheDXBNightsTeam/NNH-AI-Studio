@@ -193,7 +193,7 @@ export function LocationHighlightsCarousel({
                 <div className="flex items-center gap-4 flex-wrap">
                   {/* Rating */}
                   <div className="flex items-center gap-1">
-                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                    <Star className="w-4 h-4 text-warning fill-warning" />
                     <span className="font-semibold">{currentLocation.rating.toFixed(1)}</span>
                     <span className="text-xs text-muted-foreground">/ 5.0</span>
                   </div>
@@ -207,7 +207,7 @@ export function LocationHighlightsCarousel({
                   {currentLocation.ratingChange !== undefined && currentLocation.ratingChange !== 0 && (
                     <div className={cn(
                       "flex items-center gap-1 text-sm font-medium",
-                      currentLocation.ratingChange > 0 ? "text-green-600" : "text-red-600"
+                      currentLocation.ratingChange > 0 ? "text-success" : "text-destructive"
                     )}>
                       {currentLocation.ratingChange > 0 ? (
                         <TrendingUp className="w-3 h-3" />
@@ -223,9 +223,9 @@ export function LocationHighlightsCarousel({
 
               {/* Pending Reviews Alert */}
               {currentLocation.pendingReviews > 0 && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-yellow-500/10 border border-yellow-500/30">
-                  <AlertTriangle className="w-4 h-4 text-yellow-600" />
-                  <span className="text-sm text-yellow-700">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-warning/10 border border-warning/30">
+                  <AlertTriangle className="w-4 h-4 text-warning" />
+                  <span className="text-sm text-warning">
                     {currentLocation.pendingReviews} {isArabic ? 'مراجعات معلقة' : 'pending reviews'}
                   </span>
                 </div>

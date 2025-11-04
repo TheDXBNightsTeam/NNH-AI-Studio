@@ -64,7 +64,7 @@ export const LazyLocationCard = ({
             </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
-                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                <Star className="w-4 h-4 text-warning fill-warning" />
                 <span className="font-medium text-foreground">{(location.rating || 0).toFixed(1)}</span>
                 <span>({formatLargeNumber(location.reviewCount || 0)})</span>
               </div>

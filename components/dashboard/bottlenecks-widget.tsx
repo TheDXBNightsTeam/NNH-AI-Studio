@@ -22,21 +22,21 @@ interface BottlenecksWidgetProps {
 
 const severityConfig = {
   high: {
-    color: 'text-red-600',
-    bgColor: 'bg-red-500/10',
-    borderColor: 'border-red-500/50',
+    color: 'text-destructive',
+    bgColor: 'bg-destructive/10',
+    borderColor: 'border-destructive/50',
     icon: AlertTriangle,
   },
   medium: {
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-500/10',
-    borderColor: 'border-yellow-500/50',
+    color: 'text-warning',
+    bgColor: 'bg-warning/10',
+    borderColor: 'border-warning/50',
     icon: Clock,
   },
   low: {
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-500/10',
-    borderColor: 'border-blue-500/50',
+    color: 'text-info',
+    bgColor: 'bg-info/10',
+    borderColor: 'border-info/50',
     icon: TrendingUp,
   },
 };
@@ -69,10 +69,10 @@ export function BottlenecksWidget({ bottlenecks, loading }: BottlenecksWidgetPro
   // إذا لم يكن هناك bottlenecks، عرض رسالة إيجابية
   if (bottlenecks.length === 0) {
     return (
-      <Card className="border-green-500/50 bg-green-500/5">
+      <Card className="border-success/50 bg-success/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-green-600" />
+            <TrendingUp className="w-5 h-5 text-success" />
             All Systems Optimal
           </CardTitle>
           <CardDescription>No critical issues detected. Great job!</CardDescription>

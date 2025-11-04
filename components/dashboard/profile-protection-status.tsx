@@ -18,30 +18,30 @@ export function ProfileProtectionStatus() {
   };
 
   return (
-    <Card className="border-l-4 border-l-green-500">
+    <Card className="border-l-4 border-l-success">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">Profile Protection</CardTitle>
-        <Shield className="w-4 h-4 text-green-500" />
+        <Shield className="w-4 h-4 text-success" />
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-2xl font-bold text-green-600">
+          <span className="text-2xl font-bold text-success">
             {protectionData.locationsProtected}/{protectionData.totalLocations}
           </span>
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+          <Badge variant="outline" className="bg-success/10 text-success border-success/30">
             Active
           </Badge>
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-xs">
-            <CheckCircle className="w-3 h-3 text-green-500" />
+            <CheckCircle className="w-3 h-3 text-success" />
             <span className="text-muted-foreground">All locations monitored</span>
           </div>
 
           {protectionData.recentAlerts > 0 && (
             <div className="flex items-center gap-2 text-xs">
-              <AlertTriangle className="w-3 h-3 text-yellow-500" />
+              <AlertTriangle className="w-3 h-3 text-warning" />
               <span className="text-muted-foreground">
                 {protectionData.recentAlerts} alert this week
               </span>

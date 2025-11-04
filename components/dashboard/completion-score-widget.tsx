@@ -41,7 +41,7 @@ export function CompletionScoreWidget() {
           {completionData.missingItems.slice(0, 2).map((item, index) => (
             <div key={index} className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-3 h-3 text-yellow-500" />
+                <AlertCircle className="w-3 h-3 text-warning" />
                 <span>{item.name}</span>
               </div>
               <Button asChild size="sm" variant="ghost" className="h-6 text-xs">
