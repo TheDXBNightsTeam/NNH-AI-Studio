@@ -361,9 +361,13 @@
       "syncing": "Syncing...",
       "mapView": "Map View",
       "addLocation": "Add Location",
+      "retry": "Retry",
       "reviews": "Reviews",
       "insights": "Insights",
       "edit": "Edit"
+    },
+    "errors": {
+      "loadFailed": "Failed to load locations"
     },
     "stats": {
       "totalLocations": "Total Locations",
@@ -424,6 +428,7 @@
       "viewDetails": "View Details",
       "improve": "Improve Score",
       "outOf": "{current} out of {total} sections complete",
+      "improveText": "Complete the missing items above to improve your profile visibility and attract more customers.",
       "items": {
         "phoneNumber": "Phone Number",
         "websiteLink": "Website Link",

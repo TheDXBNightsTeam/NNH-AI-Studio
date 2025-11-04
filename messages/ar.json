@@ -361,9 +361,13 @@
       "syncing": "جاري المزامنة...",
       "mapView": "عرض الخريطة",
       "addLocation": "إضافة موقع",
+      "retry": "إعادة المحاولة",
       "reviews": "التقييمات",
       "insights": "الإحصائيات",
       "edit": "تعديل"
+    },
+    "errors": {
+      "loadFailed": "فشل تحميل المواقع"
     },
     "stats": {
       "totalLocations": "إجمالي المواقع",
@@ -424,6 +428,7 @@
       "viewDetails": "عرض التفاصيل",
       "improve": "تحسين النسبة",
       "outOf": "{current} من {total} قسم مكتمل",
+      "improveText": "أكمل العناصر الناقصة بالأعلى لتحسين ظهور ملفك التجاري وجذب المزيد من العملاء.",
       "items": {
         "phoneNumber": "رقم الهاتف",
         "websiteLink": "رابط الموقع",
