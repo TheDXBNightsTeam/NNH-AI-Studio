@@ -1,3 +1,4 @@
+import createIntlMiddleware from 'next-intl/middleware';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -9,13 +10,19 @@ const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour in ms
 // For production, use Redis/Upstash instead
 const requestCounts = new Map<string, { count: number; resetAt: number }>();
 
+// Create next-intl middleware
+const intlMiddleware = createIntlMiddleware({
+  locales: ['en', 'ar'],
+  defaultLocale: 'en',
+});
+
 export async function middleware(request: NextRequest) {
-  // Only rate limit API routes
+  // Handle i18n routing for non-API routes
   if (!request.nextUrl.pathname.startsWith('/api/')) {
-    return NextResponse.next();
+    return intlMiddleware(request);
   }
 
-  // Get user identifier (IP or user ID from cookie)
+  // Rate limit API routes only
   const userId = request.cookies.get('user-id')?.value || 
                  request.headers.get('x-forwarded-for')?.split(',')[0] || 
                  request.ip ||
@@ -69,5 +76,10 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: '/api/:path*',
+  matcher: [
+    '/',
+    '/(en|ar)/:path*',
+    '/((?!_next|_vercel|.*\\..*).*)',
+    '/api/:path*'
+  ],
 };
