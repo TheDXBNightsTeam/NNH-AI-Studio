@@ -85,13 +85,112 @@ export function GMBPostsSection() {
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   
-  // Templates
+  // Templates state
+  const [templateSearch, setTemplateSearch] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState<string>("all")
+  const [activeTab, setActiveTab] = useState<string>("create")
+  
+  // Enhanced Templates with categories and metadata
   const templates = [
-    { id: 'promo', label: 'Promotion', content: '🎉 Special Offer! Limited time only - visit us today for exclusive deals. Don\'t miss out!' },
-    { id: 'event', label: 'Event', content: '📅 Join us for our upcoming event! Mark your calendars and be part of something special.' },
-    { id: 'update', label: 'Update', content: '📢 Important update: We have news to share with our valued customers. Stay informed!' },
-    { id: 'holiday', label: 'Holiday', content: '🎄 Season\'s Greetings! Wishing you joy and happiness. Special holiday hours in effect.' }
+    { 
+      id: 'promo', 
+      label: 'Special Promotion', 
+      category: 'promotion',
+      icon: Sparkles,
+      content: '🎉 Special Offer! Limited time only - visit us today for exclusive deals. Don\'t miss out!',
+      description: 'Perfect for announcing sales and special offers'
+    },
+    { 
+      id: 'event', 
+      label: 'Upcoming Event', 
+      category: 'event',
+      icon: Calendar,
+      content: '📅 Join us for our upcoming event! Mark your calendars and be part of something special.',
+      description: 'Great for announcing events and gatherings'
+    },
+    { 
+      id: 'update', 
+      label: 'Business Update', 
+      category: 'announcement',
+      icon: MessageSquare,
+      content: '📢 Important update: We have news to share with our valued customers. Stay informed!',
+      description: 'Use for business updates and announcements'
+    },
+    { 
+      id: 'holiday', 
+      label: 'Holiday Greetings', 
+      category: 'seasonal',
+      icon: Gift,
+      content: '🎄 Season\'s Greetings! Wishing you joy and happiness. Special holiday hours in effect.',
+      description: 'Perfect for holiday messages and special hours'
+    },
+    { 
+      id: 'new-product', 
+      label: 'New Product Launch', 
+      category: 'promotion',
+      icon: Sparkles,
+      content: '✨ Exciting news! We\'ve just launched our newest product. Come check it out and be among the first to experience it!',
+      description: 'Announce new products or services'
+    },
+    { 
+      id: 'customer-appreciation', 
+      label: 'Customer Appreciation', 
+      category: 'announcement',
+      icon: Users,
+      content: '🙏 Thank you to all our amazing customers! Your support means the world to us. We appreciate you!',
+      description: 'Show gratitude to your customers'
+    },
+    { 
+      id: 'hours-update', 
+      label: 'Hours Update', 
+      category: 'announcement',
+      icon: Clock,
+      content: '⏰ Updated Hours: We\'ve updated our business hours. Check our profile for the latest schedule!',
+      description: 'Inform customers about schedule changes'
+    },
+    { 
+      id: 'grand-opening', 
+      label: 'Grand Opening', 
+      category: 'event',
+      icon: Sparkles,
+      content: '🎊 Grand Opening! We\'re thrilled to announce our grand opening. Join us for special celebrations and exclusive offers!',
+      description: 'Celebrate business openings'
+    },
+    { 
+      id: 'seasonal-sale', 
+      label: 'Seasonal Sale', 
+      category: 'promotion',
+      icon: Gift,
+      content: '🛍️ Seasonal Sale Now On! Don\'t miss our biggest sale of the season. Amazing discounts on selected items!',
+      description: 'Promote seasonal sales and discounts'
+    },
+    { 
+      id: 'community-event', 
+      label: 'Community Event', 
+      category: 'event',
+      icon: Users,
+      content: '🤝 Join us for our community event! We\'re bringing the neighborhood together for a special gathering. All are welcome!',
+      description: 'Promote community involvement'
+    }
   ]
+  
+  // Template categories
+  const categories = [
+    { id: 'all', label: 'All Templates', icon: FileText },
+    { id: 'promotion', label: 'Promotions', icon: Sparkles },
+    { id: 'event', label: 'Events', icon: Calendar },
+    { id: 'announcement', label: 'Announcements', icon: MessageSquare },
+    { id: 'seasonal', label: 'Seasonal', icon: Gift },
+  ]
+  
+  // Filter templates based on search and category
+  const filteredTemplates = templates.filter(template => {
+    const matchesSearch = template.label.toLowerCase().includes(templateSearch.toLowerCase()) ||
+                         template.content.toLowerCase().includes(templateSearch.toLowerCase()) ||
+                         template.description.toLowerCase().includes(templateSearch.toLowerCase())
+    const matchesCategory = selectedCategory === 'all' || template.category === selectedCategory
+    return matchesSearch && matchesCategory
+  })
   
   // CTA Options with icons
   const ctaOptions = [
@@ -517,7 +616,7 @@ export function GMBPostsSection() {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="create" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3 glass-strong border-primary/30">
           <TabsTrigger value="create" className="data-[state=active]:bg-primary data-[state=active]:text-white">
             <Wand2 className="w-4 h-4 mr-2" />
@@ -1001,34 +1100,166 @@ export function GMBPostsSection() {
 
         <TabsContent value="templates" className="space-y-4">
           <Card className="glass-strong border-primary/30">
-            <CardHeader className="border-b border-primary/20">
-              <CardTitle>Post Templates</CardTitle>
-              <CardDescription>Quick templates to get you started</CardDescription>
+            <CardHeader className="border-b border-primary/20 pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Tag className="w-5 h-5 text-primary" />
+                    Post Templates
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    Choose from professional templates or create your own
+                  </CardDescription>
+                </div>
+                <Badge variant="secondary" className="text-xs">
+                  {filteredTemplates.length} {filteredTemplates.length === 1 ? 'template' : 'templates'}
+                </Badge>
+              </div>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid gap-4">
-                {templates.map((template) => (
-                  <div key={template.id} className="p-4 rounded-lg border border-border hover:border-primary/50 transition-all">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        {/* ✅ SECURITY: Sanitize template content */}
-                        <h3 className="font-medium mb-2">{sanitizeText(template.label)}</h3>
-                        <p className="text-sm text-muted-foreground">{sanitizeText(template.content)}</p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setContent(template.content)
-                          toast.success('Template applied!')
-                        }}
-                        className="ml-4"
+            <CardContent className="p-6 space-y-6">
+              {/* Search Bar */}
+              <div className="relative">
+                <Input
+                  placeholder="Search templates..."
+                  value={templateSearch}
+                  onChange={(e) => setTemplateSearch(e.target.value)}
+                  className="glass-strong pl-10"
+                />
+                <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              </div>
+
+              {/* Category Filter */}
+              <div className="flex flex-wrap gap-2">
+                {categories.map((category) => {
+                  const Icon = category.icon
+                  return (
+                    <Button
+                      key={category.id}
+                      variant={selectedCategory === category.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={cn(
+                        "gap-2 transition-all",
+                        selectedCategory === category.id
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-primary/10"
+                      )}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {category.label}
+                    </Button>
+                  )
+                })}
+              </div>
+
+              {/* Templates Grid */}
+              {filteredTemplates.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground font-medium">No templates found</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Try adjusting your search or category filter
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {filteredTemplates.map((template) => {
+                    const TemplateIcon = template.icon
+                    return (
+                      <div
+                        key={template.id}
+                        className={cn(
+                          "group relative p-5 rounded-xl border-2 transition-all duration-200",
+                          "border-border hover:border-primary/50 hover:shadow-lg",
+                          "bg-gradient-to-br from-background to-secondary/20"
+                        )}
                       >
-                        Use
-                      </Button>
-                    </div>
+                        {/* Template Icon Badge */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                              <TemplateIcon className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-foreground">
+                                {sanitizeText(template.label)}
+                              </h3>
+                              <Badge variant="secondary" className="text-xs mt-1">
+                                {categories.find(c => c.id === template.category)?.label}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Template Description */}
+                        <p className="text-xs text-muted-foreground mb-3">
+                          {template.description}
+                        </p>
+
+                        {/* Template Preview */}
+                        <div className="p-3 rounded-lg bg-secondary/50 border border-border/50 mb-4">
+                          <p className="text-sm text-foreground/80 line-clamp-3">
+                            {sanitizeText(template.content)}
+                          </p>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-2">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                              setContent(template.content)
+                              setActiveTab("create")
+                              toast.success('Template applied! You can now customize it.', {
+                                description: 'Switch to Create Post tab to edit',
+                                action: {
+                                  label: 'Go',
+                                  onClick: () => setActiveTab("create")
+                                }
+                              })
+                            }}
+                            className="flex-1 bg-primary hover:bg-primary/90"
+                          >
+                            <Wand2 className="w-4 h-4 mr-2" />
+                            Use Template
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              // Preview in modal or expand view
+                              toast.info('Template preview', {
+                                description: template.content,
+                                duration: 5000
+                              })
+                            }}
+                            className="border-primary/30 hover:bg-primary/10"
+                          >
+                            <Info className="w-4 h-4" />
+                          </Button>
+                        </div>
+
+                        {/* Hover Effect Overlay */}
+                        <div className="absolute inset-0 rounded-xl bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Quick Tips */}
+              <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/20">
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <div className="text-sm space-y-1">
+                    <p className="font-medium text-foreground">💡 Pro Tip</p>
+                    <p className="text-muted-foreground">
+                      Templates are starting points. Customize them with your business details, 
+                      add images, and personalize the content to match your brand voice.
+                    </p>
                   </div>
-                ))}
+                </div>
               </div>
             </CardContent>
           </Card>
