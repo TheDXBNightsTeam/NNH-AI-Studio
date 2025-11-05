@@ -26,12 +26,24 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
-    // Log to error reporting service
-    console.error('Error caught by boundary:', error, errorInfo);
+    // ✅ Enhanced error logging with structured data
+    console.error('Error caught by boundary:', {
+      error: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+      errorInfo,
+      timestamp: new Date().toISOString(),
+      userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown',
+    });
     
     // Send to monitoring service (e.g., Sentry)
     if (typeof window !== 'undefined' && (window as any).Sentry) {
-      (window as any).Sentry.captureException(error, { extra: errorInfo });
+      (window as any).Sentry.captureException(error, { 
+        extra: {
+          ...errorInfo,
+          timestamp: new Date().toISOString(),
+        }
+      });
     }
   }
 

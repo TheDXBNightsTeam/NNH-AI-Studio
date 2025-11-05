@@ -19,24 +19,37 @@ export function PerformanceChart() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let isMounted = true; // ✅ FIX: Flag to prevent state updates after unmount
+    
     async function fetchData() {
       try {
         const result = await getMonthlyStats()
         
+        // ✅ Only update state if component is still mounted
+        if (!isMounted) return;
+        
         if (result.error) {
           setError(result.error)
         } else {
-          setData(result.data)
+          setData(result.data || [])
         }
       } catch (err) {
+        if (!isMounted) return;
         setError("Failed to load chart data")
         console.error("Chart data error:", err)
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
     fetchData()
+    
+    // ✅ Cleanup: Prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    }
   }, [])
 
   if (loading) {
@@ -109,7 +122,12 @@ export function PerformanceChart() {
         <CardTitle className="text-foreground">Rating Trends</CardTitle>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer 
+          width="100%" 
+          height={300}
+          role="img"
+          aria-label="Rating trends over time chart"
+        >
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 107, 53, 0.1)" />
             <XAxis dataKey="month" stroke="#999999" style={{ fontSize: "12px" }} />
