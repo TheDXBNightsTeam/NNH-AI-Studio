@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NNH Code Auditor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="icon">🔍</span>
+        <h1>NNH Code Auditor</h1>
+      </div>
+      <div class="version">v1.0.0</div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+      <!-- Component Selection -->
+      <section class="section">
+        <h2>Select Component to Audit</h2>
+        <div class="component-grid">
+          <button class="component-btn" data-component="dashboard">
+            <span class="btn-icon">📊</span>
+            <span class="btn-text">Dashboard</span>
+          </button>
+
+          <button class="component-btn" data-component="locations">
+            <span class="btn-icon">📍</span>
+            <span class="btn-text">Locations</span>
+          </button>
+
+          <button class="component-btn" data-component="reviews">
+            <span class="btn-icon">⭐</span>
+            <span class="btn-text">Reviews</span>
+          </button>
+
+          <button class="component-btn" data-component="questions">
+            <span class="btn-icon">❓</span>
+            <span class="btn-text">Questions</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Status -->
+      <section class="section status-section" id="statusSection" style="display: none;">
+        <div class="status-card">
+          <div class="status-icon">⏳</div>
+          <div class="status-text">
+            <h3 id="statusTitle">Analyzing...</h3>
+            <p id="statusMessage">Please wait while Claude audits your code</p>
+          </div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </section>
+
+      <!-- Results -->
+      <section class="section results-section" id="resultsSection" style="display: none;">
+        <div class="results-header">
+          <h2>Audit Results</h2>
+          <button class="btn btn-secondary" id="exportBtn">
+            📥 Export Report
+          </button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="criticalCount">0</div>
+            <div class="stat-label">🔴 Critical</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="highCount">0</div>
+            <div class="stat-label">🟡 High</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="mediumCount">0</div>
+            <div class="stat-label">🟢 Medium</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="lowCount">0</div>
+            <div class="stat-label">🔵 Low</div>
+          </div>
+        </div>
+
+        <div class="results-content" id="resultsContent">
+          <!-- Results will be inserted here -->
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="applyFixesBtn">
+            🔧 Apply All Fixes
+          </button>
+          <button class="btn btn-secondary" id="newAuditBtn">
+            🔄 New Audit
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Powered by Claude Sonnet 4.5</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
