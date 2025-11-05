@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { useDashboardRealtime } from '@/lib/hooks/use-dashboard-realtime';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigationShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { StatsCards } from '@/components/dashboard/stats-cards';
@@ -322,26 +323,27 @@ export default function DashboardPage() {
   const [dateRange, setDateRange] = useState<DateRange>({ preset: '30d', start: null, end: null });
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // ✅ FIX: Add request sequence tracking to prevent race conditions
-  const requestSequenceRef = useRef(0);
-  const pendingRequestRef = useRef(false);
+  // ✅ FIX: Add request cancellation with AbortController
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchDashboardData = async (signal?: AbortSignal) => {
-    // Prevent duplicate concurrent requests
-    if (pendingRequestRef.current) {
-      console.log('Request already in progress, skipping...');
-      return;
+    // Cancel previous request if exists
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
 
-    // Increment sequence number for this request
-    const currentSequence = ++requestSequenceRef.current;
-    pendingRequestRef.current = true;
+    // Create new abort controller for this request
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    // Use provided signal or the new controller's signal
+    const effectiveSignal = signal || controller.signal;
 
     try {
       setLoading(true);
 
       // Check if aborted before continuing
-      if (signal?.aborted) return;
+      if (effectiveSignal.aborted) return;
 
       const {
         data: { user: authUser },
@@ -349,7 +351,7 @@ export default function DashboardPage() {
       } = await supabase.auth.getUser();
 
       // Check if aborted after async operation
-      if (signal?.aborted) return;
+      if (effectiveSignal.aborted) return;
 
       if (authError || !authUser) {
         // Handle expired/invalid sessions gracefully
@@ -412,20 +414,20 @@ export default function DashboardPage() {
         }
 
         const statsRes = await fetch(`/api/dashboard/stats?${params.toString()}`, {
-          signal // Pass abort signal to fetch
+          signal: effectiveSignal // Pass abort signal to fetch
         });
 
         // Check if aborted after async operation
-        if (signal?.aborted) return;
+        if (effectiveSignal.aborted) return;
 
         if (statsRes.ok) {
           const newStats = await statsRes.json();
 
           // Check if aborted before state update
-          if (signal?.aborted) return;
+          if (effectiveSignal.aborted) return;
 
-          // Only update state if this is still the latest request
-          if (currentSequence === requestSequenceRef.current) {
+          // Only update state if this is still the active request
+          if (abortControllerRef.current === controller) {
             setStats({
             totalLocations: newStats.totalLocations || 0,
             locationsTrend: newStats.locationsTrend || 0,
@@ -443,8 +445,6 @@ export default function DashboardPage() {
             locationHighlights: newStats.locationHighlights || [],
             bottlenecks: newStats.bottlenecks || [],
           });
-          } else {
-            console.log(`Discarding stale response (sequence ${currentSequence}, current ${requestSequenceRef.current})`);
           }
         } else if (statsRes.status === 401) {
           // Unauthenticated from API -> sign out and redirect
@@ -468,42 +468,48 @@ export default function DashboardPage() {
     } catch (error) {
       // Ignore abort errors
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Fetch aborted');
+        console.log('Request cancelled');
         return;
       }
       
       console.error('Error fetching dashboard data:', error);
       
-      // Only show error if this is still the latest request
-      if (currentSequence === requestSequenceRef.current) {
+      // Only show error if this is still the active request
+      if (abortControllerRef.current === controller) {
         toast.error('Failed to load dashboard data');
       }
     } finally {
-      // Only clear loading if this is the latest request
-      if (currentSequence === requestSequenceRef.current) {
+      // Only clear loading if this is still the active request
+      if (abortControllerRef.current === controller) {
         setLoading(false);
         setLastDataUpdate(new Date());
       }
-      pendingRequestRef.current = false;
+      
+      // Clear ref if this controller is still current
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
   };
 
   useEffect(() => {
-    const abortController = new AbortController();
-    
-    fetchDashboardData(abortController.signal);
+    fetchDashboardData(); // Will create its own AbortController
 
     const handleSyncComplete = () => {
-      fetchDashboardData(abortController.signal);
+      fetchDashboardData(); // Will cancel previous and create new
     };
 
     window.addEventListener('gmb-sync-complete', handleSyncComplete);
     
     return () => {
-      abortController.abort(); // Cancel ongoing requests
+      // Cancel any ongoing requests on unmount
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
       window.removeEventListener('gmb-sync-complete', handleSyncComplete);
     };
-  }, []); // Empty deps to run once on mount
+  }, [dateRange]); // Re-fetch when date range changes
 
   // Real-time subscriptions for live updates
   // Note: Realtime updates don't use abort controller - they should complete
@@ -591,7 +597,8 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-8" data-print-root>
+    <ErrorBoundary>
+      <div className="space-y-8" data-print-root>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">AI Command Center</h1>
@@ -725,6 +732,7 @@ export default function DashboardPage() {
           />
         </div>
       )}
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }

@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { checkRateLimit } from '@/lib/rate-limit';
 
-// Input validation schema
+// Input validation schema with enhanced security
 const dateRangeSchema = z.object({
   start: z.string().datetime().optional(),
   end: z.string().datetime().optional(),
@@ -14,17 +14,34 @@ const dateRangeSchema = z.object({
   
   const start = new Date(data.start);
   const end = new Date(data.end);
+  const now = new Date();
   
-  // Start must be before end
-  if (start > end) return false;
+  // Validate dates are not in the future
+  if (start > now || end > now) {
+    throw new Error('Date range cannot be in the future');
+  }
   
-  // Max range: 365 days
-  const maxRange = 365 * 24 * 60 * 60 * 1000;
-  if (end.getTime() - start.getTime() > maxRange) return false;
+  // Validate start is before end
+  if (start > end) {
+    throw new Error('Start date must be before end date');
+  }
+  
+  // Limit range to 90 days for performance (reduced from 365)
+  const maxRange = 90 * 24 * 60 * 60 * 1000;
+  if (end.getTime() - start.getTime() > maxRange) {
+    throw new Error('Date range cannot exceed 90 days');
+  }
+  
+  // Validate dates are not too far in the past (e.g., 2 years)
+  const twoYearsAgo = new Date();
+  twoYearsAgo.setFullYear(now.getFullYear() - 2);
+  if (start < twoYearsAgo) {
+    throw new Error('Start date cannot be more than 2 years ago');
+  }
   
   return true;
 }, {
-  message: 'Invalid date range: start must be before end, and range must be ≤ 365 days',
+  message: 'Invalid date range',
 });
 
 // ⭐️ واجهة جديدة لتمثيل حالة عنق الزجاجة (Bottleneck)
