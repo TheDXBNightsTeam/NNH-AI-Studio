@@ -20,21 +20,45 @@ export async function GET(request: Request) {
 // ⭐️ التعديل هنا: يجب إضافة 'await' قبل createClient()
 const supabase = await createClient();
 
-// 1. التحقق من المصادقة
-const { data: { user } } = await supabase.auth.getUser();
+// ✅ SECURITY: Enhanced authentication validation
+const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-if (!user) {
-return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+if (authError || !user) {
+    console.error('Authentication error:', authError);
+    return NextResponse.json(
+        { 
+            error: 'Unauthorized',
+            message: 'Authentication required. Please sign in again.'
+        }, 
+        { status: 401 }
+    );
+}
+
+// ✅ SECURITY: Verify user session is valid
+const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  
+if (sessionError || !session || !session.user || session.user.id !== user.id) {
+    console.error('Session validation error:', sessionError);
+    return NextResponse.json(
+        { 
+            error: 'Invalid session',
+            message: 'Your session has expired. Please sign in again.'
+        },
+        { status: 401 }
+    );
 }
 
 try {
 const userId = user.id;
 
+// ✅ SECURITY: Only fetch locations that belong to the user
 // 2. جلب جميع المواقع النشطة للمستخدم
 // 💡 ملاحظة: يجب أن يحتوي جدول gmb_locations على أعمدة lat و lng
 const { data: locations, error: locationError } = await supabase
 .from("gmb_locations")
-.select("id, location_name, latitude, longitude, gmb_account_id");
+.select("id, location_name, latitude, longitude, gmb_account_id, user_id")
+.eq("user_id", userId) // ✅ SECURITY: Ensure user can only access their own locations
+.eq("is_active", true); // ✅ Only fetch active locations
 
 if (locationError) throw new Error(locationError.message);
 if (!locations || locations.length === 0) return NextResponse.json([]);
@@ -87,7 +111,22 @@ status: status,
 return NextResponse.json(processedLocations);
 
 } catch (error: any) {
-console.error('API Error fetching map data:', error);
-return NextResponse.json({ error: error.message || 'Failed to process map data' }, { status: 500 });
+    // ✅ ERROR HANDLING: Enhanced error logging
+    console.error('API Error fetching map data:', {
+        error: error.message,
+        stack: error.stack,
+        userId: user?.id || 'unknown',
+        timestamp: new Date().toISOString(),
+    });
+
+    // Don't expose internal error details to client
+    return NextResponse.json(
+        { 
+            error: 'Internal server error',
+            message: 'Failed to fetch map data. Please try again later.',
+            code: 'MAP_DATA_ERROR'
+        }, 
+        { status: 500 }
+    );
 }
 }
