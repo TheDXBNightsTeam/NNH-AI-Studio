@@ -1,5 +1,6 @@
 {
   "name": "nnh-code-auditor",
+  "type": "module",
   "version": "1.0.0",
   "description": "AI Code Auditor Extension",
   "main": "src/index.js",
