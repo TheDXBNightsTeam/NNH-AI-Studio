@@ -14,6 +14,9 @@ export const LocationsErrorAlert = ({
 }) => {
   const t = useTranslations('Locations');
 
+  // Extract error message with proper type checking
+  const errorMessage = typeof error === 'string' ? error : (error.message || t('errors.genericMessage'));
+
   return (
     <Card className="border-destructive">
       <CardContent className="p-4">
@@ -26,7 +29,7 @@ export const LocationsErrorAlert = ({
           <div className="flex-1">
             <h3 className="font-semibold text-destructive">{t('errors.loadFailed')}</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              {error?.message || error || t('errors.genericMessage')}
+              {errorMessage}
             </p>
           </div>
           <Button 
