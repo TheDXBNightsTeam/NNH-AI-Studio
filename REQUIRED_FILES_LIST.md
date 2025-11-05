@@ -31,6 +31,599 @@ project-root/
 
 ---
 
+## 🌐 Google My Business APIs المستخدمة
+
+> **ملاحظة:** هذه قائمة بجميع Google APIs المطلوبة للمشروع.  
+> المطور لازم يستخدم الـ credentials الموجودة عندك (Client ID & Secret).
+
+### OAuth 2.0 Configuration
+
+#### **Required Scopes:**
+```
+https://www.googleapis.com/auth/business.manage
+https://www.googleapis.com/auth/userinfo.email
+https://www.googleapis.com/auth/userinfo.profile
+openid
+```
+
+#### **Redirect URI Format:**
+```
+https://your-domain.com/api/gmb/oauth-callback
+```
+
+---
+
+### 1. Google My Business Account Management API
+
+**Base URL:** `https://mybusinessaccountmanagement.googleapis.com/v1`
+
+#### **الوظيفة:**
+جلب قائمة حسابات GMB للمستخدم
+
+#### **Endpoints المستخدمة:**
+
+##### `GET /accounts`
+**الوصف:** جلب كل حسابات GMB  
+**Response:**
+```json
+{
+  "accounts": [
+    {
+      "name": "accounts/123456789",
+      "accountName": "My Business Account",
+      "type": "PERSONAL",
+      "role": "OWNER"
+    }
+  ]
+}
+```
+
+**استخدام في الكود:**
+- File: `app/api/gmb/oauth-callback/route.ts`
+- File: `lib/services/gmb-service.ts` (function: `fetchAccounts()`)
+
+---
+
+### 2. Google My Business Business Information API
+
+**Base URL:** `https://mybusinessbusinessinformation.googleapis.com/v1`
+
+#### **الوظيفة:**
+إدارة معلومات المواقع (Locations)
+
+#### **Endpoints المستخدمة:**
+
+##### `GET /accounts/{accountId}/locations`
+**الوصف:** جلب كل المواقع لحساب معين  
+**Response:**
+```json
+{
+  "locations": [
+    {
+      "name": "locations/987654321",
+      "title": "My Store",
+      "storefrontAddress": {...},
+      "websiteUri": "https://example.com",
+      "regularHours": {...},
+      "phoneNumbers": {...},
+      "categories": {...},
+      "metadata": {...}
+    }
+  ]
+}
+```
+
+**استخدام في الكود:**
+- File: `app/api/gmb/sync/route.ts`
+- File: `server/actions/locations.ts`
+
+##### `GET /locations/{locationId}`
+**الوصف:** جلب تفاصيل موقع محدد  
+**استخدام:** عرض صفحة الموقع المفصلة
+
+##### `PATCH /locations/{locationId}?updateMask=...`
+**الوصف:** تحديث بيانات الموقع  
+**Body:**
+```json
+{
+  "title": "New Store Name",
+  "phoneNumbers": {...},
+  "websiteUri": "https://new-site.com"
+}
+```
+
+**استخدام في الكود:**
+- File: `app/api/gmb/location/[locationId]/update/route.ts`
+
+##### `GET /locations/{locationId}/attributes`
+**الوصف:** جلب السمات (Attributes) مثل: Wheelchair accessible, Wi-Fi, etc.
+
+##### `PATCH /locations/{locationId}/attributes`
+**الوصف:** تحديث السمات
+
+**استخدام في الكود:**
+- File: `app/api/gmb/location/[locationId]/attributes/route.ts`
+
+---
+
+### 3. Google My Business Reviews API (Place Reviews)
+
+**Base URL:** `https://mybusiness.googleapis.com/v4`
+
+#### **الوظيفة:**
+جلب وإدارة المراجعات
+
+#### **Endpoints المستخدمة:**
+
+##### `GET /accounts/{accountId}/locations/{locationId}/reviews`
+**الوصف:** جلب كل المراجعات لموقع  
+**Query Parameters:**
+- `pageSize`: عدد النتائج (max 50)
+- `pageToken`: للـ pagination
+- `orderBy`: الترتيب (updateTime desc)
+
+**Response:**
+```json
+{
+  "reviews": [
+    {
+      "reviewId": "abc123",
+      "reviewer": {
+        "displayName": "John Doe",
+        "profilePhotoUrl": "..."
+      },
+      "starRating": "FIVE",
+      "comment": "Great service!",
+      "createTime": "2024-01-15T10:00:00Z",
+      "updateTime": "2024-01-15T10:00:00Z",
+      "reviewReply": {
+        "comment": "Thank you!",
+        "updateTime": "2024-01-16T09:00:00Z"
+      }
+    }
+  ],
+  "nextPageToken": "..."
+}
+```
+
+**استخدام في الكود:**
+- File: `app/api/gmb/sync/route.ts` (sync reviews)
+- File: `app/api/gmb/location/[locationId]/reviews/route.ts`
+- File: `server/actions/reviews.ts`
+
+##### `PUT /accounts/{accountId}/locations/{locationId}/reviews/{reviewId}/reply`
+**الوصف:** نشر أو تحديث رد على مراجعة  
+**Body:**
+```json
+{
+  "comment": "Thank you for your feedback!"
+}
+```
+
+**استخدام في الكود:**
+- File: `server/actions/reviews.ts` (function: `addReviewReply()`)
+- File: `components/reviews/reply-dialog.tsx`
+
+##### `DELETE /accounts/{accountId}/locations/{locationId}/reviews/{reviewId}/reply`
+**الوصف:** حذف رد على مراجعة
+
+---
+
+### 4. Google My Business Q&A API
+
+**Base URL:** `https://mybusiness.googleapis.com/v4`
+
+#### **الوظيفة:**
+إدارة الأسئلة والأجوبة
+
+#### **Endpoints المستخدمة:**
+
+##### `GET /accounts/{accountId}/locations/{locationId}/questions`
+**الوصف:** جلب كل الأسئلة  
+**Response:**
+```json
+{
+  "questions": [
+    {
+      "name": "questions/123",
+      "author": {...},
+      "upvoteCount": 5,
+      "text": "Do you deliver?",
+      "createTime": "2024-01-10T12:00:00Z",
+      "topAnswers": [...]
+    }
+  ]
+}
+```
+
+**استخدام في الكود:**
+- File: `app/api/gmb/questions/route.ts`
+- File: `app/[locale]/(dashboard)/questions/page.tsx`
+
+##### `POST /accounts/{accountId}/locations/{locationId}/questions/{questionId}/answers`
+**الوصف:** نشر إجابة على سؤال  
+**Body:**
+```json
+{
+  "text": "Yes, we deliver within 5km radius!"
+}
+```
+
+**استخدام في الكود:**
+- File: `app/api/gmb/questions/[questionId]/answer/route.ts`
+
+---
+
+### 5. Google My Business Posts API (Local Posts)
+
+**Base URL:** `https://mybusiness.googleapis.com/v4`
+
+#### **الوظيفة:**
+إنشاء ونشر منشورات GMB (Updates, Events, Offers)
+
+#### **Endpoints المستخدمة:**
+
+##### `GET /accounts/{accountId}/locations/{locationId}/localPosts`
+**الوصف:** جلب كل المنشورات  
+**Query Parameters:**
+- `pageSize`: عدد النتائج
+- `pageToken`: للـ pagination
+
+**Response:**
+```json
+{
+  "localPosts": [
+    {
+      "name": "localPosts/456",
+      "languageCode": "en",
+      "summary": "New product launch!",
+      "event": {...},
+      "callToAction": {
+        "actionType": "LEARN_MORE",
+        "url": "https://example.com"
+      },
+      "media": [
+        {
+          "mediaFormat": "PHOTO",
+          "sourceUrl": "https://..."
+        }
+      ],
+      "topicType": "STANDARD",
+      "createTime": "2024-01-20T10:00:00Z",
+      "updateTime": "2024-01-20T10:00:00Z",
+      "state": "LIVE"
+    }
+  ]
+}
+```
+
+**استخدام في الكود:**
+- File: `app/api/gmb/posts/list/route.ts`
+
+##### `POST /accounts/{accountId}/locations/{locationId}/localPosts`
+**الوصف:** إنشاء منشور جديد  
+**Body:**
+```json
+{
+  "languageCode": "en",
+  "summary": "Check out our new offers!",
+  "callToAction": {
+    "actionType": "CALL",
+    "url": "tel:+1234567890"
+  },
+  "media": [...],
+  "topicType": "OFFER"
+}
+```
+
+**Topic Types:**
+- `STANDARD`: عادي
+- `EVENT`: حدث
+- `OFFER`: عرض
+- `ALERT`: تنبيه
+
+**استخدام في الكود:**
+- File: `app/api/gmb/posts/create/route.ts`
+- File: `app/api/gmb/posts/publish/route.ts`
+
+##### `DELETE /accounts/{accountId}/locations/{locationId}/localPosts/{postId}`
+**الوصف:** حذف منشور
+
+---
+
+### 6. Google My Business Performance API (Insights)
+
+**Base URL:** `https://businessprofileperformance.googleapis.com/v1`
+
+#### **الوظيفة:**
+جلب إحصائيات الأداء والتحليلات
+
+#### **Endpoints المستخدمة:**
+
+##### `POST /locations/{locationId}/searchkeywords/impressions/monthly:search`
+**الوصف:** جلب الكلمات المفتاحية الشهرية  
+**Body:**
+```json
+{
+  "startMonth": {
+    "year": 2024,
+    "month": 1
+  },
+  "endMonth": {
+    "year": 2024,
+    "month": 3
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "searchKeywordsCounts": [
+    {
+      "searchKeyword": "coffee shop near me",
+      "insightsValue": {
+        "value": "150"
+      }
+    }
+  ]
+}
+```
+
+**استخدام في الكود:**
+- File: `app/api/gmb/sync/route.ts` (sync insights)
+- File: `components/analytics/search-keywords.tsx`
+
+##### `GET /locations/{locationId}:getDailyMetricsTimeSeries`
+**الوصف:** جلب مقاييس يومية  
+**Query Parameters:**
+- `dailyMetric`: BUSINESS_IMPRESSIONS_DESKTOP, BUSINESS_IMPRESSIONS_MOBILE, BUSINESS_CONVERSATIONS, BUSINESS_DIRECTION_REQUESTS, CALL_CLICKS, WEBSITE_CLICKS
+- `dailyRange.startDate`: تاريخ البداية (YYYY-MM-DD)
+- `dailyRange.endDate`: تاريخ النهاية
+
+**Response:**
+```json
+{
+  "timeSeries": {
+    "datedValues": [
+      {
+        "date": {
+          "year": 2024,
+          "month": 1,
+          "day": 15
+        },
+        "value": "250"
+      }
+    ]
+  }
+}
+```
+
+**Metrics المتاحة:**
+- `BUSINESS_IMPRESSIONS_DESKTOP`: ظهور على Desktop
+- `BUSINESS_IMPRESSIONS_MOBILE`: ظهور على Mobile  
+- `BUSINESS_CONVERSATIONS`: محادثات
+- `BUSINESS_DIRECTION_REQUESTS`: طلبات الاتجاهات
+- `CALL_CLICKS`: نقرات على الاتصال
+- `WEBSITE_CLICKS`: نقرات على الموقع
+- `BUSINESS_BOOKINGS`: حجوزات
+- `BUSINESS_FOOD_ORDERS`: طلبات طعام
+
+**استخدام في الكود:**
+- File: `app/api/gmb/sync/route.ts`
+- File: `components/analytics/analytics-dashboard.tsx`
+- File: `components/analytics/traffic-chart.tsx`
+
+---
+
+### 7. Google My Business Media API
+
+**Base URL:** `https://mybusinessbusinessinformation.googleapis.com/v1`
+
+#### **الوظيفة:**
+إدارة الصور والفيديوهات
+
+#### **Endpoints المستخدمة:**
+
+##### `GET /locations/{locationId}/media`
+**الوصف:** جلب كل الوسائط  
+**Response:**
+```json
+{
+  "mediaItems": [
+    {
+      "name": "media/123",
+      "mediaFormat": "PHOTO",
+      "locationAssociation": {
+        "category": "COVER"
+      },
+      "googleUrl": "https://lh3.googleusercontent.com/...",
+      "createTime": "2024-01-10T10:00:00Z"
+    }
+  ]
+}
+```
+
+**Media Categories:**
+- `COVER`: صورة الغلاف
+- `PROFILE`: صورة الملف الشخصي
+- `LOGO`: اللوجو
+- `EXTERIOR`: صورة خارجية
+- `INTERIOR`: صورة داخلية
+- `PRODUCT`: صورة منتج
+- `AT_WORK`: في العمل
+- `FOOD_AND_DRINK`: طعام وشراب
+- `MENU`: قائمة الطعام
+- `COMMON_AREA`: منطقة عامة
+- `ROOMS`: غرف
+- `TEAMS`: فريق العمل
+- `ADDITIONAL`: إضافية
+
+**استخدام في الكود:**
+- File: `app/api/gmb/sync/route.ts`
+- File: `app/[locale]/(dashboard)/media/page.tsx`
+
+##### `POST /locations/{locationId}/media`
+**الوصف:** رفع صورة جديدة  
+**Body:** Multipart form data
+
+##### `DELETE /locations/{locationId}/media/{mediaItemId}`
+**الوصف:** حذف صورة
+
+---
+
+### 8. Google My Business Verifications API
+
+**Base URL:** `https://mybusinessverifications.googleapis.com/v1`
+
+#### **الوظيفة:**
+إدارة التحقق من المواقع
+
+#### **Endpoints المستخدمة:**
+
+##### `GET /locations/{locationId}/verifications`
+**الوصف:** جلب حالة التحقق  
+**Response:**
+```json
+{
+  "verifications": [
+    {
+      "name": "verifications/789",
+      "method": "EMAIL",
+      "state": "COMPLETED",
+      "createTime": "2024-01-05T10:00:00Z"
+    }
+  ]
+}
+```
+
+**Verification States:**
+- `PENDING`: قيد الانتظار
+- `COMPLETED`: مكتمل
+- `FAILED`: فشل
+
+**استخدام في الكود:**
+- File: `components/locations/enhanced-location-card.tsx` (عرض حالة التحقق)
+
+---
+
+### 9. Google OAuth 2.0 Token API
+
+**Base URL:** `https://oauth2.googleapis.com`
+
+#### **الوظيفة:**
+إدارة OAuth tokens
+
+#### **Endpoints المستخدمة:**
+
+##### `POST /token`
+**الوصف:** تبديل authorization code بـ access token  
+**Body:**
+```
+code=...
+client_id=...
+client_secret=...
+redirect_uri=...
+grant_type=authorization_code
+```
+
+**Response:**
+```json
+{
+  "access_token": "ya29.a0...",
+  "refresh_token": "1//0g...",
+  "expires_in": 3599,
+  "scope": "...",
+  "token_type": "Bearer"
+}
+```
+
+**استخدام في الكود:**
+- File: `app/api/gmb/oauth-callback/route.ts`
+- File: `lib/services/oauth-service.ts` (function: `exchangeCodeForTokens()`)
+
+##### `POST /token` (Refresh)
+**الوصف:** تحديث access token  
+**Body:**
+```
+refresh_token=...
+client_id=...
+client_secret=...
+grant_type=refresh_token
+```
+
+**استخدام في الكود:**
+- File: `lib/services/oauth-service.ts` (function: `refreshAccessToken()`)
+- استخدام: قبل كل API call للتأكد من صلاحية الـ token
+
+---
+
+## 📋 ملخص الـ Services Layer المطلوب
+
+المطور لازم يبني الملفات التالية لاستخدام كل هذه الـ APIs:
+
+### `lib/services/gmb-service.ts`
+**الوظائف المطلوبة:**
+- `fetchAccounts(accessToken)`: جلب الحسابات
+- `fetchLocations(accountId, accessToken)`: جلب المواقع
+- `fetchLocationDetails(locationId, accessToken)`: تفاصيل موقع
+- `updateLocation(locationId, updates, accessToken)`: تحديث موقع
+- `fetchReviews(locationId, accessToken, pageToken?)`: جلب المراجعات
+- `replyToReview(locationId, reviewId, reply, accessToken)`: الرد على مراجعة
+- `fetchQuestions(locationId, accessToken)`: جلب الأسئلة
+- `answerQuestion(locationId, questionId, answer, accessToken)`: الإجابة على سؤال
+- `fetchPosts(locationId, accessToken)`: جلب المنشورات
+- `createPost(locationId, postData, accessToken)`: إنشاء منشور
+- `fetchInsights(locationId, dateRange, accessToken)`: جلب التحليلات
+- `fetchSearchKeywords(locationId, monthRange, accessToken)`: جلب الكلمات المفتاحية
+- `fetchMedia(locationId, accessToken)`: جلب الوسائط
+- `fetchAttributes(locationId, accessToken)`: جلب السمات
+
+### `lib/services/oauth-service.ts`
+**الوظائف المطلوبة:**
+- `createAuthUrl(state)`: إنشاء OAuth URL
+- `exchangeCodeForTokens(code)`: تبديل code بـ tokens
+- `refreshAccessToken(refreshToken)`: تحديث access token
+- `getValidAccessToken(userId)`: جلب token صالح (مع auto-refresh)
+
+---
+
+## 🔐 Token Management Strategy
+
+**مهم جداً:** المطور لازم يطبّق:
+
+1. **قبل كل API call:**
+   - Check token expiry (`expires_at` from database)
+   - If expired: Auto-refresh using `refresh_token`
+   - Update `oauth_tokens` table with new token
+
+2. **Error Handling:**
+   - If `401 Unauthorized`: Try refresh token once
+   - If refresh fails: Mark account as disconnected
+   - Notify user to reconnect
+
+**Implementation في الكود:**
+```typescript
+// Example pattern (NOT actual code - just concept)
+async function makeGMBApiCall(endpoint, userId) {
+  const token = await getValidAccessToken(userId);
+  const response = await fetch(endpoint, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (response.status === 401) {
+    // Try refresh once
+    await refreshAccessToken(userId);
+    const newToken = await getValidAccessToken(userId);
+    return fetch(endpoint, {
+      headers: { Authorization: `Bearer ${newToken}` }
+    });
+  }
+  return response;
+}
+```
+
+---
+
 ## 🔴 PRIORITY 1: Must-Have Files (Core Functionality)
 
 ### 1. Configuration Files (5 files)
