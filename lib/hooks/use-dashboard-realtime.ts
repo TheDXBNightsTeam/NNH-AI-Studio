@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -11,17 +11,29 @@ export function useDashboardRealtime(
   onUpdate: () => void
 ) {
   const router = useRouter();
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const onUpdateRef = useRef(onUpdate);
+
+  // Keep callback ref updated without triggering re-subscription
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+  }, [onUpdate]);
 
   useEffect(() => {
     if (!userId) return;
 
     const supabase = createClient();
-    let channel: RealtimeChannel | null = null;
+
+    // Cleanup previous subscription
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
 
     const setupRealtime = async () => {
       // Subscribe to reviews changes
-      channel = supabase
-        .channel('dashboard-updates')
+      const channel = supabase
+        .channel(`dashboard:${userId}`)
         .on(
           'postgres_changes',
           {
@@ -32,7 +44,7 @@ export function useDashboardRealtime(
           },
           (payload) => {
             console.log('📡 Review changed:', payload);
-            onUpdate();
+            onUpdateRef.current(); // Use ref to get latest callback
           }
         )
         .on(
@@ -45,7 +57,7 @@ export function useDashboardRealtime(
           },
           (payload) => {
             console.log('📡 Question changed:', payload);
-            onUpdate();
+            onUpdateRef.current(); // Use ref to get latest callback
           }
         )
         .on(
@@ -58,7 +70,7 @@ export function useDashboardRealtime(
           },
           (payload) => {
             console.log('📡 Location updated:', payload);
-            onUpdate();
+            onUpdateRef.current(); // Use ref to get latest callback
           }
         )
         .on('system', { event: 'error' }, (error) => {
@@ -88,18 +100,21 @@ export function useDashboardRealtime(
             console.warn('⏱️ Channel subscription timed out, retrying...');
           }
         });
+      
+      channelRef.current = channel;
     };
 
     setupRealtime();
 
-    // Cleanup
+    // Cleanup on unmount or userId change
     return () => {
-      if (channel) {
-        channel.unsubscribe();
-        supabase.removeChannel(channel);
+      if (channelRef.current) {
+        channelRef.current.unsubscribe();
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
         console.log('🔌 Real-time subscriptions disconnected');
       }
     };
-  }, [userId, onUpdate, router]);
+  }, [userId, router]); // Only re-subscribe when userId changes
 }
 

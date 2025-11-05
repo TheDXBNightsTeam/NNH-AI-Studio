@@ -38,6 +38,7 @@ export function WeeklyTasksWidget() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -112,7 +113,7 @@ export function WeeklyTasksWidget() {
   };
 
   const updateTaskStatus = async (taskId: string, newStatus: string) => {
-    // ✅ SECURITY: Validate inputs
+    // ✅ SECURITY: Validate inputs (client-side validation for UX)
     const validStatuses = ['pending', 'in_progress', 'completed', 'dismissed'];
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     
@@ -125,6 +126,9 @@ export function WeeklyTasksWidget() {
       toast.error('Invalid task status');
       return;
     }
+    
+    // Set loading state for this specific task
+    setUpdatingTaskId(taskId);
     
     try {
       const response = await fetch('/api/tasks/update', {
@@ -141,6 +145,7 @@ export function WeeklyTasksWidget() {
         throw new Error(errorData.message || errorData.error || 'Failed to update task');
       }
 
+      // Optimistic update
       setTasks((prev) =>
         prev.map((task) =>
           task.id === taskId
@@ -151,10 +156,19 @@ export function WeeklyTasksWidget() {
 
       if (newStatus === 'completed') {
         toast.success('Task completed!');
+      } else {
+        toast.success('Task updated');
       }
     } catch (error) {
       console.error('Failed to update task:', error);
-      toast.error('Failed to update task');
+      
+      // Revert optimistic update on error
+      await loadTasks();
+      
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update task';
+      toast.error(errorMessage);
+    } finally {
+      setUpdatingTaskId(null);
     }
   };
 
@@ -361,6 +375,7 @@ export function WeeklyTasksWidget() {
                   onStatusChange={updateTaskStatus}
                   getCategoryColor={getCategoryColor}
                   getPriorityIcon={getPriorityIcon}
+                  isUpdating={updatingTaskId === task.id}
                 />
               ))}
             </div>
@@ -381,6 +396,7 @@ export function WeeklyTasksWidget() {
                   onStatusChange={updateTaskStatus}
                   getCategoryColor={getCategoryColor}
                   getPriorityIcon={getPriorityIcon}
+                  isUpdating={updatingTaskId === task.id}
                 />
               ))}
             </div>
@@ -406,12 +422,14 @@ function TaskItem({
   getCategoryColor,
   getPriorityIcon,
   isDefault = false,
+  isUpdating = false,
 }: {
   task: Task;
   onStatusChange: (id: string, status: string) => void;
   getCategoryColor: (category: string) => string;
   getPriorityIcon: (priority: string) => React.ReactNode;
   isDefault?: boolean;
+  isUpdating?: boolean;
 }) {
   const isCompleted = task.status === 'completed';
 
@@ -432,7 +450,8 @@ function TaskItem({
           }
         }}
         className="mt-1"
-        disabled={isDefault}
+        disabled={isDefault || isUpdating}
+        aria-label={isUpdating ? 'Updating task...' : isCompleted ? 'Mark task as incomplete' : 'Mark task as complete'}
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-start gap-2 mb-1">
