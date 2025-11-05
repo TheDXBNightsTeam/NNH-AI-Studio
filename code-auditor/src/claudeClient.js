@@ -1,70 +1,28 @@
-const Anthropic = require('@anthropic-ai/sdk');
+// claudeClient.js
+import Anthropic from "@anthropic-ai/sdk";
 
-class ClaudeClient {
-  constructor(apiKey) {
-    if (!apiKey) {
-      throw new Error('❌ ANTHROPIC_API_KEY is required in .env file!');
-    }
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
-    this.client = new Anthropic({
-      apiKey: apiKey,
+export async function analyzeCodeWithClaude(prompt) {
+  try {
+    const response = await client.messages.create({
+      model: "claude-3-sonnet-20240229",
+      max_tokens: 4096,
+      temperature: 0,
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
     });
 
-    console.log('✅ Claude client initialized');
-  }
-
-  /**
-   * Analyze code with Claude
-   */
-  async analyze(prompt) {
-    try {
-      console.log('📤 Sending to Claude...');
-      console.log(`📊 Prompt length: ${prompt.length} characters`);
-
-      const response = await this.client.messages.create({
-        model: "claude-sonnet-4-5-20250929",
-        max_tokens: 8096,
-        temperature: 0.7,
-        messages: [{
-          role: "user",
-          content: prompt
-        }]
-      });
-
-      console.log('📥 Response received from Claude');
-      console.log(`📊 Tokens used: ${response.usage.input_tokens} input, ${response.usage.output_tokens} output`);
-
-      return {
-        content: response.content[0].text,
-        usage: {
-          inputTokens: response.usage.input_tokens,
-          outputTokens: response.usage.output_tokens,
-          totalCost: this.calculateCost(response.usage)
-        }
-      };
-
-    } catch (error) {
-      console.error('❌ Claude API Error:', error.message);
-
-      if (error.status === 401) {
-        throw new Error('Invalid API key. Check your ANTHROPIC_API_KEY in .env');
-      }
-
-      throw new Error(`Claude API failed: ${error.message}`);
-    }
-  }
-
-  /**
-   * Calculate API cost in USD
-   */
-  calculateCost(usage) {
-    // Claude Sonnet 4.5 pricing (as of Jan 2025)
-    const inputCost = (usage.input_tokens / 1000000) * 3;  // $3 per 1M input tokens
-    const outputCost = (usage.output_tokens / 1000000) * 15; // $15 per 1M output tokens
-    const total = inputCost + outputCost;
-    return total.toFixed(4);
+    const text = response.content[0]?.text || "";
+    return { success: true, text };
+  } catch (error) {
+    console.error("Claude API Error:", error);
+    return { success: false, error: error.message };
   }
 }
-
-// ✅ CORRECT EXPORT
-module.exports = ClaudeClient;

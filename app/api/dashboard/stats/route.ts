@@ -567,7 +567,6 @@ export async function GET(request: Request) {
     console.error('API Error fetching dashboard stats:', {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
-      userId: userId || 'unknown',
       timestamp: new Date().toISOString(),
     });
     
