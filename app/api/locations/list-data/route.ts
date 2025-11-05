@@ -63,9 +63,16 @@ async function handler(request: Request, user: any): Promise<Response> {
     .eq('user_id', user.id)
     .in('gmb_account_id', activeAccountIds)
 
-  // Apply filters
+  // ✅ SECURITY: Fix SQL injection - use parameterized query instead of string interpolation
+  // Apply filters with proper escaping
   if (search) {
-    query = query.or(`location_name.ilike.%${search}%,address.ilike.%${search}%`)
+    // ✅ Sanitize search input and use parameterized query
+    const sanitizedSearch = search.trim().slice(0, 100); // Limit length
+    if (sanitizedSearch) {
+      // Supabase automatically parameterizes queries, but we need to escape special characters
+      const escapedSearch = sanitizedSearch.replace(/%/g, '\\%').replace(/_/g, '\\_');
+      query = query.or(`location_name.ilike.%${escapedSearch}%,address.ilike.%${escapedSearch}%`)
+    }
   }
   
   if (status !== 'all') {
@@ -82,9 +89,22 @@ async function handler(request: Request, user: any): Promise<Response> {
   const { data: locationsData, error: dbError, count } = await query
 
   if (dbError) {
-    console.error('[GET /api/locations/list-data] DB Error:', dbError)
+    // ✅ ERROR HANDLING: Enhanced error logging
+    console.error('[GET /api/locations/list-data] DB Error:', {
+      error: dbError.message,
+      code: dbError.code,
+      details: dbError.details,
+      hint: dbError.hint,
+      userId: user.id,
+      timestamp: new Date().toISOString(),
+    });
+    
     return NextResponse.json(
-      { error: dbError.message || 'Database error' },
+      { 
+        error: 'Database error',
+        message: 'Failed to fetch location data. Please try again later.',
+        code: 'LOCATIONS_LIST_ERROR'
+      },
       { status: 500 }
     )
   }

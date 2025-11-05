@@ -18,17 +18,89 @@ const GMB_V4_BASE = 'https://mybusiness.googleapis.com/v4';
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // ✅ SECURITY: Enhanced authentication validation
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (authError || !user) {
+    console.error('Authentication error:', authError);
+    return NextResponse.json(
+      { 
+        error: 'Unauthorized',
+        message: 'Authentication required. Please sign in again.'
+      }, 
+      { status: 401 }
+    );
+  }
+
+  // ✅ SECURITY: Verify user session is valid
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  
+  if (sessionError || !session || !session.user || session.user.id !== user.id) {
+    console.error('Session validation error:', sessionError);
+    return NextResponse.json(
+      { 
+        error: 'Invalid session',
+        message: 'Your session has expired. Please sign in again.'
+      },
+      { status: 401 }
+    );
   }
 
   try {
     const { locationIds, postId } = await request.json();
 
-    if (!Array.isArray(locationIds) || locationIds.length === 0 || !postId) {
-      return NextResponse.json({ error: 'Missing required locationIds or postId' }, { status: 400 });
+    // ✅ SECURITY: Input validation
+    if (!Array.isArray(locationIds) || locationIds.length === 0) {
+      return NextResponse.json(
+        { error: 'Invalid input', message: 'locationIds must be a non-empty array' }, 
+        { status: 400 }
+      );
+    }
+
+    if (!postId || typeof postId !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid input', message: 'postId is required and must be a string' }, 
+        { status: 400 }
+      );
+    }
+
+    // ✅ SECURITY: Limit bulk operations to prevent abuse
+    if (locationIds.length > 100) {
+      return NextResponse.json(
+        { error: 'Too many locations', message: 'Maximum 100 locations allowed per bulk operation' }, 
+        { status: 400 }
+      );
+    }
+
+    // ✅ SECURITY: Validate location IDs format (UUIDs)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!locationIds.every(id => typeof id === 'string' && uuidRegex.test(id))) {
+      return NextResponse.json(
+        { error: 'Invalid location IDs', message: 'All location IDs must be valid UUIDs' }, 
+        { status: 400 }
+      );
+    }
+
+    // ✅ SECURITY: Verify all locations belong to the user
+    const { data: userLocations, error: locationsError } = await supabase
+      .from('gmb_locations')
+      .select('id, gmb_account_id')
+      .eq('user_id', user.id)
+      .in('id', locationIds);
+
+    if (locationsError) {
+      console.error('Error verifying locations:', locationsError);
+      return NextResponse.json(
+        { error: 'Database error', message: 'Failed to verify location ownership' }, 
+        { status: 500 }
+      );
+    }
+
+    if (!userLocations || userLocations.length !== locationIds.length) {
+      return NextResponse.json(
+        { error: 'Unauthorized', message: 'Some locations do not belong to you or do not exist' }, 
+        { status: 403 }
+      );
     }
 
     // 1. جلب محتوى المنشور من قاعدة البيانات (لدينا)
@@ -59,8 +131,10 @@ export async function POST(request: NextRequest) {
 
     let successfulPublishes = 0;
     let failedPublishes = 0;
+    const errors: Array<{ locationId: string; error: string }> = [];
 
-    // 3. التكرار على كل موقع وتنفيذ النشر
+    // ✅ FIX: Process locations sequentially to prevent race conditions
+    // Using for...of loop ensures sequential processing
     for (const locationId of locationIds) {
 
         // بناء مسار المورد المطلوب لـ GMB API
@@ -97,9 +171,24 @@ export async function POST(request: NextRequest) {
             successfulPublishes++;
         } else {
             failedPublishes++;
-            const error = await response.json();
-            console.error(`[Bulk Publish] Failed for ${locationId}:`, error);
+            let errorMessage = 'Unknown error';
+            try {
+                const error = await response.json();
+                errorMessage = error.error?.message || error.message || `HTTP ${response.status}`;
+                console.error(`[Bulk Publish] Failed for ${locationId}:`, error);
+            } catch (parseError) {
+                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                console.error(`[Bulk Publish] Failed to parse error for ${locationId}:`, parseError);
+            }
+            errors.push({ locationId, error: errorMessage });
         }
+    } catch (locationError: any) {
+        // ✅ ERROR HANDLING: Catch errors for individual locations
+        failedPublishes++;
+        const errorMessage = locationError.message || 'Unknown error during publish';
+        console.error(`[Bulk Publish] Exception for ${locationId}:`, locationError);
+        errors.push({ locationId, error: errorMessage });
+    }
     }
 
     // 4. إرجاع النتيجة
@@ -108,10 +197,26 @@ export async function POST(request: NextRequest) {
         message: `Bulk publish complete: ${successfulPublishes} successful, ${failedPublishes} failed.`,
         successfulCount: successfulPublishes,
         failedCount: failedPublishes,
+        errors: errors.length > 0 ? errors : undefined, // ✅ Include detailed errors
     });
 
   } catch (error: any) {
-    console.error('API Error during bulk publish:', error);
-    return NextResponse.json({ error: error.message || 'Failed to process bulk publish' }, { status: 500 });
+    // ✅ ERROR HANDLING: Enhanced error logging and user-friendly messages
+    console.error('API Error during bulk publish:', {
+      error: error.message,
+      stack: error.stack,
+      userId: user?.id || 'unknown',
+      timestamp: new Date().toISOString(),
+    });
+
+    // Don't expose internal error details to client
+    return NextResponse.json(
+      { 
+        error: 'Internal server error',
+        message: 'Failed to process bulk publish. Please try again later.',
+        code: 'BULK_PUBLISH_ERROR'
+      }, 
+      { status: 500 }
+    );
   }
 }
