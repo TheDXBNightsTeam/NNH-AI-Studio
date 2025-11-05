@@ -244,7 +244,6 @@ export const EnhancedLocationCard: React.FC<EnhancedLocationCardProps> = React.m
   // Only re-render if these specific props change
   return (
     prevProps.location.id === nextProps.location.id &&
-    prevProps.location.updatedAt === nextProps.location.updatedAt &&
     prevProps.onEdit === nextProps.onEdit
   );
 });
