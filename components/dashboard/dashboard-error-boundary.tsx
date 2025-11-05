@@ -124,3 +124,21 @@ export class DashboardErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
+
+/**
+ * Convenience wrapper component for dashboard sections
+ * Automatically wraps content with DashboardErrorBoundary
+ */
+interface DashboardSectionProps {
+  children: ReactNode;
+  section?: string;
+  fallback?: ReactNode;
+}
+
+export function DashboardSection({ children, section, fallback }: DashboardSectionProps) {
+  return (
+    <DashboardErrorBoundary section={section} fallback={fallback}>
+      {children}
+    </DashboardErrorBoundary>
+  );
+}
