@@ -99,10 +99,32 @@ interface ProcessedStats {
 export async function GET(request: Request) {
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // ✅ SECURITY: Enhanced authentication validation
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (authError || !user) {
+    console.error('Authentication error:', authError);
+    return NextResponse.json(
+      { 
+        error: 'Unauthorized',
+        message: 'Authentication required. Please sign in again.'
+      }, 
+      { status: 401 }
+    );
+  }
+
+  // ✅ SECURITY: Verify user session is valid and not expired
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  
+  if (sessionError || !session || !session.user || session.user.id !== user.id) {
+    console.error('Session validation error:', sessionError);
+    return NextResponse.json(
+      { 
+        error: 'Invalid session',
+        message: 'Your session has expired. Please sign in again.'
+      },
+      { status: 401 }
+    );
   }
 
   // ✅ SECURITY: Rate limiting check

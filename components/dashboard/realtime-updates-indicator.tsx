@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, Clock, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface RealtimeUpdatesIndicatorProps {
   lastUpdated: Date | null;
@@ -66,6 +66,13 @@ export function RealtimeUpdatesIndicator({
     return () => clearInterval(interval);
   }, [lastUpdated, isArabic]);
 
+  // ✅ FIX: Stabilize onRefresh callback to prevent race conditions
+  const onRefreshRef = useRef(onRefresh);
+  
+  useEffect(() => {
+    onRefreshRef.current = onRefresh;
+  }, [onRefresh]);
+
   // العداد التنازلي للتحديث التلقائي
   useEffect(() => {
     if (isRefreshing) {
@@ -76,7 +83,8 @@ export function RealtimeUpdatesIndicator({
     const timer = setInterval(() => {
       setNextRefresh(prev => {
         if (prev <= 1) {
-          onRefresh();
+          // ✅ Use ref to avoid stale closure issues
+          onRefreshRef.current();
           return autoRefreshInterval * 60;
         }
         return prev - 1;
@@ -84,7 +92,7 @@ export function RealtimeUpdatesIndicator({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isRefreshing, autoRefreshInterval, onRefresh]);
+  }, [isRefreshing, autoRefreshInterval]); // ✅ Removed onRefresh from deps
 
   const formatNextRefresh = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);

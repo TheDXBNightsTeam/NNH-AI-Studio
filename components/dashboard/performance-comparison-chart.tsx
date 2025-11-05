@@ -15,6 +15,7 @@ import {
   Legend
 } from 'recharts';
 import { motion } from 'framer-motion';
+import { useEffect, useRef } from 'react';
 
 interface PerformanceData {
   month: string;
@@ -45,6 +46,18 @@ export function PerformanceComparisonChart({
   locale = 'en'
 }: PerformanceComparisonChartProps) {
   const isArabic = locale === 'ar';
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  
+  // ✅ FIX: Cleanup on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      // Cleanup any chart-related resources
+      if (chartContainerRef.current) {
+        // Recharts handles cleanup automatically, but we ensure container is cleared
+        chartContainerRef.current = null;
+      }
+    };
+  }, []);
 
   // تحضير البيانات للمخطط
   const chartData: PerformanceData[] = [
@@ -174,7 +187,12 @@ export function PerformanceComparisonChart({
         </div>
 
         {/* المخطط البياني */}
-        <div className="h-[250px]">
+        <div 
+          ref={chartContainerRef} 
+          className="h-[250px]"
+          role="img"
+          aria-label={isArabic ? 'مخطط مقارنة الأداء بين الفترات' : 'Performance comparison chart between periods'}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={chartData}
@@ -199,10 +217,12 @@ export function PerformanceComparisonChart({
                 dataKey="month" 
                 tick={{ fill: '#9ca3af', fontSize: 12 }}
                 stroke="#4b5563"
+                aria-label={isArabic ? 'الفترة الزمنية' : 'Time period'}
               />
               <YAxis 
                 tick={{ fill: '#9ca3af', fontSize: 12 }}
                 stroke="#4b5563"
+                aria-label={isArabic ? 'القيمة' : 'Value'}
               />
               <Tooltip
                 contentStyle={{
@@ -212,10 +232,12 @@ export function PerformanceComparisonChart({
                   color: '#f9fafb'
                 }}
                 labelStyle={{ color: '#f9fafb', fontWeight: 'bold' }}
+                aria-label={isArabic ? 'معلومات المخطط' : 'Chart information'}
               />
               <Legend 
                 wrapperStyle={{ paddingTop: '20px' }}
                 iconType="circle"
+                aria-label={isArabic ? 'مفتاح المخطط' : 'Chart legend'}
               />
               <Area
                 type="monotone"

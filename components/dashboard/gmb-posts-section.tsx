@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { sanitizeText } from "@/lib/utils/sanitize"
 import { 
   Sparkles, Calendar, Image as ImageIcon, Loader2, Send, Timer, Wand2, Upload, X, 
   Edit, Clock, FileText, Tag, Gift, CalendarClock, Link2, ExternalLink, Info,
@@ -961,8 +962,9 @@ export function GMBPostsSection() {
                                   </Badge>
                                 )}
                               </div>
-                              <h3 className="font-medium mb-1">{post.title || 'Untitled Post'}</h3>
-                              <p className="text-sm text-muted-foreground line-clamp-2">{post.content}</p>
+                              {/* ✅ SECURITY: Sanitize user-generated content to prevent XSS */}
+                              <h3 className="font-medium mb-1">{sanitizeText(post.title || 'Untitled Post')}</h3>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{sanitizeText(post.content)}</p>
                               <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                                 <span className="flex items-center gap-1">
                                   <Clock className="h-3 w-3" />
@@ -1009,8 +1011,9 @@ export function GMBPostsSection() {
                   <div key={template.id} className="p-4 rounded-lg border border-border hover:border-primary/50 transition-all">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h3 className="font-medium mb-2">{template.label}</h3>
-                        <p className="text-sm text-muted-foreground">{template.content}</p>
+                        {/* ✅ SECURITY: Sanitize template content */}
+                        <h3 className="font-medium mb-2">{sanitizeText(template.label)}</h3>
+                        <p className="text-sm text-muted-foreground">{sanitizeText(template.content)}</p>
                       </div>
                       <Button
                         variant="outline"
