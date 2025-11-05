@@ -177,3 +177,65 @@ Preferred communication style: Simple, everyday language.
 3. Generated content saved to `ai_generation_history` or `youtube_drafts`
 4. Realtime updates notify UI of new generations
 5. Users can copy, edit, or delete generated content
+
+## Development Tools
+
+### NNH Code Auditor Extension
+
+**Location**: `code-auditor/`  
+**Purpose**: AI-powered code analysis and automatic fixing tool  
+**Powered by**: Claude Sonnet 4.5 (Anthropic)
+
+**Features**:
+- Comprehensive code audit (Frontend, Backend, Security, Performance, Database)
+- Priority-based issue classification (Critical, High, Medium, Low)
+- Automatic fix application with backup creation
+- Real-time analysis via web UI or REST API
+- Runs on port 3001 alongside main Next.js app (port 5000)
+
+**Architecture**:
+```
+code-auditor/
+├── src/
+│   ├── index.js          # Express server & API endpoints
+│   ├── claudeClient.js   # Claude Sonnet 4.5 integration
+│   ├── fileHandler.js    # File reading/writing with backup
+│   └── prompts.js        # Comprehensive audit prompts
+├── public/               # Web UI for auditing
+├── .env                  # Configuration (PROJECT_PATH, ANTHROPIC_API_KEY)
+└── HOW_TO_USE.md        # Detailed usage guide
+```
+
+**API Endpoints**:
+- `GET /api/health` - Service status check
+- `POST /api/audit/dashboard` - Audit dashboard components
+- `POST /api/fix/apply` - Apply code fixes automatically
+- `GET /api/files/:component` - List component files
+
+**Usage**:
+```bash
+# Via Web UI
+http://localhost:3001
+
+# Via API
+curl -X POST http://localhost:3001/api/audit/dashboard
+```
+
+**Configuration**:
+- `PROJECT_PATH`: Points to main workspace (`/home/runner/workspace`)
+- `ANTHROPIC_API_KEY`: Claude API key from Replit Secrets
+- Port: 3001 (separate from main app)
+
+**Audit Scope**:
+- Component structure and organization
+- State management patterns
+- Responsive design and accessibility
+- TypeScript type safety
+- Security vulnerabilities (XSS, SQL injection, CSRF)
+- Database query optimization
+- API authentication and validation
+- Performance bottlenecks
+
+**Cost**: ~$0.15-$0.30 per comprehensive dashboard audit
+
+**Key Decision**: Extension runs as separate workflow to avoid interfering with main application development flow
