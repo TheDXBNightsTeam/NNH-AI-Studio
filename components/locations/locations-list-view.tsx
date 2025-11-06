@@ -25,9 +25,13 @@ export function LocationsListView() {
   const [sortBy, setSortBy] = useState<'name' | 'rating' | 'reviews' | 'healthScore'>('name');
   const [quickFilter, setQuickFilter] = useState<'none' | 'attention' | 'top'>('none');
 
+  // Use stable empty filters object to prevent infinite loops
+  // Memoize empty object to prevent re-creation on every render
+  const emptyFilters = useMemo(() => ({}), []);
+
   // Use empty filters like Map View to get all locations
   // Then do client-side filtering for better control
-  const { locations: rawLocations, loading, error, total } = useLocations({});
+  const { locations: rawLocations, loading, error, total } = useLocations(emptyFilters);
 
   // Ensure locations is always an array
   const locations = Array.isArray(rawLocations) ? rawLocations : [];

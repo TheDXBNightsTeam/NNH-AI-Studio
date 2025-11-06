@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useLocations } from '@/hooks/use-locations';
 import { Location } from '@/components/locations/location-types';
 import { MapView } from '@/components/locations/map-view';
@@ -41,7 +41,9 @@ function usePrevious<T>(value: T): T | undefined {
  * - Glassmorphism UI effects
  */
 export function LocationsMapTab() {
-  const { locations, loading, error: locationsError } = useLocations({});
+  // Use stable empty filters object to prevent infinite loops
+  const emptyFilters = useMemo(() => ({}), []);
+  const { locations, loading, error: locationsError } = useLocations(emptyFilters);
   const { isLoaded, loadError } = useGoogleMaps();
   const [selectedLocationId, setSelectedLocationId] = useState<string | undefined>(undefined);
   const [loadingTimeout, setLoadingTimeout] = useState(false);

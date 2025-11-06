@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Location } from '@/components/locations/location-types';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -47,6 +47,18 @@ export function useLocations(
   const abortControllerRef = useRef<AbortController | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const isMountedRef = useRef(true);
+  
+  // Memoize filters to prevent infinite loops from object reference changes
+  const filtersRef = useRef(filters);
+  const filtersString = JSON.stringify(filters);
+  
+  // Update filters ref only when filters actually change
+  useEffect(() => {
+    const currentFiltersString = JSON.stringify(filtersRef.current);
+    if (currentFiltersString !== filtersString) {
+      filtersRef.current = filters;
+    }
+  }, [filtersString]);
 
   const fetchLocations = useCallback(async (pageNum: number = 1, reset: boolean = false) => {
     // Cancel previous request
@@ -62,6 +74,9 @@ export function useLocations(
         setLoading(true);
         setPage(1);
       }
+
+      // Use filters from ref to avoid dependency issues
+      const currentFilters = filtersRef.current;
 
       console.log('🔄 [useLocations] Starting fetch...', { pageNum, reset, timestamp: new Date().toISOString() });
 
@@ -80,64 +95,64 @@ export function useLocations(
         .eq('user_id', user.id)
         .eq('is_active', true);
 
-      // Apply filters
-      if (filters.search) {
-        const sanitizedSearch = filters.search.trim().slice(0, 100).replace(/%/g, '\\%').replace(/_/g, '\\_');
+      // Apply filters (using currentFilters from ref)
+      if (currentFilters.search) {
+        const sanitizedSearch = currentFilters.search.trim().slice(0, 100).replace(/%/g, '\\%').replace(/_/g, '\\_');
         if (sanitizedSearch) {
           query = query.or(`location_name.ilike.%${sanitizedSearch}%,address.ilike.%${sanitizedSearch}%`);
         }
       }
 
-      if (filters.category && filters.category !== 'all') {
-        query = query.eq('category', filters.category);
+      if (currentFilters.category && currentFilters.category !== 'all') {
+        query = query.eq('category', currentFilters.category);
       }
 
-      if (filters.status && filters.status !== 'all') {
-        query = query.eq('status', filters.status);
+      if (currentFilters.status && currentFilters.status !== 'all') {
+        query = query.eq('status', currentFilters.status);
       }
 
       // Rating range filter
-      if (filters.ratingMin !== undefined) {
-        query = query.gte('rating', filters.ratingMin);
+      if (currentFilters.ratingMin !== undefined) {
+        query = query.gte('rating', currentFilters.ratingMin);
       }
-      if (filters.ratingMax !== undefined) {
-        query = query.lte('rating', filters.ratingMax);
+      if (currentFilters.ratingMax !== undefined) {
+        query = query.lte('rating', currentFilters.ratingMax);
       }
 
       // Health score range filter
-      if (filters.healthScoreMin !== undefined) {
-        query = query.gte('health_score', filters.healthScoreMin);
+      if (currentFilters.healthScoreMin !== undefined) {
+        query = query.gte('health_score', currentFilters.healthScoreMin);
       }
-      if (filters.healthScoreMax !== undefined) {
-        query = query.lte('health_score', filters.healthScoreMax);
+      if (currentFilters.healthScoreMax !== undefined) {
+        query = query.lte('health_score', currentFilters.healthScoreMax);
       }
 
       // Review count range filter
-      if (filters.reviewCountMin !== undefined) {
-        query = query.gte('review_count', filters.reviewCountMin);
+      if (currentFilters.reviewCountMin !== undefined) {
+        query = query.gte('review_count', currentFilters.reviewCountMin);
       }
-      if (filters.reviewCountMax !== undefined) {
-        query = query.lte('review_count', filters.reviewCountMax);
+      if (currentFilters.reviewCountMax !== undefined) {
+        query = query.lte('review_count', currentFilters.reviewCountMax);
       }
 
       // Date range filter
-      if (filters.dateRange && filters.dateFrom && filters.dateTo) {
-        const dateField = filters.dateRange === 'last_sync' ? 'updated_at' : 'created_at';
-        query = query.gte(dateField, filters.dateFrom);
-        query = query.lte(dateField, filters.dateTo);
+      if (currentFilters.dateRange && currentFilters.dateFrom && currentFilters.dateTo) {
+        const dateField = currentFilters.dateRange === 'last_sync' ? 'updated_at' : 'created_at';
+        query = query.gte(dateField, currentFilters.dateFrom);
+        query = query.lte(dateField, currentFilters.dateTo);
       }
 
       // Quick filters
-      if (filters.quickFilter === 'needs_attention') {
+      if (currentFilters.quickFilter === 'needs_attention') {
         query = query.lte('health_score', 60);
-      } else if (filters.quickFilter === 'top_performers') {
+      } else if (currentFilters.quickFilter === 'top_performers') {
         query = query.gte('rating', 4.5);
         query = query.gte('health_score', 80);
       }
 
       // Apply sorting
-      const sortBy = filters.sortBy || 'location_name';
-      const sortOrder = filters.sortOrder || 'asc';
+      const sortBy = currentFilters.sortBy || 'location_name';
+      const sortOrder = currentFilters.sortOrder || 'asc';
       query = query.order(sortBy, { ascending: sortOrder === 'asc' });
 
       // Pagination
@@ -146,7 +161,7 @@ export function useLocations(
       query = query.range(from, to);
 
       console.log('📊 [useLocations] Executing query...', { 
-        filters: Object.keys(filters).length,
+        filters: Object.keys(currentFilters).length,
         pageNum,
         pageSize 
       });
@@ -240,7 +255,7 @@ export function useLocations(
         console.log('🏁 [useLocations] Loading complete');
       }
     }
-  }, [supabase, filters, pageSize]);
+  }, [supabase, pageSize]); // Removed filters from dependencies - using ref instead
 
   const refetch = useCallback(async () => {
     await fetchLocations(1, true);
@@ -254,9 +269,18 @@ export function useLocations(
     }
   }, [loading, hasMore, page, fetchLocations]);
 
+  // Only fetch on mount and when filters actually change (by string comparison)
+  const filtersStringRef = useRef<string>('');
+  
   useEffect(() => {
-    fetchLocations(1, true);
-  }, [fetchLocations]);
+    const currentFiltersString = JSON.stringify(filtersRef.current);
+    
+    // Only fetch if filters actually changed
+    if (filtersStringRef.current !== currentFiltersString) {
+      filtersStringRef.current = currentFiltersString;
+      fetchLocations(1, true);
+    }
+  }, [filtersString, fetchLocations]); // Use filtersString instead of filters object
 
   // ✅ REAL-TIME: Subscribe to location changes
   useEffect(() => {
