@@ -210,8 +210,8 @@ export function LocationsMapTab() {
     );
   }
 
-  // Loading state with timeout
-  if (loading) {
+  // Loading state with timeout - only show if we have no locations yet
+  if (loading && locations.length === 0) {
     return (
       <Card>
         <CardContent className="p-12">
