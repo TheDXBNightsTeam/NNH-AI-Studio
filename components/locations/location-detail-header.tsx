@@ -112,9 +112,13 @@ export function LocationDetailHeader({
     try {
       setSyncing(true);
       
-      // Add timeout to prevent hanging requests
+      // Sync can take a while, especially for location-specific sync
+      // Increase timeout to 2 minutes (120 seconds) for location sync
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes timeout
+      
+      // Show info message that sync is starting
+      toast.info('Sync started. This may take a moment...', { duration: 3000 });
       
       try {
         const response = await fetch('/api/gmb/sync', {
@@ -156,15 +160,17 @@ export function LocationDetailHeader({
         }
 
         const data = await response.json();
-        toast.success('Location synced successfully!');
+        const tookSeconds = Math.round((data.took_ms || 0) / 1000);
+        toast.success(`Location synced successfully! (took ${tookSeconds}s)`);
         onRefresh();
       } catch (fetchError: any) {
         clearTimeout(timeoutId);
         
         // Handle AbortError specifically (timeout or manual cancellation)
         if (fetchError.name === 'AbortError') {
-          console.warn('Sync request was aborted (timeout or cancellation)');
-          toast.error('Sync timed out. Please check your connection and try again.');
+          // Don't show console.warn - it's expected for long-running operations
+          // Only show user-friendly message
+          toast.error('Sync timed out. The operation may still be processing. Please wait a moment and refresh the page.');
           return;
         }
         

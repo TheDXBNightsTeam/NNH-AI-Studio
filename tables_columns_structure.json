@@ -1,0 +1,802 @@
+[
+  {
+    "table_name": "activity_logs",
+    "column_name": "id",
+    "data_type": "uuid",
+    "ordinal_position": 1,
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "activity_logs",
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "ordinal_position": 2,
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "activity_logs",
+    "column_name": "activity_type",
+    "data_type": "text",
+    "ordinal_position": 3,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "activity_logs",
+    "column_name": "activity_message",
+    "data_type": "text",
+    "ordinal_position": 4,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "activity_logs",
+    "column_name": "metadata",
+    "data_type": "jsonb",
+    "ordinal_position": 5,
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "activity_logs",
+    "column_name": "actionable",
+    "data_type": "boolean",
+    "ordinal_position": 6,
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "activity_logs",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "ordinal_position": 7,
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "ai_autopilot_logs",
+    "column_name": "id",
+    "data_type": "uuid",
+    "ordinal_position": 1,
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "ai_autopilot_logs",
+    "column_name": "location_id",
+    "data_type": "uuid",
+    "ordinal_position": 2,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_autopilot_logs",
+    "column_name": "action_type",
+    "data_type": "text",
+    "ordinal_position": 3,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_autopilot_logs",
+    "column_name": "action_description",
+    "data_type": "text",
+    "ordinal_position": 4,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_autopilot_logs",
+    "column_name": "status",
+    "data_type": "text",
+    "ordinal_position": 5,
+    "is_nullable": "NO",
+    "column_default": "'success'::text"
+  },
+  {
+    "table_name": "ai_autopilot_logs",
+    "column_name": "metadata",
+    "data_type": "jsonb",
+    "ordinal_position": 6,
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "ai_autopilot_logs",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "ordinal_position": 7,
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "ai_autopilot_settings",
+    "column_name": "id",
+    "data_type": "uuid",
+    "ordinal_position": 1,
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "ai_autopilot_settings",
+    "column_name": "location_id",
+    "data_type": "uuid",
+    "ordinal_position": 2,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_autopilot_settings",
+    "column_name": "is_enabled",
+    "data_type": "boolean",
+    "ordinal_position": 3,
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "ai_autopilot_settings",
+    "column_name": "auto_reply_enabled",
+    "data_type": "boolean",
+    "ordinal_position": 4,
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "ai_autopilot_settings",
+    "column_name": "auto_reply_min_rating",
+    "data_type": "integer",
+    "ordinal_position": 5,
+    "is_nullable": "YES",
+    "column_default": "1"
+  },
+  {
+    "table_name": "ai_autopilot_settings",
+    "column_name": "auto_reply_tone",
+    "data_type": "text",
+    "ordinal_position": 6,
+    "is_nullable": "YES",
+    "column_default": "'professional'::text"
+  },
+  {
+    "table_name": "ai_autopilot_settings",
+    "column_name": "smart_posting_enabled",
+    "data_type": "boolean",
+    "ordinal_position": 7,
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "ai_autopilot_settings",
+    "column_name": "posting_frequency",
+    "data_type": "integer",
+    "ordinal_position": 8,
+    "is_nullable": "YES",
+    "column_default": "3"
+  },
+  {
+    "table_name": "ai_autopilot_settings",
+    "column_name": "posting_days",
+    "data_type": "ARRAY",
+    "ordinal_position": 9,
+    "is_nullable": "YES",
+    "column_default": "ARRAY['monday'::text, 'wednesday'::text, 'friday'::text]"
+  },
+  {
+    "table_name": "ai_autopilot_settings",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "ordinal_position": 10,
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "ai_autopilot_settings",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "ordinal_position": 11,
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "ai_requests",
+    "column_name": "id",
+    "data_type": "uuid",
+    "ordinal_position": 1,
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "ai_requests",
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "ordinal_position": 2,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_requests",
+    "column_name": "location_id",
+    "data_type": "uuid",
+    "ordinal_position": 3,
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_requests",
+    "column_name": "provider",
+    "data_type": "text",
+    "ordinal_position": 4,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_requests",
+    "column_name": "model",
+    "data_type": "text",
+    "ordinal_position": 5,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_requests",
+    "column_name": "feature",
+    "data_type": "text",
+    "ordinal_position": 6,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_requests",
+    "column_name": "prompt_tokens",
+    "data_type": "integer",
+    "ordinal_position": 7,
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "ai_requests",
+    "column_name": "completion_tokens",
+    "data_type": "integer",
+    "ordinal_position": 8,
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "ai_requests",
+    "column_name": "total_tokens",
+    "data_type": "integer",
+    "ordinal_position": 9,
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "ai_requests",
+    "column_name": "cost_usd",
+    "data_type": "numeric",
+    "ordinal_position": 10,
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "ai_requests",
+    "column_name": "latency_ms",
+    "data_type": "integer",
+    "ordinal_position": 11,
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "ai_requests",
+    "column_name": "success",
+    "data_type": "boolean",
+    "ordinal_position": 12,
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "ai_requests",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "ordinal_position": 13,
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "ai_settings",
+    "column_name": "id",
+    "data_type": "uuid",
+    "ordinal_position": 1,
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "ai_settings",
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "ordinal_position": 2,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_settings",
+    "column_name": "provider",
+    "data_type": "text",
+    "ordinal_position": 3,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_settings",
+    "column_name": "api_key",
+    "data_type": "text",
+    "ordinal_position": 4,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_settings",
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "ordinal_position": 5,
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "ai_settings",
+    "column_name": "priority",
+    "data_type": "integer",
+    "ordinal_position": 6,
+    "is_nullable": "YES",
+    "column_default": "999"
+  },
+  {
+    "table_name": "ai_settings",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "ordinal_position": 7,
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "ai_settings",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "ordinal_position": 8,
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "autopilot_logs",
+    "column_name": "id",
+    "data_type": "uuid",
+    "ordinal_position": 1,
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "autopilot_logs",
+    "column_name": "location_id",
+    "data_type": "uuid",
+    "ordinal_position": 2,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "autopilot_logs",
+    "column_name": "action_type",
+    "data_type": "text",
+    "ordinal_position": 3,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "autopilot_logs",
+    "column_name": "status",
+    "data_type": "text",
+    "ordinal_position": 4,
+    "is_nullable": "NO",
+    "column_default": "'pending'::text"
+  },
+  {
+    "table_name": "autopilot_logs",
+    "column_name": "details",
+    "data_type": "jsonb",
+    "ordinal_position": 5,
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "autopilot_logs",
+    "column_name": "error_message",
+    "data_type": "text",
+    "ordinal_position": 6,
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "autopilot_logs",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "ordinal_position": 7,
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "id",
+    "data_type": "uuid",
+    "ordinal_position": 1,
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "location_id",
+    "data_type": "uuid",
+    "ordinal_position": 2,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "ordinal_position": 3,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "is_enabled",
+    "data_type": "boolean",
+    "ordinal_position": 4,
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "auto_reply_enabled",
+    "data_type": "boolean",
+    "ordinal_position": 5,
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "auto_reply_min_rating",
+    "data_type": "integer",
+    "ordinal_position": 6,
+    "is_nullable": "YES",
+    "column_default": "1"
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "reply_tone",
+    "data_type": "text",
+    "ordinal_position": 7,
+    "is_nullable": "YES",
+    "column_default": "'professional'::text"
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "smart_posting_enabled",
+    "data_type": "boolean",
+    "ordinal_position": 8,
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "post_frequency",
+    "data_type": "integer",
+    "ordinal_position": 9,
+    "is_nullable": "YES",
+    "column_default": "3"
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "post_days",
+    "data_type": "jsonb",
+    "ordinal_position": 10,
+    "is_nullable": "YES",
+    "column_default": "'[]'::jsonb"
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "post_times",
+    "data_type": "jsonb",
+    "ordinal_position": 11,
+    "is_nullable": "YES",
+    "column_default": "'[]'::jsonb"
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "content_preferences",
+    "data_type": "jsonb",
+    "ordinal_position": 12,
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "competitor_monitoring_enabled",
+    "data_type": "boolean",
+    "ordinal_position": 13,
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "insights_reports_enabled",
+    "data_type": "boolean",
+    "ordinal_position": 14,
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "report_frequency",
+    "data_type": "text",
+    "ordinal_position": 15,
+    "is_nullable": "YES",
+    "column_default": "'weekly'::text"
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "ordinal_position": 16,
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "autopilot_settings",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "ordinal_position": 17,
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "citation_listings",
+    "column_name": "id",
+    "data_type": "uuid",
+    "ordinal_position": 1,
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "citation_listings",
+    "column_name": "location_id",
+    "data_type": "uuid",
+    "ordinal_position": 2,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "citation_listings",
+    "column_name": "source_id",
+    "data_type": "uuid",
+    "ordinal_position": 3,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "citation_listings",
+    "column_name": "listing_url",
+    "data_type": "text",
+    "ordinal_position": 4,
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "citation_listings",
+    "column_name": "business_name",
+    "data_type": "text",
+    "ordinal_position": 5,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "citation_listings",
+    "column_name": "address",
+    "data_type": "text",
+    "ordinal_position": 6,
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "citation_listings",
+    "column_name": "phone",
+    "data_type": "text",
+    "ordinal_position": 7,
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "citation_listings",
+    "column_name": "status",
+    "data_type": "text",
+    "ordinal_position": 8,
+    "is_nullable": "YES",
+    "column_default": "'pending'::text"
+  },
+  {
+    "table_name": "citation_listings",
+    "column_name": "last_checked",
+    "data_type": "timestamp with time zone",
+    "ordinal_position": 9,
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "citation_listings",
+    "column_name": "consistency_score",
+    "data_type": "integer",
+    "ordinal_position": 10,
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "citation_listings",
+    "column_name": "notes",
+    "data_type": "text",
+    "ordinal_position": 11,
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "citation_listings",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "ordinal_position": 12,
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "citation_listings",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "ordinal_position": 13,
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "citation_sources",
+    "column_name": "id",
+    "data_type": "uuid",
+    "ordinal_position": 1,
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "citation_sources",
+    "column_name": "name",
+    "data_type": "text",
+    "ordinal_position": 2,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "citation_sources",
+    "column_name": "url_pattern",
+    "data_type": "text",
+    "ordinal_position": 3,
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "citation_sources",
+    "column_name": "domain_authority",
+    "data_type": "integer",
+    "ordinal_position": 4,
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "citation_sources",
+    "column_name": "category",
+    "data_type": "text",
+    "ordinal_position": 5,
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "citation_sources",
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "ordinal_position": 6,
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "citation_sources",
+    "column_name": "logo_url",
+    "data_type": "text",
+    "ordinal_position": 7,
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "citation_sources",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "ordinal_position": 8,
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "citation_sources",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "ordinal_position": 9,
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "competitor_tracking",
+    "column_name": "id",
+    "data_type": "uuid",
+    "ordinal_position": 1,
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "competitor_tracking",
+    "column_name": "location_id",
+    "data_type": "uuid",
+    "ordinal_position": 2,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "competitor_tracking",
+    "column_name": "competitor_name",
+    "data_type": "text",
+    "ordinal_position": 3,
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "competitor_tracking",
+    "column_name": "competitor_gmb_id",
+    "data_type": "text",
+    "ordinal_position": 4,
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "competitor_tracking",
+    "column_name": "distance_miles",
+    "data_type": "numeric",
+    "ordinal_position": 5,
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "competitor_tracking",
+    "column_name": "average_rating",
+    "data_type": "numeric",
+    "ordinal_position": 6,
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "competitor_tracking",
+    "column_name": "review_count",
+    "data_type": "integer",
+    "ordinal_position": 7,
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "competitor_tracking",
+    "column_name": "post_frequency",
+    "data_type": "integer",
+    "ordinal_position": 8,
+    "is_nullable": "YES",
+    "column_default": "0"
+  }
+]
