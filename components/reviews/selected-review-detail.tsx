@@ -140,9 +140,15 @@ export function SelectedReviewDetail({ review }: SelectedReviewDetailProps) {
       {/* Review Text */}
       <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
         <div className="text-xs text-gray-400 mb-2">💬 Review:</div>
-        <p className="text-sm text-gray-200 leading-relaxed">
-          {(review as any).comment || review.review_text || 'No review text provided'}
-        </p>
+        {!((review as any).comment || review.review_text) ? (
+          <div className="p-3 bg-blue-500/10 border border-blue-500/50 rounded-lg text-sm text-blue-400">
+            ℹ️ This review has only a rating, no text comment.
+          </div>
+        ) : (
+          <p className="text-sm text-gray-200 leading-relaxed">
+            {(review as any).comment || review.review_text}
+          </p>
+        )}
       </div>
 
       {/* AI Response Generator */}
