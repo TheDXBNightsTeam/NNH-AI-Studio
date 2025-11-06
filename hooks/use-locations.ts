@@ -195,15 +195,17 @@ export function useLocations(
         address: loc.address || undefined,
         phone: loc.phone || undefined,
         website: loc.website || undefined,
-        rating: loc.rating || 0,
-        reviewCount: loc.review_count || 0,
+        // Preserve actual values - only default to 0 if truly null/undefined
+        rating: loc.rating != null ? loc.rating : undefined,
+        reviewCount: loc.review_count != null ? loc.review_count : undefined,
         status: 'verified' as const,
         category: loc.category || undefined,
         coordinates: loc.latitude && loc.longitude ? {
           lat: loc.latitude,
           lng: loc.longitude
         } : undefined,
-        healthScore: loc.health_score || 0,
+        // Preserve actual health_score value
+        healthScore: loc.health_score != null ? loc.health_score : undefined,
         lastSync: loc.last_sync || null,
         insights: {
           views: 0,
@@ -271,18 +273,29 @@ export function useLocations(
 
   // Only fetch on mount and when filters actually change (by string comparison)
   const filtersStringRef = useRef<string>('');
+  const hasFetchedRef = useRef(false);
+  const fetchLocationsRef = useRef(fetchLocations);
+  
+  // Update fetchLocations ref when it changes
+  useEffect(() => {
+    fetchLocationsRef.current = fetchLocations;
+  }, [fetchLocations]);
   
   useEffect(() => {
     const currentFiltersString = JSON.stringify(filtersRef.current);
     
-    // Only fetch if filters actually changed
-    if (filtersStringRef.current !== currentFiltersString) {
+    // Only fetch if filters actually changed AND we haven't already fetched with these filters
+    if (filtersStringRef.current !== currentFiltersString || !hasFetchedRef.current) {
       filtersStringRef.current = currentFiltersString;
-      fetchLocations(1, true);
+      hasFetchedRef.current = true;
+      // Use ref to avoid dependency on fetchLocations
+      fetchLocationsRef.current(1, true);
     }
-  }, [filtersString, fetchLocations]); // Use filtersString instead of filters object
+  }, [filtersString]); // Only depend on filtersString
 
   // ✅ REAL-TIME: Subscribe to location changes
+  // fetchLocationsRef is already defined above
+
   useEffect(() => {
     isMountedRef.current = true;
     let userId: string | null = null;
@@ -317,8 +330,8 @@ export function useLocations(
               
               if (!isMountedRef.current) return;
 
-              // Refetch locations when changes occur
-              fetchLocations(1, true).catch((err) => {
+              // Refetch locations when changes occur - use ref to avoid dependency
+              fetchLocationsRef.current(1, true).catch((err) => {
                 if (err.name !== 'AbortError') {
                   console.error('Error refetching after realtime update:', err);
                 }
@@ -390,7 +403,7 @@ export function useLocations(
         abortControllerRef.current.abort();
       }
     };
-  }, [supabase, fetchLocations]);
+  }, [supabase]); // Removed fetchLocations from dependencies - using ref instead
 
   return {
     locations,
