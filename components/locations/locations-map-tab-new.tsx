@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocations } from '@/hooks/use-locations';
 import { Location } from '@/components/locations/location-types';
 import { MapView } from '@/components/locations/map-view';
@@ -15,6 +15,17 @@ import {
   ActivityFeedCard,
   QuickActionsCard,
 } from '@/components/locations/map-cards';
+
+/**
+ * Custom hook to track previous value
+ */
+function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T>();
+  useEffect(() => {
+    ref.current = value;
+  }, [value]);
+  return ref.current;
+}
 
 /**
  * LocationsMapTab Component
@@ -35,8 +46,72 @@ export function LocationsMapTab() {
   const [selectedLocationId, setSelectedLocationId] = useState<string | undefined>(undefined);
   const isMobile = useIsMobile();
   
+  // Store locations in ref to avoid re-renders
+  const locationsRef = useRef<Location[]>([]);
+  const prevLocationCount = usePrevious(locations.length);
+  
+  // Update ref when locations change
+  useEffect(() => {
+    locationsRef.current = locations;
+  }, [locations.length]); // Only depend on length
+
   // Fetch stats for selected location
   const { stats, loading: statsLoading, error: statsError } = useLocationMapData(selectedLocationId);
+
+  // Effect 1: Set default selection to first location (only when count changes from 0)
+  useEffect(() => {
+    if (locations.length > 0 && !selectedLocationId) {
+      const firstLocationWithCoords = locations.find(loc => loc.coordinates?.lat && loc.coordinates?.lng);
+      if (firstLocationWithCoords) {
+        setSelectedLocationId(firstLocationWithCoords.id);
+      }
+    }
+  }, [locations.length, selectedLocationId]); // Only depend on length and selection
+
+  // Get selected location directly - no useMemo needed
+  const selectedLocation = locations.find(loc => loc.id === selectedLocationId);
+
+  // Filter locations with coordinates - calculate directly, no useMemo
+  const locationsWithCoords = locations.filter(loc => 
+    loc.coordinates?.lat && 
+    loc.coordinates?.lng &&
+    !isNaN(loc.coordinates.lat) &&
+    !isNaN(loc.coordinates.lng)
+  );
+
+  // Calculate map center - simple calculation, no useMemo
+  const mapCenter = (() => {
+    if (selectedLocation?.coordinates) {
+      return {
+        lat: selectedLocation.coordinates.lat,
+        lng: selectedLocation.coordinates.lng,
+      };
+    }
+
+    if (locationsWithCoords.length === 0) {
+      return { lat: 25.2048, lng: 55.2708 }; // Default: Dubai
+    }
+
+    if (locationsWithCoords.length === 1) {
+      return {
+        lat: locationsWithCoords[0].coordinates!.lat,
+        lng: locationsWithCoords[0].coordinates!.lng,
+      };
+    }
+
+    // Calculate center point
+    const avgLat = locationsWithCoords.reduce((sum, loc) => 
+      sum + loc.coordinates!.lat, 0) / locationsWithCoords.length;
+    const avgLng = locationsWithCoords.reduce((sum, loc) => 
+      sum + loc.coordinates!.lng, 0) / locationsWithCoords.length;
+
+    return { lat: avgLat, lng: avgLng };
+  })();
+
+  // Handle marker click - stable callback with empty deps
+  const handleMarkerClick = useCallback((location: Location) => {
+    setSelectedLocationId(location.id);
+  }, []); // Empty deps - stable function
 
   // Handle locations error
   if (locationsError) {
@@ -53,49 +128,6 @@ export function LocationsMapTab() {
       </Card>
     );
   }
-
-  // Create stable key based on locations content to avoid infinite loops
-  // Use ref to track previous value and only update when content actually changes
-  const prevLocationsRef = useRef<string>('');
-  const locationsKeyRef = useRef<string>('');
-  
-  // Calculate current key - use useMemo with stable dependencies (only length and IDs)
-  const locationsIds = useMemo(() => locations.map(l => l.id).join(','), [locations.length]);
-  const currentKey = useMemo(() => 
-    locations.map(l => `${l.id}-${l.coordinates?.lat}-${l.coordinates?.lng}`).join('|'),
-    [locations.length, locationsIds]
-  );
-  
-  // Update ref only if content actually changed - use useEffect to avoid side effects in render
-  useEffect(() => {
-    if (currentKey !== prevLocationsRef.current) {
-      prevLocationsRef.current = currentKey;
-      locationsKeyRef.current = currentKey;
-    }
-  }, [currentKey]);
-  
-  const locationsKey = locationsKeyRef.current;
-
-  // Set default selection to first location - use stable dependency
-  useEffect(() => {
-    if (locations.length > 0 && !selectedLocationId) {
-      const firstLocationWithCoords = locations.find(loc => loc.coordinates?.lat && loc.coordinates?.lng);
-      if (firstLocationWithCoords) {
-        setSelectedLocationId(firstLocationWithCoords.id);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locations.length, locationsKey, selectedLocationId]);
-
-  // Get selected location - use stable dependency
-  const selectedLocation = useMemo(() => {
-    return locations.find(loc => loc.id === selectedLocationId);
-  }, [selectedLocationId, locationsKey]);
-
-  // Handle marker click
-  const handleMarkerClick = (location: Location) => {
-    setSelectedLocationId(location.id);
-  };
 
   // Loading state
   if (loading) {
@@ -157,48 +189,6 @@ export function LocationsMapTab() {
       </Card>
     );
   }
-
-  // Filter locations with coordinates
-  const locationsWithCoords = useMemo(() => {
-    return locations.filter(loc => 
-      loc.coordinates?.lat && 
-      loc.coordinates?.lng &&
-      !isNaN(loc.coordinates.lat) &&
-      !isNaN(loc.coordinates.lng)
-    );
-  }, [locationsKey]);
-
-  const mapCenter = useMemo(() => {
-    if (selectedLocation?.coordinates) {
-      return {
-        lat: selectedLocation.coordinates.lat,
-        lng: selectedLocation.coordinates.lng,
-      };
-    }
-
-    if (locationsWithCoords.length === 0) {
-      return { lat: 25.2048, lng: 55.2708 }; // Default: Dubai
-    }
-
-    if (locationsWithCoords.length === 1) {
-      return {
-        lat: locationsWithCoords[0].coordinates!.lat,
-        lng: locationsWithCoords[0].coordinates!.lng,
-      };
-    }
-
-    // Calculate center point
-    const avgLat = locationsWithCoords.reduce((sum, loc) => 
-      sum + loc.coordinates!.lat, 0) / locationsWithCoords.length;
-    const avgLng = locationsWithCoords.reduce((sum, loc) => 
-      sum + loc.coordinates!.lng, 0) / locationsWithCoords.length;
-
-    return { lat: avgLat, lng: avgLng };
-  }, [
-    selectedLocation?.coordinates?.lat, 
-    selectedLocation?.coordinates?.lng,
-    locationsKey
-  ]);
 
   return (
     <div className="relative w-full h-[calc(100vh-200px)] min-h-[600px] md:min-h-[700px]">
@@ -281,4 +271,3 @@ export function LocationsMapTab() {
     </div>
   );
 }
-
