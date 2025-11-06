@@ -14,6 +14,29 @@ interface HorizontalLocationCardProps {
 }
 
 export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLocationCardProps) {
+  // Debug logging
+  console.log('[HorizontalLocationCard] Rendering with location:', {
+    id: location?.id,
+    name: location?.name,
+    address: location?.address,
+    rating: location?.rating,
+    reviewCount: location?.reviewCount,
+    healthScore: location?.healthScore,
+    status: location?.status,
+    hasLocation: !!location,
+    locationKeys: location ? Object.keys(location) : []
+  });
+
+  // Safety check
+  if (!location) {
+    console.warn('[HorizontalLocationCard] No location provided!');
+    return (
+      <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-2xl text-red-400">
+        No location data provided
+      </div>
+    );
+  }
+
   const router = useRouter();
   const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
   const [logoPhoto, setLogoPhoto] = useState<string | null>(null);
@@ -105,16 +128,7 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
     : 'gray';
 
   return (
-    <div className="
-      flex flex-col md:flex-row gap-6
-      p-6
-      bg-black/40 backdrop-blur-xl
-      border border-orange-500/30 rounded-2xl
-      transition-all duration-300
-      hover:translate-y-[-4px]
-      hover:border-orange-500/60
-      hover:shadow-[0_8px_32px_rgba(255,127,0,0.2)]
-    ">
+    <div className="flex flex-col md:flex-row gap-6 p-6 bg-black/40 backdrop-blur-xl border border-orange-500/30 rounded-2xl transition-all duration-300 hover:translate-y-[-4px] hover:border-orange-500/60 hover:shadow-[0_8px_32px_rgba(255,127,0,0.2)] min-h-[150px]">
       {/* Left Side: Cover Image with Logo */}
       <div className="relative w-full md:w-[200px] h-[150px] md:h-[150px] flex-shrink-0 rounded-xl overflow-hidden">
         {/* Cover Image */}
@@ -147,10 +161,12 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
       </div>
       
       {/* Right Side: Content */}
-      <div className="flex-1 flex flex-col gap-3 pt-2">
+      <div className="flex-1 flex flex-col gap-3 pt-2 min-w-0">
         {/* Header */}
         <div className="flex items-center gap-3 flex-wrap">
-          <h3 className="text-xl font-semibold text-white m-0">{location.name}</h3>
+          <h3 className="text-xl font-semibold text-white m-0 break-words">
+            {location.name || 'Unnamed Location'}
+          </h3>
           {location.status === 'verified' && (
             <Badge className="inline-flex items-center gap-1 px-3 py-1 bg-green-500/20 border border-green-500/40 text-green-500 text-xs rounded-full">
               ✓ Verified
@@ -173,24 +189,28 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
         
         {/* Stats Row */}
         <div className="flex items-center gap-3 text-sm flex-wrap">
-          {location.rating !== undefined && (
+          {(location.rating !== undefined && location.rating !== null) ? (
             <span className="text-white flex items-center gap-1">
               <span className="text-yellow-500">⭐</span>
               {location.rating.toFixed(1)}
-              {location.reviewCount !== undefined && (
+              {(location.reviewCount !== undefined && location.reviewCount !== null) && (
                 <span className="text-gray-400 ml-1">
                   ({formatLargeNumber(location.reviewCount)} reviews)
                 </span>
               )}
             </span>
+          ) : (
+            <span className="text-gray-400 text-sm">No rating yet</span>
           )}
-          {location.rating !== undefined && location.healthScore !== undefined && (
+          {(location.rating !== undefined && location.healthScore !== undefined) && (
             <span className="text-gray-500">•</span>
           )}
-          {location.healthScore !== undefined && (
+          {(location.healthScore !== undefined && location.healthScore !== null) ? (
             <span className={`font-medium ${getHealthScoreColor(location.healthScore)}`}>
               💚 Health: {location.healthScore}%
             </span>
+          ) : (
+            <span className="text-gray-400 text-sm">No health score</span>
           )}
         </div>
         
