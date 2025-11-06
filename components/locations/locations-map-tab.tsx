@@ -39,7 +39,7 @@ export function LocationsMapTab() {
   const { theme } = useTheme();
   const router = useRouter();
   const { locations, loading } = useLocations({});
-  const { apiKey: googleMapsApiKey, isLoaded, loadError } = useGoogleMaps();
+  const { isLoaded, loadError } = useGoogleMaps();
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [mapZoom, setMapZoom] = useState(10);
@@ -176,7 +176,7 @@ export function LocationsMapTab() {
     );
   }
 
-  if (!isLoaded || !googleMapsApiKey) {
+  if (!isLoaded) {
     return (
       <Card>
         <CardContent className="p-12">
