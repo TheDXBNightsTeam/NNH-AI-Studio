@@ -9,12 +9,20 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const { review_text, rating, reviewer_name, location_name } = await request.json();
+    const body = await request.json();
+    
+    // Extract with fallbacks
+    const review_text = body.review_text || body.comment || 'No review text';
+    const rating = body.rating || 3;
+    const reviewer_name = body.reviewer_name || 'Valued Customer';
+    const location_name = body.location_name || 'our location';
 
-    // Validate input
-    if (!review_text || !rating || !reviewer_name || !location_name) {
+    console.log('Received data:', { review_text, rating, reviewer_name, location_name }); // Debug
+
+    // Only validate critical fields
+    if (!review_text || review_text === 'No review text') {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
+        { success: false, error: 'Review text is required' },
         { status: 400 }
       );
     }
