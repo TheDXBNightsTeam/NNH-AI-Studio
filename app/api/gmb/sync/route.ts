@@ -1160,7 +1160,7 @@ export async function POST(request: NextRequest) {
                 external_review_id: review.name,
                 reviewer_name: review.reviewer?.displayName || 'Anonymous',
                 rating: rating,
-                review_text: review.comment || null,
+                review_text: review.review_text || null,
                 review_date: review.createTime || new Date().toISOString(),
                 reply_text: review.reviewReply?.comment || null,
                 reply_date: review.reviewReply?.updateTime || null,

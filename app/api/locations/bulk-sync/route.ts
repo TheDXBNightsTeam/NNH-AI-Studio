@@ -181,7 +181,7 @@ async function syncLocation(
           reviewer_name: review.reviewer?.displayName || 'Anonymous',
           reviewer_photo_uri: review.reviewer?.profilePhotoUrl || null,
           star_rating: review.starRating || 0,
-          comment: review.comment || null,
+          comment: review.review_text || null,
           create_time: review.createTime || new Date().toISOString(),
           update_time: review.updateTime || new Date().toISOString(),
           reply: review.reviewReply || null,

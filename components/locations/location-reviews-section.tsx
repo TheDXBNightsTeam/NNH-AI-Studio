@@ -201,7 +201,7 @@ export function LocationReviewsSection({ locationId, locationName }: LocationRev
                           {formatDate(review.review_time || review.created_at)}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground">{review.comment || 'No comment'}</p>
+                      <p className="text-sm text-muted-foreground">{review.review_text || 'No comment'}</p>
                     </div>
                   </div>
 

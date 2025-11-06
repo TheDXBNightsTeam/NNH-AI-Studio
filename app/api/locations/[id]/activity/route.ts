@@ -263,7 +263,7 @@ export async function GET(
               : review.status === 'responded'
               ? `Review from ${review.reviewer_name} responded`
               : `Review from ${review.reviewer_name} needs response`,
-            description: review.comment || undefined,
+            description: review.review_text || undefined,
             timestamp: new Date(review.created_at),
             metadata: {
               review_id: review.id,

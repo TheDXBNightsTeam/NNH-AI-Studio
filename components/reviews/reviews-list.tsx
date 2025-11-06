@@ -147,7 +147,7 @@ export function ReviewsList() {
         body: JSON.stringify({
           type: "review_response",
           context: {
-            reviewText: review.review_text || review.comment || '',
+            reviewText: review.review_text || review.review_text || '',
             rating: review.rating,
             sentiment: review.ai_sentiment,
           }
@@ -194,7 +194,7 @@ export function ReviewsList() {
   const filteredReviews = reviews.filter((review) => {
     const matchesSearch = searchQuery === "" || 
       review.reviewer_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (review.review_text || review.comment || '')?.toLowerCase().includes(searchQuery.toLowerCase())
+      (review.review_text || review.review_text || '')?.toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesSentiment = filterSentiment === "all" || 
       review.ai_sentiment === filterSentiment
