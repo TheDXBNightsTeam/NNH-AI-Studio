@@ -31,7 +31,7 @@ import {
  */
 export function LocationsMapTab() {
   const { locations, loading, error: locationsError } = useLocations({});
-  const { apiKey: googleMapsApiKey, isLoaded, loadError } = useGoogleMaps();
+  const { isLoaded, loadError } = useGoogleMaps();
   const [selectedLocationId, setSelectedLocationId] = useState<string | undefined>(undefined);
   const isMobile = useIsMobile();
   
@@ -105,7 +105,7 @@ export function LocationsMapTab() {
   }
 
   // Google Maps not loaded
-  if (!isLoaded || !googleMapsApiKey) {
+  if (!isLoaded) {
     return (
       <Card>
         <CardContent className="p-12">

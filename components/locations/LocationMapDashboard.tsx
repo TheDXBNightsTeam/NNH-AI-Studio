@@ -82,7 +82,7 @@ export function LocationMapDashboard() {
   const isMountedRef = useRef(true);
 
   // ✅ Use shared Google Maps hook to prevent multiple API loads
-  const { apiKey: googleMapsApiKey, isLoaded, loadError: mapLoadError } = useGoogleMaps();
+  const { isLoaded, loadError: mapLoadError } = useGoogleMaps();
 
   // ✅ FIX: Cleanup on unmount - Added comprehensive cleanup for Google Maps markers and InfoWindow instances to prevent memory leaks
   useEffect(() => {
