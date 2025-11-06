@@ -136,14 +136,17 @@ export function SelectedReviewDetail({ review }: SelectedReviewDetailProps) {
       {/* Review Text */}
       <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
         <div className="text-xs text-gray-400 mb-2">💬 Review:</div>
-        {!((review as any).comment || review.review_text) ? (
+        {/* Only show "no text" message if review has NO text AND NO reply yet */}
+        {!((review as any).comment || review.review_text) && !review.reply_text && !review.has_reply ? (
           <div className="p-3 bg-blue-500/10 border border-blue-500/50 rounded-lg text-sm text-blue-400">
             ℹ️ This review has only a rating, no text comment.
           </div>
-        ) : (
+        ) : (review as any).comment || review.review_text ? (
           <p className="text-sm text-gray-200 leading-relaxed">
             {(review as any).comment || review.review_text}
           </p>
+        ) : (
+          <p className="text-sm text-gray-400 italic">No review text provided</p>
         )}
       </div>
 
@@ -206,15 +209,37 @@ export function SelectedReviewDetail({ review }: SelectedReviewDetailProps) {
 
 function formatTimeAgo(date: string | undefined | null): string {
   if (!date) return 'Unknown';
-  const now = new Date();
-  const reviewDate = new Date(date);
-  const diffMs = now.getTime() - reviewDate.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return '1 day ago';
-  if (diffDays < 30) return `${diffDays} days ago`;
-  if (diffDays < 60) return '1 month ago';
-  return `${Math.floor(diffDays / 30)} months ago`;
+  try {
+    const now = new Date();
+    const reviewDate = new Date(date);
+    
+    // Check if date is valid
+    if (isNaN(reviewDate.getTime())) {
+      console.error('Invalid date:', date);
+      return 'Unknown';
+    }
+    
+    const diffMs = now.getTime() - reviewDate.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return 'Recently'; // Future date (shouldn't happen)
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
+    }
+    if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return months === 1 ? '1 month ago' : `${months} months ago`;
+    }
+    const years = Math.floor(diffDays / 365);
+    return years === 1 ? '1 year ago' : `${years} years ago`;
+  } catch (error) {
+    console.error('Date formatting error:', error, date);
+    return 'Unknown';
+  }
 }
 
