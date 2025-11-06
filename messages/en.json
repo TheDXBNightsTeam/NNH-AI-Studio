@@ -523,5 +523,209 @@
         "enableProtection": "Enable Protection"
       }
     }
+  },
+  "Approvals": {
+    "title": "Approvals & Location Management",
+    "subtitle": "Create new Google Business locations and manage verification process",
+    "createButton": "Create New Location",
+    "tabs": {
+      "create": "Create Location",
+      "pending": "Pending Verification",
+      "verified": "Verified",
+      "issues": "Issues"
+    },
+    "stats": {
+      "total": "Total Locations",
+      "totalSubtitle": "All locations",
+      "pending": "Pending Verification",
+      "pendingSubtitle": "Awaiting codes",
+      "verified": "Verified",
+      "verifiedSubtitle": "Live on Google",
+      "issues": "Issues",
+      "issuesSubtitle": "Need attention"
+    },
+    "wizard": {
+      "stepOf": "Step {{step}} of {{total}}",
+      "step1": {
+        "title": "Basic Information",
+        "subtitle": "Enter your business details as they should appear on Google",
+        "businessName": "Business Name",
+        "businessNamePlaceholder": "The DXB Night Club - Downtown Branch",
+        "businessNameTip": "Use your official business name as registered",
+        "streetAddress": "Street Address",
+        "streetAddressPlaceholder": "123 Sheikh Zayed Road",
+        "streetAddressTip": "Make sure this address can receive postal mail",
+        "city": "City",
+        "cityPlaceholder": "Dubai",
+        "state": "State/Province",
+        "statePlaceholder": "Dubai",
+        "postalCode": "Postal Code",
+        "postalCodePlaceholder": "00000",
+        "country": "Country",
+        "phone": "Phone Number",
+        "phonePlaceholder": "+971 4 XXX XXXX",
+        "phoneTip": "Include country code",
+        "website": "Website (optional)",
+        "websitePlaceholder": "https://yourwebsite.com",
+        "infoTitle": "Important Information",
+        "infoText": "Make sure your address can receive postal mail. Google will send a verification postcard with a code to this address. The verification process typically takes 5-14 business days.",
+        "nextButton": "Next: Category & Hours"
+      },
+      "step2": {
+        "title": "Category & Hours",
+        "subtitle": "Help customers find your business with the right category",
+        "primaryCategory": "Primary Category",
+        "primaryCategoryTip": "Choose the category that best describes your business",
+        "additionalCategories": "Additional Categories (optional)",
+        "addCategory": "+ Add another category",
+        "businessHours": "Business Hours",
+        "closed": "Closed",
+        "to": "to",
+        "hoursTip": "For businesses open past midnight, use times after 24:00 (e.g., 26:00 for 2 AM)",
+        "backButton": "Back",
+        "nextButton": "Next: Features"
+      },
+      "step3": {
+        "title": "Features & Amenities",
+        "subtitle": "Tell customers what makes your business special",
+        "features": "Business Features (optional)",
+        "featuresTip": "Select all features that apply to your business",
+        "selected": "Selected",
+        "paymentMethods": "Payment Methods (optional)",
+        "paymentMethodsTip": "Let customers know which payment methods you accept",
+        "accepted": "Accepted",
+        "infoTitle": "Optional but Recommended",
+        "infoText": "Adding features and amenities helps customers find your business when searching for specific services. For example, 'Night clubs with parking' or 'Bars with Wi-Fi'.",
+        "backButton": "Back",
+        "nextButton": "Next: Review"
+      },
+      "step4": {
+        "title": "Review Your Location",
+        "subtitle": "Please review all details before submitting to Google",
+        "basicInfo": "Basic Information",
+        "businessName": "Business Name",
+        "address": "Address",
+        "phone": "Phone",
+        "website": "Website",
+        "categoryHours": "Category & Hours",
+        "primaryCategory": "Primary Category",
+        "additionalCategories": "Additional Categories",
+        "businessHours": "Business Hours",
+        "featuresTitle": "Features & Amenities",
+        "features": "Features",
+        "paymentMethods": "Payment Methods",
+        "warningTitle": "Before You Submit",
+        "warningItems": [
+          "Make sure all information is accurate and up-to-date",
+          "Google will send a verification postcard to the address provided",
+          "Verification typically takes 5-14 business days",
+          "You'll be notified when the postcard arrives"
+        ],
+        "backButton": "Back",
+        "submitButton": "Submit to Google"
+      }
+    },
+    "pending": {
+      "title": "Locations Awaiting Verification",
+      "subtitle": "Enter the verification code when you receive it from Google",
+      "empty": {
+        "title": "No Pending Verifications",
+        "message": "Create a new location to start the verification process"
+      },
+      "verificationVia": "Verification via {{method}}",
+      "estimatedTime": "Est. Time: {{time}}",
+      "expected": "Expected: {{date}}",
+      "enterCode": "Enter Verification Code",
+      "codePlaceholder": "Enter 5-6 digit code",
+      "verifyButton": "Verify Location",
+      "cancelButton": "Cancel",
+      "enterCodeButton": "Enter Verification Code",
+      "resendButton": "Resend",
+      "helpText": "Haven't received your code? It can take up to {{time}} to arrive.",
+      "infoTitle": "Verification Process",
+      "infoItems": [
+        "Postcard: Check your mailbox daily. The code expires after 30 days.",
+        "Phone: Answer the call and note down the 6-digit code.",
+        "Email: Check your inbox and spam folder.",
+        "If you don't receive the code within the expected time, you can request a new verification."
+      ]
+    },
+    "verified": {
+      "title": "Successfully Verified Locations",
+      "subtitle": "These locations are now live on Google Business Profile",
+      "empty": {
+        "title": "No Verified Locations Yet",
+        "message": "Complete the verification process to see your locations here"
+      },
+      "verified": "Verified",
+      "verifiedOn": "Verified {{date}}",
+      "successTitle": "Location Successfully Verified",
+      "successText": "Verified via {{method}} on {{date}}",
+      "viewOnGoogle": "View on Google",
+      "editDetails": "Edit Details",
+      "viewAnalytics": "View Analytics",
+      "manageReviews": "Manage Reviews",
+      "created": "Created {{date}}",
+      "congratsTitle": "Congratulations!",
+      "congratsText": "Your verified locations are now live on Google Maps and Search. Customers can find you, see your business hours, leave reviews, and get directions. Monitor your performance in the Analytics section."
+    },
+    "issues": {
+      "title": "Locations With Issues",
+      "subtitle": "These locations need your attention to complete verification",
+      "empty": {
+        "title": "No Issues Found",
+        "message": "All your locations are proceeding smoothly"
+      },
+      "rejected": "Rejected",
+      "rejectedDate": "Rejected {{date}}",
+      "verificationFailed": "Verification Failed",
+      "commonReasons": "Common reasons:",
+      "reasons": [
+        "Address doesn't match official records",
+        "Business name is inconsistent",
+        "Phone number is invalid or unreachable",
+        "Location already claimed by another user",
+        "Business category is incorrect"
+      ],
+      "suggestedActions": "Suggested Actions",
+      "actions": [
+        "Verify your address matches official records (government registration, utility bills)",
+        "Ensure business name is exactly as registered",
+        "Check if the location is already claimed on Google Maps",
+        "Contact Google Business Profile support for manual review"
+      ],
+      "retryButton": "Edit & Retry Verification",
+      "contactSupport": "Contact Support",
+      "viewGuidelines": "View Guidelines",
+      "troubleshooting": "Troubleshooting Guide",
+      "originallyCreated": "Originally created {{date}}",
+      "helpTitle": "Need Help?",
+      "helpText": "If you're having trouble resolving these issues, our support team can help you through the process.",
+      "chatSupport": "Chat with Support",
+      "emailSupport": "Email Support",
+      "helpCenter": "Help Center"
+    },
+    "verificationMethods": {
+      "postcard": {
+        "name": "Postcard",
+        "description": "Google will mail a postcard with a 5-digit code to your business address",
+        "time": "5-14 days"
+      },
+      "phone": {
+        "name": "Phone Call",
+        "description": "Get an automated phone call with a verification code",
+        "time": "Immediate"
+      },
+      "email": {
+        "name": "Email",
+        "description": "Receive verification code via email",
+        "time": "Few minutes"
+      },
+      "instant": {
+        "name": "Instant Verification",
+        "description": "Verify instantly if you have access to existing listing",
+        "time": "Immediate"
+      }
+    }
   }
 }
