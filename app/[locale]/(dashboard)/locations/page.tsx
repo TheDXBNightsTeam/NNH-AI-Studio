@@ -5,10 +5,10 @@ import { useTranslations } from 'next-intl';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { LocationsMapTab } from '@/components/locations/locations-map-tab-new';
 import { LocationsStatsCardsAPI } from '@/components/locations/locations-stats-cards-api';
+import { LocationsListView } from '@/components/locations/locations-list-view';
 import { Button } from '@/components/ui/button';
 import { MapPin, List, RefreshCw, Download, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Card, CardContent } from '@/components/ui/card';
 import { LocationFormDialog } from '@/components/locations/location-form-dialog';
 import { GMBConnectionBanner } from '@/components/locations/gmb-connection-banner';
 
@@ -322,17 +322,7 @@ export default function LocationsPage() {
         {viewMode === 'map' ? (
           <LocationsMapTab />
         ) : (
-          <Card>
-            <CardContent className="p-12">
-              <div className="text-center">
-                <List className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <h3 className="text-lg font-semibold mb-2">List View</h3>
-                <p className="text-sm text-muted-foreground">
-                  Coming Soon - List view will be available in the next update
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <LocationsListView />
         )}
 
         {/* Add Location Dialog */}
