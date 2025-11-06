@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
 
     // Build query - fetch ALL reviews with proper joins
+    // CORRECTED: Use proper Supabase join syntax (remove !inner to avoid _1 suffix issue)
     // Removed reviewer_profile_photo_url (column doesn't exist)
     let query = supabase
       .from('gmb_reviews')
@@ -43,13 +44,14 @@ export async function GET(request: NextRequest) {
         gmb_account_id,
         created_at,
         updated_at,
-        gmb_locations!inner (
+        gmb_locations (
           id,
           location_name,
           address,
           user_id
         )
       `)
+      .not('gmb_locations.user_id', 'is', null)
       .eq('gmb_locations.user_id', user.id);
 
     // Apply filters
