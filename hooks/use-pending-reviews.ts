@@ -45,7 +45,13 @@ export function usePendingReviews(): UsePendingReviewsResult {
 
       const result = await response.json();
       setReviews(result.reviews || []);
-      setStats(result.stats || { pending: 0, responseRate: 0, avgTime: 0 });
+      // Calculate stats from reviews since API doesn't return stats
+      const pendingCount = result.reviews?.length || 0;
+      setStats({
+        pending: pendingCount,
+        responseRate: 0, // Will be calculated elsewhere if needed
+        avgTime: 30 // Mock value
+      });
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error');
       setError(error);

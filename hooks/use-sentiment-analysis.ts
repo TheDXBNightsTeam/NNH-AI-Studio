@@ -33,7 +33,13 @@ export function useSentimentAnalysis(): UseSentimentAnalysisResult {
       }
 
       const result = await response.json();
-      setData(result);
+      // Transform API response to match expected format
+      setData({
+        positive: result.sentimentData?.positive || 0,
+        neutral: result.sentimentData?.neutral || 0,
+        negative: result.sentimentData?.negative || 0,
+        topics: result.hotTopics || []
+      });
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error');
       setError(error);
