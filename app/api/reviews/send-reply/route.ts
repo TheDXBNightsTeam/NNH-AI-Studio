@@ -50,53 +50,89 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get review details with location and account info
+    console.log('Looking for review:', review_id);
+
+    // Get review details - use simpler query to avoid join issues
     const { data: review, error: reviewError } = await supabase
       .from('gmb_reviews')
       .select(`
         *,
-        gmb_locations!inner (
+        gmb_locations (
           id,
           location_name,
-          name,
           gmb_account_id,
-          user_id,
-          gmb_accounts!inner (
-            id,
-            account_id,
-            access_token,
-            refresh_token,
-            token_expires_at,
-            is_active
-          )
+          user_id
         )
       `)
       .eq('id', review_id)
       .single();
 
-    if (reviewError || !review) {
+    if (reviewError) {
+      console.error('Review query error:', reviewError);
+      console.error('Full error:', JSON.stringify(reviewError, null, 2));
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Review not found',
+          details: reviewError.message 
+        },
+        { status: 404 }
+      );
+    }
+
+    if (!review) {
+      console.error('Review not found for ID:', review_id);
       return NextResponse.json(
         { success: false, error: 'Review not found' },
         { status: 404 }
       );
     }
 
+    console.log('Review found:', review.id);
+
+    // Handle gmb_locations - it can be an array or single object
+    let location = null;
+    if (Array.isArray(review.gmb_locations)) {
+      location = review.gmb_locations[0];
+    } else if (review.gmb_locations) {
+      location = review.gmb_locations;
+    }
+
     // Verify ownership
-    if (review.gmb_locations?.user_id !== user.id) {
+    if (!location || location.user_id !== user.id) {
+      console.error('Unauthorized: location user_id:', location?.user_id, 'vs user.id:', user.id);
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 403 }
       );
     }
 
-    // Get GMB account
-    const account = (review.gmb_locations as any)?.gmb_accounts;
-    if (!account || !account.is_active) {
+    console.log('Location found:', location.id, 'Account ID:', location.gmb_account_id);
+
+    // Get GMB account separately to avoid nested join issues
+    const { data: account, error: accountError } = await supabase
+      .from('gmb_accounts')
+      .select('id, account_id, access_token, refresh_token, token_expires_at, is_active')
+      .eq('id', location.gmb_account_id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (accountError || !account) {
+      console.error('Account query error:', accountError);
       return NextResponse.json(
         { success: false, error: 'GMB account not found or inactive' },
         { status: 404 }
       );
     }
+
+    if (!account.is_active) {
+      return NextResponse.json(
+        { success: false, error: 'GMB account is not active' },
+        { status: 403 }
+      );
+    }
+
+    console.log('Account found:', account.id);
 
     // Get and refresh access token if needed
     let accessToken = account.access_token as string | null;
