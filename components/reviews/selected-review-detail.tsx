@@ -25,21 +25,17 @@ export function SelectedReviewDetail({ review }: SelectedReviewDetailProps) {
       // Get the actual review text from 'comment' field (or review_text as fallback)
       const actualReviewText = (review as any).comment || review.review_text || '';
       
-      if (!actualReviewText) {
-        setError('This review has no text to respond to.');
-        setIsGenerating(false);
-        return;
-      }
-
+      // Don't block if no text - ratings-only reviews are valid!
+      // Generate response based on rating if no text is available
       const requestData = {
         review_id: review.id,
-        review_text: actualReviewText,
+        review_text: actualReviewText || `${review.rating}-star rating with no comment`,
         rating: review.rating || 3,
         reviewer_name: review.reviewer_name || 'Valued Customer',
         location_name: review.location_name || 'our business'
       };
 
-      console.log('Generating response with data:', requestData); // Debug log
+      console.log('Generating response with data:', requestData);
 
       const res = await fetch('/api/ai/generate-response', {
         method: 'POST',
