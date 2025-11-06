@@ -29,6 +29,12 @@ export function MapView({
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
 
+  // Create stable key based on locations content to avoid infinite loops
+  const locationsKey = useMemo(() => 
+    locations.map(l => `${l.id}-${l.coordinates?.lat}-${l.coordinates?.lng}`).join('|'),
+    [locations.length, locations.map(l => `${l.id}-${l.coordinates?.lat}-${l.coordinates?.lng}`).join('|')]
+  );
+
   const locationsWithCoords = useMemo(() => {
     return locations.filter(loc => 
       loc.coordinates?.lat &&
@@ -36,21 +42,7 @@ export function MapView({
       !isNaN(loc.coordinates.lat) &&
       !isNaN(loc.coordinates.lng)
     );
-  }, [locations]);
-
-  // Create stable string key from locations array to avoid infinite loops
-  // Calculate locations string representation first, then use it as dependency
-  const locationsString = useMemo(() => 
-    locations.map(l => `${l.id}:${l.coordinates?.lat},${l.coordinates?.lng}`).join('|'),
-    [locations]
-  );
-  
-  const locationsKeyString = useMemo(() => {
-    return locations
-      .filter(loc => loc.coordinates?.lat && loc.coordinates?.lng)
-      .map(l => `${l.id}:${l.coordinates?.lat},${l.coordinates?.lng}`)
-      .join('|');
-  }, [locationsString]);
+  }, [locationsKey]);
 
   const calculatedCenter = useMemo(() => {
     if (center) return center;
@@ -68,7 +60,7 @@ export function MapView({
     const avgLng = locationsWithCoords.reduce((sum, loc) => 
       sum + loc.coordinates!.lng, 0) / locationsWithCoords.length;
     return { lat: avgLat, lng: avgLng };
-  }, [center?.lat, center?.lng, locationsKeyString, locationsWithCoords.length]);
+  }, [center?.lat, center?.lng, locationsKey, locationsWithCoords.length]);
 
   // ✅ Fix: Add strong guards before using mapRef or google.maps.*
   useEffect(() => {
@@ -89,7 +81,7 @@ export function MapView({
         console.warn('FitBounds failed:', err);
       }
     }
-  }, [mapsLoaded, locationsKeyString, locationsWithCoords.length]);
+  }, [mapsLoaded, locationsKey, locationsWithCoords.length]);
 
   useEffect(() => {
     if (!mapsLoaded || !mapRef.current || !selectedLocationId) return;
