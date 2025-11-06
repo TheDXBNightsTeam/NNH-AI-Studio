@@ -34,16 +34,9 @@ const templates = [
     { id: 't3', label: 'Feature Highlight', preview: 'Glad you enjoyed our service! Did you know we also offer...' },
 ];
 
-const mockReviews: Review[] = [
-    { id: 'r1', review_date: new Date(Date.now() - 86400000 * 2).toISOString(), reviewer_name: 'Ahmed K.', rating: 5, review_text: 'Amazing staff and quick service! Will definitely be coming back.', review_reply: null, location_name: 'Downtown Branch', location_id: 'l1', platform: 'google' },
-    { id: 'r2', review_date: new Date(Date.now() - 86400000 * 5).toISOString(), reviewer_name: 'Fatima A.', rating: 2, review_text: 'The coffee was cold and the wait time was too long. Disappointed with the experience.', review_reply: null, location_name: 'Al Quoz Workshop', location_id: 'l2', platform: 'google' },
-    { id: 'r3', review_date: new Date(Date.now() - 86400000 * 1).toISOString(), reviewer_name: 'Omar M.', rating: 4, review_text: 'Great product, but the pricing is a bit high compared to competitors.', review_reply: null, location_name: 'Downtown Branch', location_id: 'l1', platform: 'google' },
-    { id: 'r4', review_date: new Date(Date.now() - 86400000 * 3).toISOString(), reviewer_name: 'Sarah L.', rating: 5, review_text: 'Excellent experience from start to finish. The team was professional and friendly.', review_reply: null, location_name: 'Mall Branch', location_id: 'l3', platform: 'google' },
-    { id: 'r5', review_date: new Date(Date.now() - 86400000 * 7).toISOString(), reviewer_name: 'Mohammed R.', rating: 3, review_text: 'Average service, nothing special. Could be improved.', review_reply: null, location_name: 'Downtown Branch', location_id: 'l1', platform: 'google' },
-];
-
 export function ReviewResponseCockpit() {
-    const [reviews, setReviews] = useState<Review[]>(mockReviews);
+    const [reviews, setReviews] = useState<Review[]>([]);
+    const [loading, setLoading] = useState(true);
     const [selectedReview, setSelectedReview] = useState<Review | null>(null);
     const [replyContent, setReplyContent] = useState<string>('');
     const [tone, setTone] = useState<string>('friendly');
@@ -52,6 +45,39 @@ export function ReviewResponseCockpit() {
     const [copied, setCopied] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
     const [retryCount, setRetryCount] = useState(0);
+
+    // Fetch pending reviews from API
+    useEffect(() => {
+        const fetchReviews = async () => {
+            try {
+                setLoading(true);
+                const response = await fetch('/api/reviews/pending');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch reviews');
+                }
+                const result = await response.json();
+                // Transform API response to match Review interface
+                const transformedReviews: Review[] = (result.reviews || []).map((r: any) => ({
+                    id: r.id,
+                    review_date: r.create_time || r.review_date || r.created_at,
+                    reviewer_name: r.reviewer_name || 'Anonymous',
+                    rating: r.star_rating || r.rating || 0,
+                    review_text: r.comment_text || r.review_text || r.comment || '',
+                    review_reply: r.reply_text || r.review_reply || null,
+                    location_name: r.gmb_locations?.name || r.location_name || 'Unknown Location',
+                    location_id: r.location_id,
+                    platform: 'google' as const
+                }));
+                setReviews(transformedReviews);
+            } catch (error) {
+                console.error('Error fetching reviews:', error);
+                setReviews([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchReviews();
+    }, []);
 
     const getSentimentColor = (rating: number) => {
         if (rating >= 4) return 'from-success/20 to-success/10 border-success/50';
@@ -200,11 +226,11 @@ export function ReviewResponseCockpit() {
                             <div className="text-xs text-gray-400">Pending</div>
                         </div>
                         <div className="text-center">
-                            <div className="text-2xl font-bold text-success">85%</div>
+                            <div className="text-2xl font-bold text-success">-</div>
                             <div className="text-xs text-gray-400">Response Rate</div>
                         </div>
                         <div className="text-center">
-                            <div className="text-2xl font-bold text-info">~30s</div>
+                            <div className="text-2xl font-bold text-info">-</div>
                             <div className="text-xs text-gray-400">Avg. Time</div>
                         </div>
                     </div>
@@ -224,7 +250,12 @@ export function ReviewResponseCockpit() {
                     </div>
                     
                     <div className="flex-1 space-y-3 overflow-y-auto pr-2 min-h-0">
-                        {reviews.length === 0 ? (
+                        {loading ? (
+                            <Card className="p-8 text-center border-dashed border-gray-700">
+                                <Loader2 className="w-12 h-12 mx-auto mb-3 text-gray-600 animate-spin" />
+                                <p className="text-gray-400">Loading reviews...</p>
+                            </Card>
+                        ) : reviews.length === 0 ? (
                             <Card className="p-8 text-center border-dashed border-gray-700">
                                 <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-600" />
                                 <p className="text-gray-400">No pending reviews</p>
