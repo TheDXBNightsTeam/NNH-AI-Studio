@@ -6,53 +6,58 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { generateWeeklyTasks, getWeeklyTasks, toggleTask as toggleTaskAction } from '@/server/actions/weekly-tasks';
+import { useRouter } from 'next/navigation';
 
 export interface Task {
   id: string;
   title: string;
-  completed: boolean;
-  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  description?: string | null;
+  status: 'pending' | 'in_progress' | 'completed' | 'dismissed';
+  priority: 'low' | 'medium' | 'high';
+  category?: string | null;
+  estimated_minutes?: number | null;
+  reasoning?: string | null;
+  expected_impact?: string | null;
 }
 
-const STORAGE_KEY = 'dashboard-weekly-tasks';
-
-function loadTasksFromStorage(): Task[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as Task[];
-  } catch {
-    return [];
-  }
+interface WeeklyTasksListProps {
+  locationId?: string;
+  initialTasks?: Task[];
 }
 
-function saveTasksToStorage(tasks: Task[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-  } catch {
-    // ignore
-  }
-}
-
-export function WeeklyTasksList() {
-  const [tasks, setTasks] = useState<Task[]>([]);
+export function WeeklyTasksList({ locationId, initialTasks = [] }: WeeklyTasksListProps) {
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    setTasks(loadTasksFromStorage());
-  }, []);
+    loadTasks();
+  }, [locationId]);
 
-  useEffect(() => {
-    saveTasksToStorage(tasks);
-  }, [tasks]);
+  const loadTasks = async () => {
+    setIsLoading(true);
+    try {
+      const result = await getWeeklyTasks(locationId);
+      if (result.success) {
+        setTasks(result.data);
+      } else {
+        console.error('Failed to load tasks:', result.error);
+      }
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const completion = useMemo(() => {
     const total = tasks.length;
-    const done = tasks.filter((t) => t.completed).length;
+    const done = tasks.filter((t) => t.status === 'completed').length;
     return {
       done,
       total,
@@ -60,32 +65,81 @@ export function WeeklyTasksList() {
     };
   }, [tasks]);
 
-  const generateMockTasks = async () => {
+  const handleGenerateTasks = async () => {
+    if (tasks.length > 0) {
+      toast.info('Tasks already exist for this week', {
+        description: 'New tasks will be generated next week',
+      });
+      return;
+    }
+
     setIsGenerating(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    const candidates: Omit<Task, 'id'>[] = [
-      { title: 'Reply to 5 pending reviews', completed: false, priority: 'HIGH' },
-      { title: 'Answer 2 customer questions', completed: false, priority: 'HIGH' },
-      { title: 'Upload 3 new photos', completed: false, priority: 'MEDIUM' },
-      { title: 'Create a special offer post', completed: false, priority: 'MEDIUM' },
-      { title: 'Update business hours', completed: false, priority: 'LOW' },
-    ];
-    // Pick 3-5 tasks randomly
-    const shuffled = [...candidates].sort(() => Math.random() - 0.5);
-    const count = Math.floor(Math.random() * 3) + 3;
-    const generated: Task[] = shuffled.slice(0, count).map((t, idx) => ({
-      id: `task-${Date.now()}-${idx}`,
-      ...t,
-    }));
-    setTasks(generated);
-    toast.success('Weekly tasks generated!');
-    setIsGenerating(false);
+
+    try {
+      const result = await generateWeeklyTasks(locationId);
+
+      if (result.success) {
+        toast.success('Weekly tasks generated!', {
+          description: `${result.data.length} tasks created based on your business data`,
+        });
+        setTasks(result.data);
+        router.refresh();
+      } else {
+        if (result.error?.includes('already exist')) {
+          toast.info('Tasks already generated', {
+            description: 'Your weekly tasks are ready',
+          });
+          loadTasks();
+        } else {
+          toast.error('Failed to generate tasks', {
+            description: result.error || 'Please try again',
+          });
+        }
+      }
+    } catch (error: any) {
+      console.error('Error generating tasks:', error);
+      toast.error('An unexpected error occurred', {
+        description: 'Please try again later',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  const toggleTask = (id: string) => {
+  const toggleTask = async (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+
+    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+
+    // Optimistic update
     setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)),
+      prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
     );
+
+    try {
+      const result = await toggleTaskAction(id, newStatus === 'completed');
+
+      if (result.success) {
+        toast.success(newStatus === 'completed' ? 'Task completed! 🎉' : 'Task marked as incomplete');
+        router.refresh();
+      } else {
+        // Revert optimistic update
+        setTasks((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, status: task.status } : t))
+        );
+        toast.error('Failed to update task', {
+          description: result.error || 'Please try again',
+        });
+      }
+    } catch (error: any) {
+      // Revert optimistic update
+      setTasks((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, status: task.status } : t))
+      );
+      console.error('Error toggling task:', error);
+      toast.error('An unexpected error occurred');
+    }
   };
 
   return (
@@ -98,14 +152,14 @@ export function WeeklyTasksList() {
           </span>
         </div>
         <Button
-          onClick={generateMockTasks}
-          disabled={isGenerating}
+          onClick={handleGenerateTasks}
+          disabled={isGenerating || isLoading}
           className="bg-orange-600 hover:bg-orange-700 text-white"
         >
-          {isGenerating ? (
+          {isGenerating || isLoading ? (
             <>
               <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              Generating...
+              {isGenerating ? 'Generating...' : 'Loading...'}
             </>
           ) : (
             <>
@@ -118,59 +172,71 @@ export function WeeklyTasksList() {
 
       <Progress value={completion.percent} className="h-2 bg-zinc-800" />
 
-      {tasks.length === 0 ? (
+      {isLoading ? (
+        <div className="text-sm text-zinc-500 py-8 text-center flex flex-col items-center gap-2">
+          <RefreshCw className="w-5 h-5 animate-spin" />
+          <p>Loading tasks...</p>
+        </div>
+      ) : tasks.length === 0 ? (
         <div className="text-sm text-zinc-500 py-8 text-center">
-          No tasks yet. Click “Generate Weekly Tasks” to get started.
+          <p className="mb-1">No tasks yet. Click "Generate Weekly Tasks" to get started.</p>
+          <p className="text-xs text-zinc-600">We'll analyze your business data to create personalized tasks.</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {tasks.map((task) => (
-            <Card
-              key={task.id}
-              className={cn(
-                'bg-zinc-800/50 border-zinc-700/50 p-3',
-                'transition-all',
-              )}
-            >
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  checked={task.completed}
-                  onCheckedChange={() => {
-                    const becomingComplete = !task.completed;
-                    toggleTask(task.id);
-                    if (becomingComplete) {
-                      toast.success('Task completed!');
-                    }
-                  }}
-                  className="mt-1"
-                />
-                <div className="flex-1 min-w-0">
-                  <div
-                    className={cn(
-                      'text-sm text-zinc-200',
-                      task.completed && 'line-through text-zinc-400 transition-all',
-                    )}
-                  >
-                    {task.title}
-                  </div>
-                  <div className="mt-1">
-                    <Badge
+          {tasks.map((task) => {
+            const isCompleted = task.status === 'completed';
+            const priorityUpper = task.priority.toUpperCase();
+            
+            return (
+              <Card
+                key={task.id}
+                className={cn(
+                  'bg-zinc-800/50 border-zinc-700/50 p-3',
+                  'transition-all',
+                  isCompleted && 'opacity-60',
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    checked={isCompleted}
+                    onCheckedChange={() => toggleTask(task.id)}
+                    className="border-zinc-600 data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600 mt-0.5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p
                       className={cn(
-                        'text-xs',
-                        task.priority === 'HIGH'
-                          ? 'bg-red-500/20 text-red-400 border-red-500/30'
-                          : task.priority === 'MEDIUM'
-                          ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                          : 'bg-green-500/20 text-green-400 border-green-500/30',
+                        'text-sm text-zinc-200',
+                        isCompleted && 'line-through text-zinc-500',
                       )}
                     >
-                      {task.priority}
-                    </Badge>
+                      {task.title}
+                    </p>
+                    {task.description && !isCompleted && (
+                      <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{task.description}</p>
+                    )}
+                    {task.estimated_minutes && !isCompleted && (
+                      <p className="text-xs text-zinc-500 mt-1">
+                        ⏱️ ~{task.estimated_minutes} min
+                      </p>
+                    )}
                   </div>
+                  <Badge
+                    className={cn(
+                      'text-xs flex-shrink-0',
+                      priorityUpper === 'HIGH'
+                        ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                        : priorityUpper === 'MEDIUM'
+                          ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                          : 'bg-green-500/20 text-green-400 border-green-500/30',
+                    )}
+                  >
+                    {priorityUpper}
+                  </Badge>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
