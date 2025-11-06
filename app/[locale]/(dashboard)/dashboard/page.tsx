@@ -269,10 +269,16 @@ export default async function DashboardPage() {
   }
   
   // Weekly tasks (static for now, can be made dynamic later)
-  const weeklyTasks = [
-    { id: 1, title: "Complete GMB Profile", emoji: "✅", priority: "MEDIUM" as const, duration: "10 min" },
-    { id: 2, title: "Upload 5 New Photos", emoji: "📸", priority: "MEDIUM" as const, duration: "20 min" },
-    { id: 3, title: "Create a GMB Post", emoji: "📝", priority: "LOW" as const, duration: "15 min" },
+  const weeklyTasks: Array<{
+    id: number;
+    title: string;
+    emoji: string;
+    priority: "HIGH" | "MEDIUM" | "LOW";
+    duration: string;
+  }> = [
+    { id: 1, title: "Complete GMB Profile", emoji: "✅", priority: "MEDIUM", duration: "10 min" },
+    { id: 2, title: "Upload 5 New Photos", emoji: "📸", priority: "MEDIUM", duration: "20 min" },
+    { id: 3, title: "Create a GMB Post", emoji: "📝", priority: "LOW", duration: "15 min" },
   ];
   
   // Achievements with real data
