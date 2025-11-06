@@ -259,6 +259,28 @@ export function useLocations(
             }
           )
           .on('system', { event: 'error' }, (error) => {
+            // Check if this is actually an error or just a status message
+            const errorStatus = error?.status || '';
+            const errorMessage = error?.message || '';
+            const errorString = JSON.stringify(error);
+            
+            // Ignore success messages that are logged as errors
+            if (errorStatus === 'ok' || 
+                errorMessage.includes('Subscribed to PostgreSQL') ||
+                errorString.includes('Subscribed to PostgreSQL')) {
+              // This is actually a success message, not an error
+              return;
+            }
+            
+            // Check if it's a Realtime configuration error
+            if (errorMessage.includes('Realtime is enabled') || 
+                errorMessage.includes('Unable to subscribe') ||
+                errorString.includes('Realtime is enabled')) {
+              console.warn('⚠️ Realtime may not be enabled for gmb_locations table. Continuing without real-time updates.');
+              return; // Don't log as error
+            }
+            
+            // Only log actual errors that are not configuration issues
             console.error('Realtime subscription error:', error);
           })
           .subscribe((status, err) => {
@@ -266,6 +288,19 @@ export function useLocations(
               console.log('✅ Locations realtime subscribed');
             } else if (status === 'CHANNEL_ERROR') {
               console.error('❌ Locations realtime subscription error:', err);
+              
+              // Log detailed error for debugging
+              if (err) {
+                const errorMessage = err?.message || JSON.stringify(err);
+                if (errorMessage.includes('Realtime is enabled') || 
+                    errorMessage.includes('Unable to subscribe')) {
+                  console.warn('⚠️ Realtime subscription failed - Realtime may not be enabled for gmb_locations table in Supabase. The app will continue to work, but without real-time updates.');
+                }
+              }
+            } else if (status === 'TIMED_OUT') {
+              console.warn('⏱️ Locations realtime subscription timed out');
+            } else if (status === 'CLOSED') {
+              console.log('🔌 Locations realtime subscription closed');
             }
           });
 

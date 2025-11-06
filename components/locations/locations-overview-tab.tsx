@@ -31,40 +31,141 @@ export function LocationsOverviewTab() {
 
   const { locations, loading, error, total, refetch, hasMore, loadMore } = useLocations(filters);
 
+  const [gmbAccountId, setGmbAccountId] = useState<string | null>(null);
+
   // Check GMB account on mount
   React.useEffect(() => {
     const checkGMBAccount = async () => {
       try {
         const res = await fetch('/api/gmb/accounts');
         const data = await res.json();
-        setHasGmbAccount(data && data.length > 0);
+        if (data && data.length > 0) {
+          setHasGmbAccount(true);
+          // Get the first active account ID
+          const activeAccount = data.find((acc: any) => acc.is_active) || data[0];
+          if (activeAccount?.id) {
+            setGmbAccountId(activeAccount.id);
+          }
+        } else {
+          setHasGmbAccount(false);
+          setGmbAccountId(null);
+        }
       } catch (error) {
         console.error('Failed to check GMB account:', error);
         setHasGmbAccount(false);
+        setGmbAccountId(null);
       }
     };
     checkGMBAccount();
   }, []);
 
   const handleSync = async () => {
+    // Check if account ID is available
+    if (!gmbAccountId) {
+      console.warn('Sync attempted but gmbAccountId is null/undefined');
+      toast.error('No GMB account found. Please connect a GMB account first.');
+      return;
+    }
+
+    // Prevent multiple concurrent syncs
+    if (syncing) {
+      toast.info('Sync already in progress');
+      return;
+    }
+
+    console.log('Starting sync for account:', gmbAccountId);
+
     try {
       setSyncing(true);
-      const response = await fetch('/api/gmb/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sync_type: 'full' }),
-      });
+      
+      // Sync can take a while (locations, reviews, media, metrics, etc.)
+      // Increase timeout to 3 minutes (180 seconds) for full sync
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes timeout
+      
+      // Show info message that sync is starting (takes time)
+      toast.info('Sync started. This may take a few minutes...', { duration: 3000 });
+      
+      try {
+        const requestBody = { 
+          accountId: gmbAccountId,
+          syncType: 'full' 
+        };
+        
+        console.log('Sync request body:', requestBody);
+        
+        const response = await fetch('/api/gmb/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Sync failed');
+        clearTimeout(timeoutId);
+
+        // Handle specific HTTP error codes
+        if (response.status === 401) {
+          toast.error('Session expired. Please sign in again.');
+          return;
+        }
+        
+        if (response.status === 400) {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage = errorData.message || errorData.error || 'Bad request';
+          console.error('Sync API error (400):', {
+            errorData,
+            requestBody,
+            accountId: gmbAccountId
+          });
+          toast.error(`Sync failed: ${errorMessage}`);
+          return;
+        }
+        
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          toast.error(`Rate limit exceeded. Try again in ${retryAfter || 60} seconds.`);
+          return;
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || errorData.error || `Sync failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        const tookSeconds = Math.round((data.took_ms || 0) / 1000);
+        toast.success(`Locations synced successfully! (took ${tookSeconds}s)`);
+        await refetch();
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        // Handle AbortError specifically (timeout or manual cancellation)
+        if (fetchError.name === 'AbortError') {
+          // Don't show console.warn - it's expected for long-running operations
+          // Only show user-friendly message
+          toast.error('Sync timed out. The operation may still be processing. Please wait a moment and refresh the page.');
+          return;
+        }
+        
+        // Re-throw other errors to be handled by outer catch
+        throw fetchError;
       }
-
-      toast.success('Locations synced successfully!');
-      await refetch();
     } catch (error) {
       console.error('Sync error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to sync locations');
+      
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          // Already handled in inner catch
+          return;
+        } else if (error.message.includes('fetch') || error.message.includes('network')) {
+          toast.error('Network error. Please check your internet connection.');
+        } else {
+          toast.error(error.message || 'Failed to sync locations');
+        }
+      } else {
+        toast.error('An unexpected error occurred during sync');
+      }
     } finally {
       setSyncing(false);
     }
