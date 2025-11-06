@@ -53,7 +53,8 @@ export async function GET(request: NextRequest) {
     // Add location_name to each review and filter by search if provided
     let reviewsWithLocation = (reviews || []).map(r => ({
       ...r,
-      location_name: r.gmb_locations?.location_name
+      location_name: r.gmb_locations?.location_name || 'Unknown Location',
+      reviewer_name: r.reviewer_name || 'Anonymous'
     }));
 
     // Client-side search filter (since Supabase text search might be complex)

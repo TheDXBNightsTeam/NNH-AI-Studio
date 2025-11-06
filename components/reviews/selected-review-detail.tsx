@@ -13,21 +13,29 @@ export function SelectedReviewDetail({ review }: SelectedReviewDetailProps) {
   const [generatedResponse, setGeneratedResponse] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  // Debug log to see review data structure
+  console.log('Selected review data:', review);
+
   const handleGenerate = async () => {
     setIsGenerating(true);
     setError(null); // Clear previous errors
     
     try {
+      // Validate and prepare data with fallbacks
+      const requestData = {
+        review_id: review.id,
+        review_text: review.review_text || review.comment || 'No review text provided',
+        rating: review.rating || 3,
+        reviewer_name: review.reviewer_name || review.reviewer?.displayName || 'Valued Customer',
+        location_name: review.location_name || review.gmb_locations?.name || 'our business'
+      };
+
+      console.log('Generating response with data:', requestData); // Debug log
+
       const res = await fetch('/api/ai/generate-response', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          review_id: review.id,
-          review_text: review.review_text || '',
-          rating: review.rating,
-          reviewer_name: review.reviewer_name || 'Valued Customer',
-          location_name: review.location_name || 'our location'
-        })
+        body: JSON.stringify(requestData)
       });
       
       const data = await res.json();
