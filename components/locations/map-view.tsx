@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useRef, useEffect, useMemo } from 'react';
+import React, { useCallback, useRef, useEffect } from 'react';
 import { GoogleMap, Marker } from '@react-google-maps/api';
 import { Location } from '@/components/locations/location-types';
 import { getMarkerIcon, MAP_CONTAINER_STYLE, DEFAULT_MAP_OPTIONS } from '@/utils/map-styles';
@@ -13,6 +13,17 @@ interface MapViewProps {
   center?: { lat: number; lng: number };
   zoom?: number;
   className?: string;
+}
+
+/**
+ * Custom hook to track previous value
+ */
+function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T>();
+  useEffect(() => {
+    ref.current = value;
+  }, [value]);
+  return ref.current;
 }
 
 export function MapView({
@@ -28,33 +39,21 @@ export function MapView({
   const mapRef = useRef<google.maps.Map | null>(null);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
-
-  // Create stable key based on locations content to avoid infinite loops
-  // Use ref to track previous value and only update when content actually changes
-  const prevLocationsRef = useRef<string>('');
-  const locationsKeyRef = useRef<string>('');
   
-  // Calculate current key
-  const currentKey = locations.map(l => `${l.id}-${l.coordinates?.lat}-${l.coordinates?.lng}`).join('|');
-  
-  // Update ref only if content actually changed
-  if (currentKey !== prevLocationsRef.current) {
-    prevLocationsRef.current = currentKey;
-    locationsKeyRef.current = currentKey;
-  }
-  
-  const locationsKey = locationsKeyRef.current;
+  // Track location count to detect changes
+  const locationCount = locations.length;
+  const prevLocationCount = usePrevious(locationCount);
 
-  const locationsWithCoords = useMemo(() => {
-    return locations.filter(loc => 
-      loc.coordinates?.lat &&
-      loc.coordinates?.lng &&
-      !isNaN(loc.coordinates.lat) &&
-      !isNaN(loc.coordinates.lng)
-    );
-  }, [locationsKey]);
+  // Filter locations with coordinates - calculate directly, no useMemo
+  const locationsWithCoords = locations.filter(loc => 
+    loc.coordinates?.lat &&
+    loc.coordinates?.lng &&
+    !isNaN(loc.coordinates.lat) &&
+    !isNaN(loc.coordinates.lng)
+  );
 
-  const calculatedCenter = useMemo(() => {
+  // Calculate center - simple calculation, no useMemo
+  const calculatedCenter = (() => {
     if (center) return center;
     if (locationsWithCoords.length === 0) {
       return { lat: 25.2048, lng: 55.2708 }; // Default: Dubai
@@ -70,9 +69,9 @@ export function MapView({
     const avgLng = locationsWithCoords.reduce((sum, loc) => 
       sum + loc.coordinates!.lng, 0) / locationsWithCoords.length;
     return { lat: avgLat, lng: avgLng };
-  }, [center?.lat, center?.lng, locationsKey, locationsWithCoords.length]);
+  })();
 
-  // ✅ Fix: Add strong guards before using mapRef or google.maps.*
+  // Effect 1: Fit bounds when location count changes (only when count changes)
   useEffect(() => {
     // Strong guards: check all conditions before accessing google.maps
     if (!mapsLoaded) return;
@@ -82,26 +81,30 @@ export function MapView({
     if (!google.maps) return;
     if (!google.maps.LatLngBounds) return;
     
-    if (locationsWithCoords.length > 1) {
-      try {
-        const bounds = new google.maps.LatLngBounds();
-        locationsWithCoords.forEach(loc => {
-          if (loc.coordinates) {
-            bounds.extend({
-              lat: loc.coordinates.lat,
-              lng: loc.coordinates.lng,
-            });
-          }
-        });
-        if (mapRef.current && typeof mapRef.current.fitBounds === 'function') {
-          mapRef.current.fitBounds(bounds, 50);
+    // Only fit bounds if location count changed (not on every render)
+    if (locationCount === 0) return;
+    if (locationCount === prevLocationCount) return; // Skip if same count
+    if (locationsWithCoords.length <= 1) return; // Only fit if multiple locations
+    
+    try {
+      const bounds = new google.maps.LatLngBounds();
+      locationsWithCoords.forEach(loc => {
+        if (loc.coordinates) {
+          bounds.extend({
+            lat: loc.coordinates.lat,
+            lng: loc.coordinates.lng,
+          });
         }
-      } catch (err) {
-        console.warn('FitBounds failed:', err);
+      });
+      if (mapRef.current && typeof mapRef.current.fitBounds === 'function') {
+        mapRef.current.fitBounds(bounds, 50);
       }
+    } catch (err) {
+      console.warn('FitBounds failed:', err);
     }
-  }, [mapsLoaded, locationsKey, locationsWithCoords.length]);
+  }, [mapsLoaded, locationCount, prevLocationCount]); // Only depend on count, not array
 
+  // Effect 2: Center on selected location (only when selection changes)
   useEffect(() => {
     // Strong guards: check all conditions before accessing google.maps
     if (!mapsLoaded) return;
@@ -127,8 +130,7 @@ export function MapView({
         console.warn('PanTo failed:', err);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapsLoaded, selectedLocationId]);
+  }, [mapsLoaded, selectedLocationId]); // Only depend on selection ID
 
   const onMapLoad = useCallback((map: google.maps.Map | null) => {
     if (map && typeof map === 'object') {
@@ -154,11 +156,12 @@ export function MapView({
     }
   }, []);
 
-  const mapOptions = useMemo(() => ({
+  // Map options - simple object, no useMemo needed
+  const mapOptions = {
     ...DEFAULT_MAP_OPTIONS,
     center: calculatedCenter,
     zoom: zoom,
-  }), [calculatedCenter, zoom]);
+  };
 
   if (!mapsLoaded) {
     return (
