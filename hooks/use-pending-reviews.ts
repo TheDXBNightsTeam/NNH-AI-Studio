@@ -9,6 +9,9 @@ export interface PendingReviewsStats {
   pending: number;
   responseRate: number;
   avgTime: number;
+  total?: number;
+  responded?: number;
+  needsResponse?: number;
 }
 
 export interface UsePendingReviewsResult {
@@ -45,13 +48,37 @@ export function usePendingReviews(): UsePendingReviewsResult {
 
       const result = await response.json();
       setReviews(result.reviews || []);
-      // Calculate stats from reviews since API doesn't return stats
-      const pendingCount = result.reviews?.length || 0;
-      setStats({
-        pending: pendingCount,
-        responseRate: 0, // Will be calculated elsewhere if needed
-        avgTime: 0 // Will be calculated from actual data when available
-      });
+      // Use stats from API if available, otherwise calculate
+      if (result.stats) {
+        setStats({
+          pending: result.stats.needsResponse || 0,
+          responseRate: result.stats.responseRate || 0,
+          avgTime: 0, // Will be calculated from actual data when available
+          total: result.stats.total,
+          responded: result.stats.responded,
+          needsResponse: result.stats.needsResponse
+        });
+      } else {
+        // Fallback calculation
+        const allReviews = result.reviews || [];
+        const needsResponse = allReviews.filter((r: any) => 
+          !r.has_reply && !r.has_response && !r.reply_text && !r.review_reply
+        ).length;
+        const responded = allReviews.filter((r: any) => 
+          r.has_reply || r.has_response || r.reply_text || r.review_reply
+        ).length;
+        const responseRate = allReviews.length > 0
+          ? Math.round((responded / allReviews.length) * 100 * 10) / 10
+          : 0;
+        setStats({
+          pending: needsResponse,
+          responseRate,
+          avgTime: 0,
+          total: allReviews.length,
+          responded,
+          needsResponse
+        });
+      }
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error');
       setError(error);

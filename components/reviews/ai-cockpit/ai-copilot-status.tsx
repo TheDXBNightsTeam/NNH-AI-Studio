@@ -9,6 +9,9 @@ interface AICopilotStatusProps {
     pending: number
     responseRate: number
     avgTime: number
+    total?: number
+    responded?: number
+    needsResponse?: number
   }
 }
 
@@ -49,6 +52,19 @@ export function AICopilotStatus({ status, stats }: AICopilotStatusProps) {
           <div className="text-lg font-semibold text-foreground">{stats.avgTime}h</div>
         </div>
       </div>
+      
+      {stats.total !== undefined && (
+        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-zinc-700">
+          <div className="bg-zinc-800 rounded-lg p-3 border border-zinc-700">
+            <div className="text-xs text-muted-foreground mb-1">Total</div>
+            <div className="text-lg font-semibold text-foreground">{stats.total}</div>
+          </div>
+          <div className="bg-zinc-800 rounded-lg p-3 border border-zinc-700">
+            <div className="text-xs text-muted-foreground mb-1">Responded</div>
+            <div className="text-lg font-semibold text-foreground">{stats.responded || 0}</div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
