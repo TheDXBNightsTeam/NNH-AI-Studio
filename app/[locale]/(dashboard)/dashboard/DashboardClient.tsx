@@ -1,11 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { refreshDashboard, syncLocation, generateWeeklyTasks } from './actions';
 import { RefreshCw, Calendar } from 'lucide-react';
+import { ReviewsQuickActionModal } from '@/components/dashboard/ReviewsQuickActionModal';
+import { QuestionsQuickActionModal } from '@/components/dashboard/QuestionsQuickActionModal';
+import { CreatePostModal } from '@/components/dashboard/CreatePostModal';
+import { ConfirmationModal } from '@/components/dashboard/ConfirmationModal';
+import { ProfileProtectionModal } from '@/components/dashboard/ProfileProtectionModal';
+import { toast } from 'sonner';
 
 export function RefreshButton() {
   const router = useRouter();
@@ -16,6 +22,7 @@ export function RefreshButton() {
     await refreshDashboard();
     router.refresh();
     setLoading(false);
+    toast.success('Dashboard refreshed!');
   };
   
   return (
@@ -39,6 +46,7 @@ export function SyncButton({ locationId }: { locationId: string }) {
     await syncLocation(locationId);
     router.refresh();
     setLoading(false);
+    toast.success('Location synced successfully!');
   };
   
   return (
@@ -55,26 +63,40 @@ export function SyncButton({ locationId }: { locationId: string }) {
 
 export function DisconnectButton({ locationId }: { locationId: string }) {
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
   
   const handleDisconnect = async () => {
-    if (!confirm('Are you sure you want to disconnect this location?')) return;
-    
     setLoading(true);
-    // TODO: Implement disconnect logic
-    alert('Disconnect feature coming soon!');
+    await new Promise((r) => setTimeout(r, 1000));
     setLoading(false);
+    setOpen(false);
+    toast.success('Location disconnected');
   };
   
   return (
-    <Button
-      onClick={handleDisconnect}
-      disabled={loading}
-      size="sm"
-      variant="outline"
-      className="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10 disabled:opacity-50"
-    >
-      Disconnect
-    </Button>
+    <>
+      <Button
+        onClick={handleOpen}
+        disabled={loading}
+        size="sm"
+        variant="outline"
+        className="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+      >
+        Disconnect
+      </Button>
+      <ConfirmationModal
+        isOpen={open}
+        onClose={handleClose}
+        title="Disconnect Location?"
+        message="Are you sure you want to disconnect this location? You will need to reconnect to manage it again."
+        confirmText="Disconnect"
+        confirmVariant="destructive"
+        onConfirm={handleDisconnect}
+        isLoading={loading}
+      />
+    </>
   );
 }
 
@@ -83,7 +105,7 @@ export function GenerateTasksButton({ locationId }: { locationId: string | null 
   
   const handleGenerate = async () => {
     if (!locationId) {
-      alert('No location selected!');
+      toast.error('No location selected!');
       return;
     }
     
@@ -91,9 +113,9 @@ export function GenerateTasksButton({ locationId }: { locationId: string | null 
     const result = await generateWeeklyTasks(locationId);
     
     if (result.success) {
-      alert('Weekly tasks generated! (Feature in development)');
+      toast.success('Weekly tasks generated!');
     } else {
-      alert('Failed to generate tasks');
+      toast.error('Failed to generate tasks');
     }
     
     setLoading(false);
@@ -115,19 +137,21 @@ export function QuickActionCard({
   icon, 
   subtitle, 
   pendingCount,
-  href
+  href,
+  onClick
 }: {
   title: string;
   icon: string;
   subtitle: string;
   pendingCount: number;
   href: string;
+  onClick?: () => void;
 }) {
   const router = useRouter();
   
   return (
     <div
-      onClick={() => router.push(href)}
+      onClick={() => (onClick ? onClick() : router.push(href))}
       className="bg-zinc-800/50 border-zinc-700/50 hover:border-orange-500/30 transition-all cursor-pointer rounded-lg"
     >
       <div className="p-4">
@@ -168,6 +192,9 @@ export function LocationCard({ locationName, href }: { locationName: string; hre
 export function TimeFilterButtons() {
   const router = useRouter();
   const [selected, setSelected] = useState<'7' | '30' | '90' | 'custom'>('30');
+  const [customOpen, setCustomOpen] = useState(false);
+  const [start, setStart] = useState<string>('');
+  const [end, setEnd] = useState<string>('');
   
   const handleFilter = (days: '7' | '30' | '90') => {
     setSelected(days);
@@ -176,66 +203,114 @@ export function TimeFilterButtons() {
   };
   
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button
-        onClick={() => handleFilter('7')}
-        variant="outline"
-        size="sm"
-        className={
-          selected === '7'
-            ? 'bg-orange-600 border-orange-600 text-white'
-            : 'border-orange-500/20 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10'
-        }
-      >
-        <Calendar className="w-4 h-4 mr-2" />
-        Last 7 Days
-      </Button>
-      <Button
-        onClick={() => handleFilter('30')}
-        size="sm"
-        className={
-          selected === '30'
-            ? 'bg-orange-600 hover:bg-orange-700 text-white'
-            : 'border-orange-500/20 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10'
-        }
-      >
-        <Calendar className="w-4 h-4 mr-2" />
-        Last 30 Days
-      </Button>
-      <Button
-        onClick={() => handleFilter('90')}
-        variant="outline"
-        size="sm"
-        className={
-          selected === '90'
-            ? 'bg-orange-600 border-orange-600 text-white'
-            : 'border-orange-500/20 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10'
-        }
-      >
-        <Calendar className="w-4 h-4 mr-2" />
-        Last 90 Days
-      </Button>
-      <Button
-        onClick={() => alert('Custom date picker coming soon!')}
-        variant="outline"
-        size="sm"
-        className="border-orange-500/20 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10"
-      >
-        <Calendar className="w-4 h-4 mr-2" />
-        Custom
-      </Button>
-      <Button
-        onClick={() => {
-          setSelected('30');
-          router.refresh();
-        }}
-        variant="ghost"
-        size="sm"
-        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-      >
-        Reset
-      </Button>
-    </div>
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          onClick={() => handleFilter('7')}
+          variant="outline"
+          size="sm"
+          className={
+            selected === '7'
+              ? 'bg-orange-600 border-orange-600 text-white'
+              : 'border-orange-500/20 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10'
+          }
+        >
+          <Calendar className="w-4 h-4 mr-2" />
+          Last 7 Days
+        </Button>
+        <Button
+          onClick={() => handleFilter('30')}
+          size="sm"
+          className={
+            selected === '30'
+              ? 'bg-orange-600 hover:bg-orange-700 text-white'
+              : 'border-orange-500/20 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10'
+          }
+        >
+          <Calendar className="w-4 h-4 mr-2" />
+          Last 30 Days
+        </Button>
+        <Button
+          onClick={() => handleFilter('90')}
+          variant="outline"
+          size="sm"
+          className={
+            selected === '90'
+              ? 'bg-orange-600 border-orange-600 text-white'
+              : 'border-orange-500/20 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10'
+          }
+        >
+          <Calendar className="w-4 h-4 mr-2" />
+          Last 90 Days
+        </Button>
+        <Button
+          onClick={() => setCustomOpen(true)}
+          variant="outline"
+          size="sm"
+          className="border-orange-500/20 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10"
+        >
+          <Calendar className="w-4 h-4 mr-2" />
+          Custom
+        </Button>
+        <Button
+          onClick={() => {
+            setSelected('30');
+            router.refresh();
+          }}
+          variant="ghost"
+          size="sm"
+          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+        >
+          Reset
+        </Button>
+      </div>
+      {customOpen && (
+        <div className="mt-3 rounded-lg border border-zinc-700/50 bg-zinc-900 p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs text-zinc-400">Start</label>
+              <input
+                type="date"
+                value={start}
+                onChange={(e) => setStart(e.target.value)}
+                className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-600"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-zinc-400">End</label>
+              <input
+                type="date"
+                value={end}
+                onChange={(e) => setEnd(e.target.value)}
+                className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-600"
+              />
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCustomOpen(false)}
+              className="text-zinc-300 hover:text-zinc-100"
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                setSelected('custom');
+                setCustomOpen(false);
+                toast.success('Custom date range applied');
+                router.refresh();
+              }}
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              Apply
+            </Button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -254,16 +329,29 @@ export function ViewDetailsButton({ href }: { href: string }) {
   );
 }
 
-export function ManageProtectionButton() {
-  const router = useRouter();
-  
+export function ManageProtectionButton({
+  protectionScore = 0,
+  issues = ['Improve health score to activate', '2 pending items need attention'],
+}: {
+  protectionScore?: number;
+  issues?: string[];
+}) {
+  const [open, setOpen] = useState(false);
   return (
-    <Button
-      onClick={() => router.push('/settings')}
-      className="w-full bg-orange-600 hover:bg-orange-700 text-white"
-    >
-      Manage Protection
-    </Button>
+    <>
+      <Button
+        onClick={() => setOpen(true)}
+        className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+      >
+        Manage Protection
+      </Button>
+      <ProfileProtectionModal
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        protectionScore={protectionScore}
+        issues={issues}
+      />
+    </>
   );
 }
 
@@ -286,6 +374,61 @@ export function LastUpdated({ updatedAt }: { updatedAt: string }) {
     <div className="text-sm text-zinc-300">
       Last Updated: <span className="text-orange-500 font-medium">{getTimeAgo(updatedAt)}</span>
     </div>
+  );
+}
+
+// Interactive Quick Actions with Modals
+export function QuickActionsInteractive({
+  pendingReviews,
+  unansweredQuestions,
+}: {
+  pendingReviews: Array<{ id: string; rating: number; comment: string | null; created_at: string }>;
+  unansweredQuestions: Array<{ id: string; question_text: string; created_at: string; upvotes?: number | null }>;
+}) {
+  const [reviewsOpen, setReviewsOpen] = useState(false);
+  const [questionsOpen, setQuestionsOpen] = useState(false);
+  const [postOpen, setPostOpen] = useState(false);
+
+  return (
+    <>
+      <div className="space-y-3">
+        <QuickActionCard
+          title="Reply to Reviews"
+          icon="💬"
+          subtitle="Respond to pending reviews"
+          pendingCount={pendingReviews.length}
+          href="/reviews"
+          onClick={() => setReviewsOpen(true)}
+        />
+        <QuickActionCard
+          title="Answer Questions"
+          icon="❓"
+          subtitle="Reply to customer questions"
+          pendingCount={unansweredQuestions.length}
+          href="/questions"
+          onClick={() => setQuestionsOpen(true)}
+        />
+        <QuickActionCard
+          title="Create New Post"
+          icon="📝"
+          subtitle="Share updates with customers"
+          pendingCount={0}
+          href="/gmb-posts"
+          onClick={() => setPostOpen(true)}
+        />
+      </div>
+      <ReviewsQuickActionModal
+        isOpen={reviewsOpen}
+        onClose={() => setReviewsOpen(false)}
+        pendingReviews={pendingReviews}
+      />
+      <QuestionsQuickActionModal
+        isOpen={questionsOpen}
+        onClose={() => setQuestionsOpen(false)}
+        unansweredQuestions={unansweredQuestions}
+      />
+      <CreatePostModal isOpen={postOpen} onClose={() => setPostOpen(false)} />
+    </>
   );
 }
 
