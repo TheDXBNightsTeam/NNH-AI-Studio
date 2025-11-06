@@ -19,14 +19,16 @@ import {
   RefreshButton,
   SyncButton,
   DisconnectButton,
-  GenerateTasksButton,
-  QuickActionCard,
   LocationCard,
   TimeFilterButtons,
   ViewDetailsButton,
   ManageProtectionButton,
-  LastUpdated
+  LastUpdated,
+  QuickActionsInteractive
 } from './DashboardClient';
+import { WeeklyTasksList } from '@/components/dashboard/WeeklyTasksList';
+import { ExpandableFeed } from '@/components/dashboard/ExpandableFeed';
+import Link from 'next/link';
 import { PerformanceChart } from './PerformanceChart';
 
 // TypeScript Interfaces
@@ -262,6 +264,12 @@ export default async function DashboardPage() {
   const responseRate = calculateResponseRate(reviews);
   const pendingReviews = getPendingReviews(reviews);
   const pendingQuestions = getPendingQuestions(questions);
+  const pendingReviewsList = reviews
+    .filter(r => !r.review_reply || r.review_reply.trim() === '')
+    .map(r => ({ id: r.id, rating: r.rating, comment: r.comment, created_at: r.created_at }));
+  const unansweredQuestionsList = questions
+    .filter(q => !q.answer_text || q.answer_text.trim() === '' || q.answer_status === 'pending')
+    .map(q => ({ id: q.id, question_text: q.question_text, created_at: q.created_at, upvotes: undefined as number | null | undefined }));
   
   const stats: DashboardStats = {
     totalLocations: locations.length,
@@ -434,26 +442,9 @@ export default async function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <QuickActionCard
-                  title="Reply to Reviews"
-                  icon="💬"
-                  subtitle="Respond to pending reviews"
-                  pendingCount={stats.pendingReviews}
-                  href="/reviews"
-                />
-                <QuickActionCard
-                  title="Answer Questions"
-                  icon="❓"
-                  subtitle="Reply to customer questions"
-                  pendingCount={stats.pendingQuestions}
-                  href="/questions"
-                />
-                <QuickActionCard
-                  title="Create New Post"
-                  icon="📝"
-                  subtitle="Share updates with customers"
-                  pendingCount={0}
-                  href="/posts"
+                <QuickActionsInteractive
+                  pendingReviews={pendingReviewsList}
+                  unansweredQuestions={unansweredQuestionsList}
                 />
               </CardContent>
             </Card>
@@ -552,43 +543,42 @@ export default async function DashboardPage() {
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Empty State */}
-                <div className="text-center py-8 space-y-4">
-                  <div className="text-6xl">⚡</div>
-                  <div>
-                    <p className="text-zinc-300 font-medium">No personalized tasks yet</p>
-                    <p className="text-zinc-500 text-sm mt-1">
-                      Generate your personalized recommendations...
-                    </p>
-                  </div>
-                  <GenerateTasksButton locationId={activeLocation?.id || null} />
-                </div>
+                <WeeklyTasksList />
 
                 {/* Recommended Quick Wins */}
                 <div className="space-y-3 pt-4 border-t border-zinc-700/50">
                   <h4 className="text-zinc-300 font-medium text-sm">Recommended Quick Wins</h4>
-                  {weeklyTasks.map((task) => (
-                    <Card key={task.id} className="bg-zinc-800/50 border-zinc-700/50">
-                      <CardContent className="p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">{task.emoji}</span>
-                          <div>
-                            <p className="text-zinc-100 text-sm font-medium">{task.title}</p>
-                            <p className="text-zinc-500 text-xs">{task.duration}</p>
-                          </div>
-                        </div>
-                        <Badge 
-                          className={
-                            task.priority === "HIGH" ? "bg-red-500/20 text-red-400 border-red-500/30" :
-                            task.priority === "MEDIUM" ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" :
-                            "bg-green-500/20 text-green-400 border-green-500/30"
-                          }
-                        >
-                          {task.priority}
-                        </Badge>
-                      </CardContent>
-                    </Card>
-                  ))}
+                  {weeklyTasks.map((task) => {
+                    const link =
+                      task.title.includes('Profile') ? '/locations' :
+                      task.title.includes('Photos') ? '/media' :
+                      task.title.includes('Post') ? '/gmb-posts' :
+                      '/dashboard';
+                    return (
+                      <Link key={task.id} href={link} className="block">
+                        <Card className="bg-zinc-800/50 border-zinc-700/50 hover:border-orange-500/50 transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer">
+                          <CardContent className="p-3 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{task.emoji}</span>
+                              <div>
+                                <p className="text-zinc-100 text-sm font-medium">{task.title}</p>
+                                <p className="text-zinc-500 text-xs">{task.duration}</p>
+                              </div>
+                            </div>
+                            <Badge 
+                              className={
+                                task.priority === "HIGH" ? "bg-red-500/20 text-red-400 border-red-500/30" :
+                                task.priority === "MEDIUM" ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" :
+                                "bg-green-500/20 text-green-400 border-green-500/30"
+                              }
+                            >
+                              {task.priority}
+                            </Badge>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    )
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -631,56 +621,30 @@ export default async function DashboardPage() {
           {/* AI Risk & Opportunity Feed */}
           <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
             <CardHeader>
-      <div className="flex items-center justify-between">
-        <div>
+              <div className="flex items-center justify-between">
+                <div>
                   <CardTitle className="text-zinc-100 flex items-center gap-2">
                     🎯 AI Risk & Opportunity Feed
                   </CardTitle>
                   <p className="text-zinc-400 text-sm mt-1">
                     Proactive alerts and recommended actions
-          </p>
-        </div>
+                  </p>
+                </div>
                 {alerts.length > 0 && (
                   <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
                     {alerts.length} alerts
                   </Badge>
                 )}
-      </div>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
               {alerts.length > 0 ? (
-                alerts.map((alert, index) => (
-                  <Card 
-                    key={index}
-                    className={`bg-zinc-800/50 border-l-4 ${
-                      alert.priority === 'HIGH' 
-                        ? 'border-red-500' 
-                        : 'border-yellow-500'
-                    }`}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <Badge 
-                            className={`mb-2 ${
-                              alert.priority === 'HIGH'
-                                ? 'bg-red-500/20 text-red-400 border-red-500/30'
-                                : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                            }`}
-                          >
-                            {alert.priority} PRIORITY
-                          </Badge>
-                          <p className="text-zinc-200 text-sm mt-2">{alert.message}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                <ExpandableFeed alerts={alerts} />
               ) : (
                 <div className="text-center text-zinc-500 py-8">
                   🎉 No urgent alerts! Everything looks good.
-        </div>
-      )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -792,29 +756,40 @@ export default async function DashboardPage() {
             <CardContent className="space-y-3">
               {insights.length > 0 ? (
                 insights.map((insight, index) => (
-                  <div 
+                  <Link
                     key={index}
-                    className={`p-4 rounded-lg border ${
-                      insight.color === 'green' 
-                        ? 'bg-green-950/30 border-green-500/30'
-                        : insight.color === 'red'
-                        ? 'bg-red-950/30 border-red-500/30'
-                        : 'bg-orange-950/30 border-orange-500/30'
-                    }`}
+                    href={
+                      insight.title.includes('Rating') ? '/reviews'
+                      : insight.title.includes('Response Rate') ? '/reviews'
+                      : insight.title.includes('Questions') ? '/questions'
+                      : insight.title.includes('Health') ? '/locations'
+                      : '/dashboard'
+                    }
+                    className="block"
                   >
-                    <div className="flex items-start gap-3">
-                      <span className="text-xl">{insight.icon}</span>
-                      <div>
-                        <h3 className={`font-medium text-sm mb-2 ${
-                          insight.color === 'green' ? 'text-green-300' :
-                          insight.color === 'red' ? 'text-red-300' : 'text-orange-300'
-                        }`}>
-                          {insight.title}
-                        </h3>
-                        <p className="text-xs text-zinc-400">{insight.description}</p>
+                    <div 
+                      className={`p-4 rounded-lg border transition-all hover:brightness-110 hover:scale-[1.01] cursor-pointer ${
+                        insight.color === 'green' 
+                          ? 'bg-green-950/30 border-green-500/30'
+                          : insight.color === 'red'
+                          ? 'bg-red-950/30 border-red-500/30'
+                          : 'bg-orange-950/30 border-orange-500/30'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="text-xl">{insight.icon}</span>
+                        <div>
+                          <h3 className={`font-medium text-sm mb-2 ${
+                            insight.color === 'green' ? 'text-green-300' :
+                            insight.color === 'red' ? 'text-red-300' : 'text-orange-300'
+                          }`}>
+                            {insight.title}
+                          </h3>
+                          <p className="text-xs text-zinc-400">{insight.description}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 ))
               ) : (
                 <div className="text-center text-zinc-500 py-4">
