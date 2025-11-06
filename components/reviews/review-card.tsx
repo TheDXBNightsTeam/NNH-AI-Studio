@@ -131,8 +131,8 @@ export function ReviewCard({ review, onGenerateResponse, onReply, index = 0 }: R
           </div>
 
           {/* Review Comment */}
-          {(review.review_text || review.comment) && (
-            <p className="text-sm text-foreground leading-relaxed">{review.review_text || review.comment}</p>
+          {(review.review_text || review.review_text) && (
+            <p className="text-sm text-foreground leading-relaxed">{review.review_text || review.review_text}</p>
           )}
 
           {/* AI Suggested Reply */}
