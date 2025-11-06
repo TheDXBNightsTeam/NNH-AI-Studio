@@ -10,6 +10,7 @@ interface SelectedReviewDetailProps {
 
 export function SelectedReviewDetail({ review }: SelectedReviewDetailProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [generatedResponse, setGeneratedResponse] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -21,10 +22,18 @@ export function SelectedReviewDetail({ review }: SelectedReviewDetailProps) {
     setError(null); // Clear previous errors
     
     try {
-      // Validate and prepare data with fallbacks
+      // Get the actual review text from 'comment' field (or review_text as fallback)
+      const actualReviewText = (review as any).comment || review.review_text || '';
+      
+      if (!actualReviewText) {
+        setError('This review has no text to respond to.');
+        setIsGenerating(false);
+        return;
+      }
+
       const requestData = {
         review_id: review.id,
-        review_text: review.review_text || 'No review text provided',
+        review_text: actualReviewText,
         rating: review.rating || 3,
         reviewer_name: review.reviewer_name || 'Valued Customer',
         location_name: review.location_name || 'our business'
@@ -56,32 +65,36 @@ export function SelectedReviewDetail({ review }: SelectedReviewDetailProps) {
   const handleSendReply = async () => {
     if (!generatedResponse.trim()) return;
     
+    setIsSending(true);
+    setError(null);
+
     try {
-      const res = await fetch(`/api/reviews/${review.id}/reply`, {
+      const res = await fetch('/api/reviews/send-reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          review_id: review.id,
           reply_text: generatedResponse
         })
       });
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to send reply');
-      }
-      
+
       const data = await res.json();
-      if (data.success) {
-        alert('Reply sent successfully!');
-        setGeneratedResponse('');
-        // Refresh the page to show updated review
-        window.location.reload();
-      } else {
+
+      if (!data.success) {
         throw new Error(data.error || 'Failed to send reply');
       }
-    } catch (error) {
+
+      // Show success message
+      alert('Reply sent successfully to Google My Business!');
+      
+      // Refresh the reviews list
+      window.location.reload(); // Or use a better state refresh method
+
+    } catch (error: any) {
       console.error('Failed to send reply:', error);
-      alert(`Failed to send reply: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setError(error.message || 'Failed to send reply');
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -128,7 +141,7 @@ export function SelectedReviewDetail({ review }: SelectedReviewDetailProps) {
       <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
         <div className="text-xs text-gray-400 mb-2">💬 Review:</div>
         <p className="text-sm text-gray-200 leading-relaxed">
-          {review.review_text || 'No review text provided'}
+          {(review as any).comment || review.review_text || 'No review text provided'}
         </p>
       </div>
 
@@ -171,9 +184,10 @@ export function SelectedReviewDetail({ review }: SelectedReviewDetailProps) {
           <div className="flex gap-2">
             <button 
               onClick={handleSendReply}
-              className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+              disabled={isSending}
+              className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
             >
-              ✅ Send Reply
+              {isSending ? 'Sending...' : '✅ Send Reply to GMB'}
             </button>
             <button 
               onClick={handleGenerate}
