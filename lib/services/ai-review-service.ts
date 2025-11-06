@@ -183,7 +183,7 @@ export async function calculateStats(reviews: GMBReview[]): Promise<Stats> {
     ? Math.round((respondedReviews / totalReviews) * 100) 
     : 0;
   
-  const avgTime = 30; // Default mock value in hours
+  const avgTime = 0; // Will be calculated from actual response times when available
   
   const pending = reviews.filter(r => 
     !r.reply_text && !r.review_reply

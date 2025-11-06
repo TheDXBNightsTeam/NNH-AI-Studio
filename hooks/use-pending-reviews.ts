@@ -50,7 +50,7 @@ export function usePendingReviews(): UsePendingReviewsResult {
       setStats({
         pending: pendingCount,
         responseRate: 0, // Will be calculated elsewhere if needed
-        avgTime: 30 // Mock value
+        avgTime: 0 // Will be calculated from actual data when available
       });
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error');
