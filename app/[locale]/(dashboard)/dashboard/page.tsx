@@ -1,869 +1,674 @@
-'use client';
-
-import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
-import { createClient } from '@/lib/supabase/client';
-import { useDashboardRealtime } from '@/lib/hooks/use-dashboard-realtime';
-import { ErrorBoundary } from '@/components/error-boundary';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useNavigationShortcuts } from '@/hooks/use-keyboard-shortcuts';
-import { StatsCards } from '@/components/dashboard/stats-cards';
-import { LastSyncInfo } from '@/components/dashboard/last-sync-info';
-import { WeeklyTasksWidget } from '@/components/dashboard/weekly-tasks-widget';
-import { BottlenecksWidget } from '@/components/dashboard/bottlenecks-widget';
-import { QuickActionsBar } from '@/components/dashboard/quick-actions-bar';
-import { RealtimeUpdatesIndicator } from '@/components/dashboard/realtime-updates-indicator';
-import { PerformanceComparisonChart } from '@/components/dashboard/performance-comparison-chart';
-import { LocationHighlightsCarousel } from '@/components/dashboard/location-highlights-carousel';
-import { AIInsightsCard } from '@/components/dashboard/ai-insights-card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DateRangeControls, type DateRange } from '@/components/dashboard/date-range-controls';
-import { ExportShareBar } from '@/components/dashboard/export-share-bar';
-import { GamificationWidget } from '@/components/dashboard/gamification-widget';
-import { RefreshCw, Zap, ShieldCheck, Loader2, Star, MapPin, CheckCircle, AlertTriangle } from 'lucide-react';
-import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
-import { Link } from '@/lib/navigation';
+import { Progress } from '@/components/ui/progress';
+import { 
+  RefreshCw, 
+  Clock, 
+  Calendar, 
+  MapPin, 
+  Star, 
+  Zap, 
+  MessageSquare, 
+  HelpCircle, 
+  FileText,
+  Activity,
+  TrendingUp,
+  TrendingDown,
+  Shield,
+  AlertTriangle,
+  Target,
+  Trophy,
+  BarChart3,
+  Lightbulb,
+  Settings
+} from 'lucide-react';
 
-interface DashboardStats {
-  totalLocations: number;
-  locationsTrend: number;
-  averageRating: number;
-  allTimeAverageRating: number; 
-  ratingTrend: number;
-  totalReviews: number;
-  reviewsTrend: number;
-  responseRate: number;
-  responseTarget: number;
-  healthScore: number;
-  pendingReviews: number;
-  unansweredQuestions: number;
-  monthlyComparison?: {
-    current: {
-      reviews: number;
-      rating: number;
-      questions: number;
-    };
-    previous: {
-      reviews: number;
-      rating: number;
-      questions: number;
-    };
+export default function DashboardPage() {
+  // Placeholder data - all static for now
+  const lastUpdatedMinutes = 5;
+  const activeLocation = {
+    name: "The DXB Night Club ...",
+    rating: 4.3,
+    isConnected: true,
   };
-  locationHighlights?: Array<{
-    id: string;
-    name: string;
-    rating: number;
-    reviewCount: number;
-    pendingReviews: number;
-    ratingChange?: number;
-    category: 'top' | 'attention' | 'improved';
-  }>;
-  bottlenecks: Array<{
-    type: 'Response' | 'Content' | 'Compliance' | 'Reviews' | 'General';
-    count: number;
-    message: string;
-    link: string;
-    severity: 'low' | 'medium' | 'high';
-  }>;
-}
+  
+  const stats = {
+    healthScore: 60,
+    totalLocations: 1,
+    averageRating: 4.0,
+    totalReviews: 412,
+    responseRate: 0.5,
+    responseTarget: 90,
+  };
 
-// GMB Connection Banner - Prominent CTA when not connected
-const GMBConnectionBanner = () => {
-  const t = useTranslations('Dashboard.connectionBanner');
+  const pendingCounts = {
+    reviews: 45,
+    questions: 7,
+  };
+
+  const weeklyTasks = [
+    { id: 1, title: "Complete GMB Profile", emoji: "✅", priority: "MEDIUM", duration: "10 min" },
+    { id: 2, title: "Upload 5 New Photos", emoji: "📸", priority: "MEDIUM", duration: "20 min" },
+    { id: 3, title: "Create a GMB Post", emoji: "📝", priority: "LOW", duration: "15 min" },
+  ];
+
+  const alerts = [
+    { id: 1, priority: "HIGH", message: "450 reviews awaiting response.", color: "red" },
+    { id: 2, priority: "HIGH", message: "7 customer questions need answering", color: "red" },
+    { id: 3, priority: "MEDIUM", message: "Response rate (0.5%) is below target...", color: "yellow" },
+  ];
+
+  const topPerformer = {
+    name: "The DXB Night Club",
+    nameAr: "نادي دبي الليلي",
+    rating: 4.8,
+    reviews: 412,
+    change: 100.0,
+    pendingReviews: 445,
+  };
+
+  const performanceComparison = {
+    questions: { value: 2, change: 2.0, trend: "up" },
+    rating: { value: 4.0, change: 100.0, trend: "up" },
+    reviews: { value: 0, change: 12.0, trend: "down" },
+  };
+
+  const insights = [
+    { id: 1, title: "Rating Trending Up", emoji: "📈", borderColor: "green" },
+    { id: 2, title: "Improve Response Rate", emoji: "⚠️", borderColor: "orange" },
+    { id: 3, title: "Questions Need Answers", emoji: "❓", borderColor: "red" },
+  ];
+
+  const achievements = [
+    { label: "Response Rate", current: 0, target: 90, gradient: "from-orange-500 to-orange-600" },
+    { label: "Health Score", current: 60, target: 100, gradient: "from-orange-500 to-yellow-500" },
+    { label: "Reviews Count", current: 412, target: 500, gradient: "from-blue-500 to-blue-600" },
+  ];
   
   return (
-    <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent overflow-hidden relative">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10" />
-      <CardContent className="p-8">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6">
-          {/* Icon and Title */}
-          <div className="flex items-start gap-4 flex-1">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center flex-shrink-0 border border-primary/20">
-              <MapPin className="w-8 h-8 text-primary" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-foreground">
-                {t('title')}
-              </h2>
-              <p className="text-muted-foreground text-base max-w-2xl">
-                {t('description')}
-              </p>
-              
-              {/* Benefits Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                  <span className="text-sm text-foreground">{t('benefit1')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                  <span className="text-sm text-foreground">{t('benefit2')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                  <span className="text-sm text-foreground">{t('benefit3')}</span>
-                </div>
-              </div>
-            </div>
+    <div className="min-h-screen bg-zinc-950 p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* HEADER SECTION */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-zinc-100 flex items-center gap-2">
+              🤖 AI Command Center
+            </h1>
+            <p className="text-zinc-400 mt-2 text-sm md:text-base">
+              Proactive risk and growth optimization dashboard
+            </p>
           </div>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto lg:flex-shrink-0">
-            <Button asChild size="lg" className="gap-2 gradient-orange min-w-[200px]">
-              <Link href="/settings">
-                <Zap className="w-5 h-5" />
-                {t('connectButton')}
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline" className="gap-2 min-w-[200px]">
-              <a 
-                href="https://business.google.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-              >
-                <Star className="w-5 h-5" />
-                {t('learnMore')}
-              </a>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm">
+              <CardContent className="p-3 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-orange-500" />
+                <span className="text-sm text-zinc-300">
+                  Last Updated: {lastUpdatedMinutes} minutes ago
+                </span>
+              </CardContent>
+            </Card>
+            <Button 
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+              onClick={() => console.log('Refresh clicked')}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh Now
             </Button>
           </div>
         </div>
-      </CardContent>
-    </Card>
-  );
-};
 
-// Profile Protection Status - Using local data
-const ProfileProtectionStatus = ({ loading, stats }: { loading: boolean; stats: DashboardStats }) => {
-  // Calculate protection status based on health score
-  const enabled = (stats.healthScore || 0) >= 70;
-  const locationsProtected = enabled ? stats.totalLocations : 0;
-  const recentAlerts = stats.pendingReviews > 5 || stats.unansweredQuestions > 3 ? 1 : 0;
+        {/* TIME FILTER BUTTONS */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="border-orange-500/20 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10"
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            Last 7 Days
+          </Button>
+          <Button 
+            size="sm"
+            className="bg-orange-600 hover:bg-orange-700 text-white"
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            Last 30 Days
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="border-orange-500/20 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10"
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            Last 90 Days
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="border-orange-500/20 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10"
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            Custom
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+          >
+            Reset
+          </Button>
+        </div>
 
-  if (loading) {
-    return (
-      <Card className="border-l-4 border-l-gray-300">
-        <CardContent className="p-4 flex items-center justify-center">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        {/* MAIN GRID LAYOUT */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* LEFT COLUMN */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Active Location Card */}
+            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
+              <CardHeader>
+                <CardTitle className="text-zinc-100 flex items-center gap-2">
+                  📍 Active Location
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Badge className={activeLocation.isConnected ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-orange-500/20 text-orange-400 border-orange-500/30"}>
+                    {activeLocation.isConnected ? "Connected" : "Disconnected"}
+                  </Badge>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+                    onClick={() => console.log('Sync Now clicked')}
+                  >
+                    Sync Now
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10"
+                    onClick={() => console.log('Disconnect clicked')}
+                  >
+                    Disconnect
+                  </Button>
+                </div>
+
+                <div className="bg-zinc-800/50 rounded-lg p-4 space-y-2 border border-zinc-700/50">
+                  <p className="text-zinc-100 font-medium truncate">{activeLocation.name}</p>
+                  <div className="flex items-center gap-1 text-sm text-zinc-400">
+                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                    <span>{activeLocation.rating} / 5.0</span>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    className="w-full text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 mt-2"
+                    onClick={() => console.log('Go to Location clicked')}
+                  >
+                    Go to Location →
+                  </Button>
+                </div>
         </CardContent>
       </Card>
-    );
-  }
 
-  return (
-    <Card className={cn("border-l-4", 
-      enabled ? "border-l-green-500" : "border-l-yellow-500"
-    )}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Profile Protection</CardTitle>
-        <ShieldCheck className={cn("w-4 h-4", 
-          enabled ? "text-green-500" : "text-yellow-500"
-        )} />
+            {/* Quick Actions Section */}
+            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-zinc-100 flex items-center gap-2">
+                    ⚡ Quick Actions
+                  </CardTitle>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="text-orange-400 hover:text-orange-300"
+                    onClick={() => console.log('Sync All clicked')}
+                  >
+                    Sync All
+                  </Button>
+                </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span className={cn("text-2xl font-bold", 
-            enabled ? "text-green-600" : "text-yellow-600"
-          )}>
-            {locationsProtected}/{stats.totalLocations}
-          </span>
-          <div className={cn("px-2 py-1 text-xs border rounded", 
-            enabled 
-              ? "bg-green-50 text-green-700 border-green-200"
-              : "bg-yellow-50 text-yellow-700 border-yellow-200"
-          )}>
-            {enabled ? 'Active' : 'Inactive'}
+                <Card className="bg-zinc-800/50 border-zinc-700/50 hover:border-orange-500/30 transition-all cursor-pointer">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <span className="text-2xl">💬</span>
+                        <div>
+                          <p className="text-zinc-100 font-medium">Reply to Reviews</p>
+                          <p className="text-zinc-400 text-sm">Respond to pending reviews</p>
           </div>
         </div>
+                      <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+                        + {pendingCounts.reviews} pending
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
 
-        <div className="space-y-2">
-          {enabled ? (
-            <div className="flex items-center gap-2 text-xs">
-              <CheckCircle className="w-3 h-3 text-green-500" />
-              <span className="text-muted-foreground">Health score above threshold</span>
+                <Card className="bg-zinc-800/50 border-zinc-700/50 hover:border-orange-500/30 transition-all cursor-pointer">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <span className="text-2xl">❓</span>
+                        <div>
+                          <p className="text-zinc-100 font-medium">Answer Questions</p>
+                          <p className="text-zinc-400 text-sm">Reply to customer questions</p>
             </div>
-          ) : (
-            <div className="flex items-center gap-2 text-xs">
-              <AlertTriangle className="w-3 h-3 text-yellow-500" />
-              <span className="text-muted-foreground">Improve health score to activate</span>
             </div>
-          )}
+                      <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+                        + {pendingCounts.questions} pending
+                      </Badge>
+            </div>
+                  </CardContent>
+                </Card>
 
-          {recentAlerts > 0 && (
-            <div className="flex items-center gap-2 text-xs">
-              <AlertTriangle className="w-3 h-3 text-yellow-500" />
-              <span className="text-muted-foreground">
-                Pending items need attention
-              </span>
-            </div>
-          )}
-
-          <div className="text-xs text-muted-foreground">
-            Based on GMB Health Score: {stats.healthScore}%
+                <Card className="bg-zinc-800/50 border-zinc-700/50 hover:border-orange-500/30 transition-all cursor-pointer">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">📝</span>
+                      <div>
+                        <p className="text-zinc-100 font-medium">Create New Post</p>
+                        <p className="text-zinc-400 text-sm">Share updates with customers</p>
           </div>
         </div>
-
-        <Button asChild size="sm" variant="outline" className="w-full">
-          <Link href="/settings">
-            <ShieldCheck className="w-3 h-3 mr-1" />
-            Manage Protection
-          </Link>
-        </Button>
+                  </CardContent>
+                </Card>
       </CardContent>
     </Card>
-  );
-};
+          </div>
 
-// Active Location Info - Using stats data
-const ActiveLocationInfo = ({ loading, stats }: { loading: boolean; stats: DashboardStats }) => {
-  // Get best location from highlights if available
-  const bestLocation = stats.locationHighlights?.find(loc => loc.category === 'top');
-  const locationName = bestLocation?.name || 'Primary Location';
-  const locationRating = bestLocation?.rating || stats.averageRating || stats.allTimeAverageRating || 0;
-
-  if (loading) {
-    return (
-      <Card className="lg:col-span-1 border border-primary/20 flex items-center justify-center p-4">
-        <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          {/* CENTER COLUMN */}
+          <div className="lg:col-span-1 space-y-4">
+            {/* GMB Health Score Card */}
+            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
+              <CardHeader>
+                <CardTitle className="text-zinc-100 flex items-center gap-2 text-sm">
+                  🏥 GMB Health Score
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-4xl font-bold text-zinc-100 mb-2">{stats.healthScore}%</div>
+                <p className="text-zinc-400 text-sm mb-3">Visibility and Compliance</p>
+                <Progress value={stats.healthScore} className="h-2 bg-zinc-800" />
+              </CardContent>
       </Card>
-    );
-  }
 
-  return (
-    <Card className="lg:col-span-1 border border-primary/20">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-primary">Active Location</CardTitle>
-        <MapPin className="w-4 h-4 text-primary" />
+            {/* Total Locations Card */}
+            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
+              <CardHeader>
+                <CardTitle className="text-zinc-100 flex items-center gap-2 text-sm">
+                  📍 Total Locations
+                </CardTitle>
       </CardHeader>
       <CardContent>
-        <h3 className="text-xl font-bold truncate">
-          {stats.totalLocations === 0 
-            ? "No Locations" 
-            : locationName
-          }
-        </h3>
-        {stats.totalLocations > 0 && (
-          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
-            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-            {locationRating.toFixed(1)} / 5.0 Rating
-          </p>
-        )}
-        {stats.totalLocations > 0 && (
-          <Button asChild size="sm" variant="outline" className="mt-3 w-full">
-            <Link href={`/locations/${bestLocation?.id || 'default'}`}>
-              Go to Location
-            </Link>
-          </Button>
-        )}
-        {stats.totalLocations > 1 && (
-          <Link href="/locations" className="text-xs text-primary hover:underline mt-1 block text-center">
-            Manage {stats.totalLocations - 1} more
-          </Link>
-        )}
+                <div className="text-4xl font-bold text-zinc-100 mb-2">{stats.totalLocations}</div>
+                <p className="text-green-400 text-sm flex items-center gap-1">
+                  <TrendingUp className="w-4 h-4" />
+                  ↑ vs last period
+                </p>
       </CardContent>
     </Card>
-  );
-};
 
-// Health Score Card with safe defaults
-const HealthScoreCard = ({ loading, healthScore, className }: { loading: boolean; healthScore: number; className?: string }) => (
-  <Card className={cn("border-l-4", className, 
-    healthScore > 80 ? 'border-green-500' : 
-    healthScore > 60 ? 'border-yellow-500' : 'border-red-500'
-  )}>
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium">GMB Health Score</CardTitle>
-      <ShieldCheck className="w-4 h-4 text-primary" />
+            {/* Average Rating Card */}
+            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
+              <CardHeader>
+                <CardTitle className="text-zinc-100 flex items-center gap-2 text-sm">
+                  ⭐ Average Rating
+                </CardTitle>
     </CardHeader>
     <CardContent>
-      <div className="text-4xl font-bold">
-        {loading ? (
-          <Loader2 className="w-6 h-6 animate-spin" />
-        ) : (
-          `${healthScore}%`
-        )}
-      </div>
-      <p className="text-xs text-muted-foreground mt-1">
-        Score based on Quality, Visibility, and Compliance.
+                <div className="text-4xl font-bold text-zinc-100 mb-2">{stats.averageRating}/5.0</div>
+                <p className="text-green-400 text-sm flex items-center gap-1">
+                  <TrendingUp className="w-4 h-4" />
+                  ↑ {performanceComparison.rating.change}%
       </p>
     </CardContent>
   </Card>
-);
 
-export default function DashboardPage() {
-  useNavigationShortcuts();
-  const supabase = createClient();
-  const router = useRouter();
+            {/* Total Reviews Card */}
+            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
+              <CardHeader>
+                <CardTitle className="text-zinc-100 flex items-center gap-2 text-sm">
+                  💬 Total Reviews
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-4xl font-bold text-zinc-100 mb-2">{stats.totalReviews}</div>
+                <p className="text-zinc-400 text-sm">vs last period</p>
+              </CardContent>
+            </Card>
 
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<DashboardStats>({
-    totalLocations: 0,
-    locationsTrend: 0,
-    averageRating: 0,
-    allTimeAverageRating: 0, 
-    ratingTrend: 0,
-    totalReviews: 0,
-    reviewsTrend: 0,
-    responseRate: 0,
-    responseTarget: 100,
-    healthScore: 0,
-    pendingReviews: 0,
-    unansweredQuestions: 0,
-    bottlenecks: [],
-  });
+            {/* Response Rate Card */}
+            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
+              <CardHeader>
+                <CardTitle className="text-zinc-100 flex items-center gap-2 text-sm">
+                  📈 Response Rate
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-4xl font-bold text-red-400 mb-2">{stats.responseRate}%</div>
+                <p className="text-zinc-400 text-sm mb-3">Target: {stats.responseTarget}%</p>
+                <Progress value={stats.responseRate} className="h-2 bg-zinc-800" />
+              </CardContent>
+            </Card>
+          </div>
 
-  const [gmbConnected, setGmbConnected] = useState(false);
-  const [gmbAccountId, setGmbAccountId] = useState<string | null>(null);
-  const [syncSchedule, setSyncSchedule] = useState<string>('manual');
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-  const [syncing, setSyncing] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
-  const [lastDataUpdate, setLastDataUpdate] = useState<Date | null>(null);
-  const [dateRange, setDateRange] = useState<DateRange>({ preset: '30d', start: null, end: null });
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+          {/* RIGHT COLUMN */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Weekly Tasks Card */}
+            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
+              <CardHeader>
+                <CardTitle className="text-zinc-100 flex items-center gap-2">
+                  ⚡ Weekly Tasks
+                </CardTitle>
+                <p className="text-zinc-400 text-sm mt-1">
+                  AI-powered recommendations to improve your business
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Empty State */}
+                <div className="text-center py-8 space-y-4">
+                  <div className="text-6xl">⚡</div>
+                  <div>
+                    <p className="text-zinc-300 font-medium">No personalized tasks yet</p>
+                    <p className="text-zinc-500 text-sm mt-1">
+                      Generate your personalized recommendations...
+                    </p>
+                  </div>
+                  <Button 
+                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                    onClick={() => console.log('Generate Weekly Tasks clicked')}
+                  >
+                    Generate Weekly Tasks
+                  </Button>
+                </div>
 
-  // ✅ FIX: Add request cancellation with AbortController + sequence tracking
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const requestSequenceRef = useRef(0);
+                {/* Recommended Quick Wins */}
+                <div className="space-y-3 pt-4 border-t border-zinc-700/50">
+                  <h4 className="text-zinc-300 font-medium text-sm">Recommended Quick Wins</h4>
+                  {weeklyTasks.map((task) => (
+                    <Card key={task.id} className="bg-zinc-800/50 border-zinc-700/50">
+                      <CardContent className="p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{task.emoji}</span>
+                          <div>
+                            <p className="text-zinc-100 text-sm font-medium">{task.title}</p>
+                            <p className="text-zinc-500 text-xs">{task.duration}</p>
+                          </div>
+                        </div>
+                        <Badge 
+                          className={
+                            task.priority === "HIGH" ? "bg-red-500/20 text-red-400 border-red-500/30" :
+                            task.priority === "MEDIUM" ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" :
+                            "bg-green-500/20 text-green-400 border-green-500/30"
+                          }
+                        >
+                          {task.priority}
+                        </Badge>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-  const fetchDashboardData = async (signal?: AbortSignal) => {
-    // Cancel previous request if exists
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+            {/* Profile Protection Card */}
+            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
+              <CardHeader>
+                <CardTitle className="text-zinc-100 flex items-center gap-2">
+                  🛡️ Profile Protection
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-5xl font-bold text-zinc-100 text-center">0/1</div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-yellow-400">
+                    <span>⚠️</span>
+                    <span>Remove health score to activate</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-yellow-400">
+                    <span>⚠️</span>
+                    <span>Pending weekly email provision</span>
+                  </div>
+                </div>
 
-    // Increment sequence for this request
-    const currentSequence = ++requestSequenceRef.current;
+                <Button 
+                  className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+                  onClick={() => console.log('Manage Protection clicked')}
+                >
+                  Manage Protection
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
 
-    // Create new abort controller for this request
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    // Use provided signal or the new controller's signal
-    const effectiveSignal = signal || controller.signal;
-
-    try {
-      setLoading(true);
-
-      // Check if aborted before continuing
-      if (effectiveSignal.aborted) return;
-
-      const {
-        data: { user: authUser },
-        error: authError
-      } = await supabase.auth.getUser();
-
-      // Check if aborted after async operation
-      if (effectiveSignal.aborted) return;
-
-      if (authError || !authUser) {
-        // Handle expired/invalid sessions gracefully
-        const msg = authError?.message || '';
-        const isExpired = msg.includes('session') || msg.includes('expired') || msg.includes('Invalid Refresh Token') || (authError as any)?.code === 'session_expired';
-        if (isExpired) {
-          try {
-            await supabase.auth.signOut();
-          } catch {}
-          toast.error('Session expired. Please sign in again.');
-        } else if (authError) {
-          console.error('Authentication error:', authError);
-        }
-        setCurrentUserId(null);
-        router.push("/auth/login");
-        return;
-      }
-
-      // Store user ID for real-time subscriptions
-      setCurrentUserId(authUser.id);
-
-      // Check GMB connection status
-      const { data: gmbAccounts } = await supabase
-        .from("gmb_accounts")
-        .select("id, is_active, settings, last_sync")
-        .eq("user_id", authUser.id);
-
-      const activeAccount = gmbAccounts?.find(acc => acc.is_active);
-      const hasActiveAccount = !!activeAccount;
-      setGmbConnected(hasActiveAccount);
-
-      if (activeAccount) {
-        setGmbAccountId(activeAccount.id);
-
-        if (activeAccount.settings) {
-          const schedule = activeAccount.settings.syncSchedule || 'manual';
-          setSyncSchedule(schedule);
-        }
-
-        if (activeAccount.last_sync) {
-          setLastSyncTime(new Date(activeAccount.last_sync));
-        }
-      }
-
-      // Fetch real stats from API with safe defaults
-      if (hasActiveAccount) {
-        const params = new URLSearchParams();
-        const now = new Date();
-        if (dateRange.preset !== 'custom') {
-          const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          let start = new Date(end);
-          if (dateRange.preset === '7d') start.setDate(end.getDate() - 7);
-          if (dateRange.preset === '30d') start.setDate(end.getDate() - 30);
-          if (dateRange.preset === '90d') start.setDate(end.getDate() - 90);
-          params.set('start', start.toISOString());
-          params.set('end', end.toISOString());
-        } else if (dateRange.start && dateRange.end) {
-          params.set('start', dateRange.start.toISOString());
-          params.set('end', dateRange.end.toISOString());
-        }
-
-        const statsRes = await fetch(`/api/dashboard/stats?${params.toString()}`, {
-          signal: effectiveSignal // Pass abort signal to fetch
-        });
-
-        // Check if aborted after async operation
-        if (effectiveSignal.aborted) return;
-
-        if (statsRes.ok) {
-          const newStats = await statsRes.json();
-
-          // Check if aborted before state update
-          if (effectiveSignal.aborted) return;
-
-          // ✅ Only update state if this is still the latest request (sequence check)
-          if (currentSequence === requestSequenceRef.current && !effectiveSignal.aborted) {
-            setStats({
-            totalLocations: newStats.totalLocations || 0,
-            locationsTrend: newStats.locationsTrend || 0,
-            averageRating: newStats.recentAverageRating || 0,
-            allTimeAverageRating: newStats.allTimeAverageRating || 0,
-            ratingTrend: newStats.ratingTrend || 0,
-            totalReviews: newStats.totalReviews || 0,
-            reviewsTrend: newStats.reviewsTrend || 0,
-            responseRate: newStats.responseRate || 0,
-            responseTarget: 100,
-            healthScore: newStats.healthScore || 0,
-            pendingReviews: newStats.pendingReviews || 0,
-            unansweredQuestions: newStats.unansweredQuestions || 0,
-            monthlyComparison: newStats.monthlyComparison,
-            locationHighlights: newStats.locationHighlights || [],
-            bottlenecks: newStats.bottlenecks || [],
-          });
-            setLastDataUpdate(new Date());
-          }
-        } else if (statsRes.status === 401) {
-          // Unauthenticated from API -> sign out and redirect
-          try {
-            await supabase.auth.signOut();
-          } catch {}
-          toast.error('Your session has expired. Please sign in again.');
-          router.push('/auth/login');
-          return;
-        } else {
-          // Other API error
-          let msg = 'Failed to load dashboard stats';
-          try {
-            const err = await statsRes.json();
-            msg = err?.error || msg;
-          } catch {}
-          toast.error(msg);
-        }
-      }
-
-    } catch (error) {
-      // Ignore abort errors
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Request cancelled');
-        return;
-      }
-      
-      console.error('Error fetching dashboard data:', error);
-      
-      // Only show error if this is still the latest request
-      if (currentSequence === requestSequenceRef.current) {
-        toast.error('Failed to load dashboard data');
-      }
-    } finally {
-      // Only clear loading if this is still the latest request
-      if (currentSequence === requestSequenceRef.current) {
-        setLoading(false);
-      }
-      
-      // Clear ref if this controller is still current
-      if (abortControllerRef.current === controller) {
-        abortControllerRef.current = null;
-      }
-    }
-  };
-
-  useEffect(() => {
-    fetchDashboardData(); // Will create its own AbortController
-
-    const handleSyncComplete = () => {
-      fetchDashboardData(); // Will cancel previous and create new
-    };
-
-    window.addEventListener('gmb-sync-complete', handleSyncComplete);
-    
-    return () => {
-      // Cancel any ongoing requests on unmount
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-      window.removeEventListener('gmb-sync-complete', handleSyncComplete);
-    };
-  }, [dateRange]); // Re-fetch when date range changes
-
-  // Real-time subscriptions for live updates
-  // Note: Realtime updates don't use abort controller - they should complete
-  useDashboardRealtime(currentUserId, () => {
-    console.log('📡 Real-time update received, refreshing dashboard...');
-    fetchDashboardData(); // Will use sequence tracking to prevent race conditions
-  });
-
-  const handleSync = async () => {
-    if (!gmbAccountId) {
-      toast.error('No GMB account connected');
-      return;
-    }
-
-    // ✅ Prevent multiple concurrent syncs
-    if (syncing) {
-      toast.info('Sync already in progress');
-      return;
-    }
-
-    try {
-      setSyncing(true);
-      
-      // Sync can take a while (locations, reviews, media, metrics, etc.)
-      // Increase timeout to 3 minutes (180 seconds) for full sync
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes timeout
-      
-      // Show info message that sync is starting (takes time)
-      toast.info('Sync started. This may take a few minutes...', { duration: 3000 });
-      
-      try {
-        const response = await fetch('/api/gmb/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            accountId: gmbAccountId, 
-            syncType: 'full' 
-          }),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        // ✅ Handle specific HTTP error codes
-        if (response.status === 401) {
-          toast.error('Session expired. Please sign in again.');
-          await supabase.auth.signOut();
-          router.push('/auth/login');
-          return;
-        }
-        
-        if (response.status === 429) {
-          const retryAfter = response.headers.get('Retry-After');
-          toast.error(`Rate limit exceeded. Try again in ${retryAfter || 60} seconds.`);
-          return;
-        }
-        
-        if (response.status === 403) {
-          toast.error('You do not have permission to sync this account.');
-          return;
-        }
-
-        if (!response.ok) {
-          let errorMessage = 'Sync failed';
-          const contentType = response.headers.get('content-type');
-          
-          // ✅ Only parse JSON if response is JSON
-          if (contentType?.includes('application/json')) {
-            try {
-              const errorData = await response.json();
-              errorMessage = errorData.error || errorData.message || errorMessage;
-            } catch (parseError) {
-              console.error('Failed to parse error response:', parseError);
-            }
-          }
-          
-          throw new Error(`${errorMessage} (Status: ${response.status})`);
-        }
-
-        const data = await response.json();
-
-        if (data.ok || data.success) {
-          setLastSyncTime(new Date());
-          const tookSeconds = Math.round((data.took_ms || 0) / 1000);
-          toast.success(`Sync completed successfully! (took ${tookSeconds}s)`);
-          
-          // ✅ Dispatch event for other components
-          window.dispatchEvent(new CustomEvent('gmb-sync-complete', { 
-            detail: { timestamp: Date.now(), data } 
-          }));
-          
-          // ✅ Refresh dashboard data
-          await fetchDashboardData();
-        } else {
-          throw new Error(data.error || data.message || 'Sync failed without error details');
-        }
-      } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        
-        // ✅ Handle AbortError specifically (timeout or manual cancellation)
-        if (fetchError.name === 'AbortError') {
-          // Don't show console.warn - it's expected for long-running operations
-          // Only show user-friendly message
-          toast.error('Sync timed out. The operation may still be processing. Please wait a moment and refresh the page.');
-          return;
-        }
-        
-        // Re-throw other errors to be handled by outer catch
-        throw fetchError;
-      }
-    } catch (error) {
-      console.error('Sync error:', error);
-      
-      // ✅ Handle specific error types
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          // Already handled in inner catch, but keep for safety
-          toast.error('Sync timed out. Please check your connection and try again.');
-        } else if (error.message.includes('fetch') || error.message.includes('network')) {
-          toast.error('Network error. Please check your internet connection.');
-        } else {
-          toast.error(error.message || 'Failed to sync data');
-        }
-      } else {
-        toast.error('An unexpected error occurred during sync');
-      }
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const handleDisconnect = async () => {
-    if (!gmbAccountId) {
-      toast.error('No GMB account connected');
-      return;
-    }
-
-    // ✅ Prevent multiple concurrent disconnects
-    if (disconnecting) {
-      toast.info('Disconnect already in progress');
-      return;
-    }
-
-    if (!confirm('Are you sure you want to disconnect Google My Business? Sync will stop but your data will be preserved.')) {
-      return;
-    }
-
-    try {
-      setDisconnecting(true);
-      
-      // ✅ Add timeout to prevent hanging requests
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
-      
-      const response = await fetch('/api/gmb/disconnect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountId: gmbAccountId }),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      // ✅ Handle specific HTTP error codes
-      if (response.status === 401) {
-        toast.error('Session expired. Please sign in again.');
-        await supabase.auth.signOut();
-        router.push('/auth/login');
-        return;
-      }
-
-      if (!response.ok) {
-        let errorMessage = 'Failed to disconnect';
-        const contentType = response.headers.get('content-type');
-        
-        // ✅ Only parse JSON if response is JSON
-        if (contentType?.includes('application/json')) {
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.error || errorData.message || errorMessage;
-          } catch (parseError) {
-            console.error('Failed to parse error response:', parseError);
-          }
-        }
-        
-        throw new Error(`${errorMessage} (Status: ${response.status})`);
-      }
-
-      toast.success('Google My Business disconnected successfully');
-      setGmbConnected(false);
-      setGmbAccountId(null);
-      await fetchDashboardData();
-    } catch (error: any) {
-      console.error('Disconnect error:', error);
-      
-      // ✅ Handle specific error types
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          toast.error('Disconnect timed out. Please try again.');
-        } else if (error.message.includes('fetch') || error.message.includes('network')) {
-          toast.error('Network error. Please check your internet connection.');
-        } else {
-          toast.error(error.message || 'Failed to disconnect');
-        }
-      } else {
-        toast.error('An unexpected error occurred during disconnect');
-      }
-    } finally {
-      setDisconnecting(false);
-    }
-  };
-
-  return (
-    <ErrorBoundary>
-      <div className="space-y-8" data-print-root>
+        {/* BOTTOM FULL-WIDTH SECTIONS */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* AI Risk & Opportunity Feed */}
+          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
+            <CardHeader>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">AI Command Center</h1>
-          <p className="text-muted-foreground mt-2">
-            Proactive risk and growth orchestration dashboard
+                  <CardTitle className="text-zinc-100 flex items-center gap-2">
+                    🎯 AI Risk & Opportunity Feed
+                  </CardTitle>
+                  <p className="text-zinc-400 text-sm mt-1">
+                    Proactive alerts and recommended actions
+                  </p>
+                </div>
+                <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+                  {alerts.length} alerts
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {alerts.map((alert) => (
+                <Card 
+                  key={alert.id}
+                  className={`bg-zinc-800/50 border-l-4 ${
+                    alert.color === "red" ? "border-red-500" : 
+                    alert.color === "yellow" ? "border-yellow-500" : 
+                    "border-blue-500"
+                  }`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <Badge 
+                          className={`mb-2 ${
+                            alert.priority === "HIGH" ? "bg-red-500/20 text-red-400 border-red-500/30" :
+                            "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+                          }`}
+                        >
+                          {alert.priority} PRIORITY
+                        </Badge>
+                        <p className="text-zinc-200 text-sm">{alert.message}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Location Highlights */}
+          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
+            <CardHeader>
+              <CardTitle className="text-zinc-100 flex items-center gap-2">
+                📍 Location Highlights
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-2xl">🏆</span>
+                  <h4 className="text-zinc-300 font-medium">Top Performer</h4>
+                </div>
+                <Card className="bg-zinc-800/50 border-zinc-700/50">
+                  <CardContent className="p-4 space-y-3">
+                    <div>
+                      <p className="text-zinc-100 font-medium">{topPerformer.name}</p>
+                      <p className="text-zinc-500 text-sm">{topPerformer.nameAr}</p>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm">
+                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                      <span className="text-zinc-300">{topPerformer.rating} / 5.0</span>
+                    </div>
+                    <p className="text-zinc-400 text-sm">{topPerformer.reviews} reviews</p>
+                    <p className="text-green-400 text-sm flex items-center gap-1">
+                      <TrendingUp className="w-4 h-4" />
+                      +{topPerformer.change}%
+                    </p>
+                    <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 w-fit">
+                      {topPerformer.pendingReviews} pending reviews
+                    </Badge>
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      className="w-full text-orange-400 hover:text-orange-300 hover:bg-orange-500/10"
+                      onClick={() => console.log('View Details clicked')}
+                    >
+                      View Details →
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Performance Comparison */}
+          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
+            <CardHeader>
+              <CardTitle className="text-zinc-100 flex items-center gap-2">
+                📊 Performance Comparison
+              </CardTitle>
+              <p className="text-zinc-400 text-sm mt-1">
+                Compare this month vs last month performance
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
+                  <p className="text-zinc-400 text-xs mb-1">Questions</p>
+                  <p className="text-zinc-100 text-xl font-bold">{performanceComparison.questions.value}</p>
+                  <p className="text-green-400 text-xs flex items-center gap-1 mt-1">
+                    <TrendingUp className="w-3 h-3" />
+                    ↑ +{performanceComparison.questions.change}%
+                  </p>
+                </div>
+                <div className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
+                  <p className="text-zinc-400 text-xs mb-1">Rating</p>
+                  <p className="text-zinc-100 text-xl font-bold">{performanceComparison.rating.value}</p>
+                  <p className="text-green-400 text-xs flex items-center gap-1 mt-1">
+                    <TrendingUp className="w-3 h-3" />
+                    ↑ +{performanceComparison.rating.change}%
+                  </p>
+                </div>
+                <div className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
+                  <p className="text-zinc-400 text-xs mb-1">Reviews</p>
+                  <p className="text-zinc-100 text-xl font-bold">{performanceComparison.reviews.value}</p>
+                  <p className="text-red-400 text-xs flex items-center gap-1 mt-1">
+                    <TrendingDown className="w-3 h-3" />
+                    ↓ -{performanceComparison.reviews.change}%
           </p>
         </div>
       </div>
 
-      {/* Real-time Updates Indicator */}
-      {gmbConnected && (
-        <RealtimeUpdatesIndicator
-          lastUpdated={lastDataUpdate}
-          onRefresh={fetchDashboardData}
-          isRefreshing={loading}
-          autoRefreshInterval={5}
-        />
-      )}
-
-      {/* Date Range Controls & Export/Share */}
-      {gmbConnected && (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-1 lg:grid-cols-2">
-          <DateRangeControls
-            value={dateRange}
-            onChange={setDateRange}
-            onApply={fetchDashboardData}
-          />
-          <ExportShareBar
-            getShareParams={() => {
-              const params: Record<string, string> = {};
-              if (dateRange.preset) params.preset = dateRange.preset;
-              if (dateRange.start) params.start = dateRange.start.toISOString();
-              if (dateRange.end) params.end = dateRange.end.toISOString();
-              return params;
-            }}
-          />
-        </div>
-      )}
-
-      {/* GMB Connection Status */}
-      {gmbConnected && (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-          <LastSyncInfo
-            lastSyncTime={lastSyncTime}
-            isSyncing={syncing}
-            onSync={handleSync}
-            syncSchedule={syncSchedule}
-            onDisconnect={handleDisconnect}
-            isDisconnecting={disconnecting}
-            className="lg:col-span-3"
-          />
-          <ActiveLocationInfo loading={loading} stats={stats} />
-        </div>
-      )}
-
-      {/* GMB Connection Banner - Show when not connected */}
-      {!gmbConnected && <GMBConnectionBanner />}
-
-      {/* Quick Actions Bar - Only show when connected */}
-      {gmbConnected && (
-        <QuickActionsBar 
-          pendingReviews={stats.pendingReviews}
-          unansweredQuestions={stats.unansweredQuestions}
-          onSync={handleSync}
-          isSyncing={syncing}
-        />
-      )}
-
-      {/* Health Score and Stats */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
-        <HealthScoreCard loading={loading} healthScore={stats.healthScore || 0} className="sm:col-span-2 lg:col-span-1" />
-        <div className="sm:col-span-2 lg:col-span-4 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          <StatsCards loading={loading} data={stats} />
+              <div className="bg-zinc-800/50 rounded-lg p-8 border border-zinc-700/50 flex items-center justify-center min-h-[200px]">
+                <div className="text-center space-y-2">
+                  <BarChart3 className="w-12 h-12 text-zinc-600 mx-auto" />
+                  <p className="text-zinc-500 text-sm">📈 Chart Area</p>
         </div>
       </div>
 
-      {/* Weekly Tasks and AI Feed */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-1 lg:grid-cols-2">
-        <WeeklyTasksWidget />
-
-        <div className="space-y-4">
-          <ProfileProtectionStatus loading={loading} stats={stats} />
-          
-          {/* Bottlenecks Widget - يعرض المشاكل والفرص */}
-          <BottlenecksWidget 
-            bottlenecks={stats.bottlenecks} 
-            loading={loading}
-          />
+              <div className="flex items-center justify-center gap-4 text-xs">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                  <span className="text-zinc-400">Questions</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                  <span className="text-zinc-400">Rating</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                  <span className="text-zinc-400">Reviews</span>
         </div>
       </div>
+            </CardContent>
+          </Card>
 
-      {/* Performance Charts and Location Highlights */}
-      {gmbConnected && stats.monthlyComparison && (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-1 lg:grid-cols-2">
-          <PerformanceComparisonChart
-            currentMonthData={stats.monthlyComparison.current}
-            previousMonthData={stats.monthlyComparison.previous}
-            loading={loading}
-          />
-          
-          <LocationHighlightsCarousel
-            locations={stats.locationHighlights || []}
-            loading={loading}
-          />
+          {/* AI Insights */}
+          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
+            <CardHeader>
+              <CardTitle className="text-zinc-100 flex items-center gap-2">
+                💡 AI Insights
+              </CardTitle>
+              <p className="text-zinc-400 text-sm mt-1">
+                Smart recommendations based on your data analysis
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {insights.map((insight) => (
+                <Card 
+                  key={insight.id}
+                  className={`bg-zinc-800/50 border-l-4 ${
+                    insight.borderColor === "green" ? "border-green-500" :
+                    insight.borderColor === "orange" ? "border-orange-500" :
+                    "border-red-500"
+                  }`}
+                >
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <span className="text-2xl">{insight.emoji}</span>
+                    <p className="text-zinc-200 text-sm font-medium flex-1">{insight.title}</p>
+                  </CardContent>
+                </Card>
+              ))}
+              <div className="flex items-center gap-2 text-xs text-zinc-500 pt-2 border-t border-zinc-700/50">
+                <Settings className="w-3 h-3" />
+                <span>⚙️ Auto-updated based on latest data</span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      )}
 
-      {/* AI Insights + Gamification */}
-      {gmbConnected && (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-1 lg:grid-cols-2">
-          <AIInsightsCard
-            stats={{
-              totalReviews: stats.totalReviews,
-              averageRating: stats.averageRating,
-              responseRate: stats.responseRate,
-              pendingReviews: stats.pendingReviews,
-              unansweredQuestions: stats.unansweredQuestions,
-              ratingTrend: stats.ratingTrend,
-              reviewsTrend: stats.reviewsTrend
-            }}
-            loading={loading}
-          />
-          <GamificationWidget
-            stats={{
-              healthScore: stats.healthScore,
-              responseRate: stats.responseRate,
-              averageRating: stats.averageRating,
-              totalReviews: stats.totalReviews,
-              pendingReviews: stats.pendingReviews,
-            }}
-          />
+        {/* ACHIEVEMENTS & PROGRESS */}
+        <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
+          <CardHeader>
+            <CardTitle className="text-zinc-100 flex items-center gap-2">
+              🏆 Achievements & Progress
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {achievements.map((achievement, index) => {
+              const percentage = (achievement.current / achievement.target) * 100;
+              return (
+                <div key={index} className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-zinc-300">{achievement.label}</span>
+                    <span className="text-zinc-400">
+                      {achievement.current} / {achievement.target}
+                    </span>
+                  </div>
+                  <div className="relative h-3 bg-zinc-800 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full bg-gradient-to-r ${achievement.gradient} transition-all duration-500`}
+                      style={{ width: `${Math.min(percentage, 100)}%` }}
+                    ></div>
+                  </div>
         </div>
-      )}
+              );
+            })}
+          </CardContent>
+        </Card>
       </div>
-    </ErrorBoundary>
+    </div>
   );
 }
