@@ -25,7 +25,27 @@ BEGIN
       
       RAISE NOTICE '✅ Added metadata column to gmb_posts';
     ELSE
-      RAISE NOTICE 'ℹ️  metadata column already exists in gmb_posts';
+      -- Column exists, but check if default is correct
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = 'gmb_posts' 
+        AND column_name = 'metadata'
+        AND (column_default IS NULL OR column_default != '''{}''::jsonb')
+      ) THEN
+        -- Fix default value
+        ALTER TABLE public.gmb_posts 
+        ALTER COLUMN metadata SET DEFAULT '{}'::jsonb;
+        
+        -- Update existing NULL values
+        UPDATE public.gmb_posts 
+        SET metadata = '{}'::jsonb 
+        WHERE metadata IS NULL;
+        
+        RAISE NOTICE '✅ Fixed metadata column default value to {}';
+      ELSE
+        RAISE NOTICE 'ℹ️  metadata column already exists with correct default';
+      END IF;
     END IF;
     
     -- Add post_type column if it doesn't exist
