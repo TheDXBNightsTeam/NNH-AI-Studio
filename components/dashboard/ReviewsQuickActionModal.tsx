@@ -6,14 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Star } from 'lucide-react';
+import { Star, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { replyToReview } from '@/server/actions/gmb-reviews';
+import { useRouter } from 'next/navigation';
 
 export interface ReviewItem {
   id: string;
   rating: number;
-  comment: string | null;
-  created_at: string;
+  comment?: string | null;
+  review_text?: string | null;
+  created_at?: string;
+  review_date?: string;
   reviewer_name?: string | null;
 }
 
@@ -21,29 +25,64 @@ interface ReviewsQuickActionModalProps {
   isOpen: boolean;
   onClose: () => void;
   pendingReviews: ReviewItem[];
+  onSuccess?: () => void;
 }
 
 export function ReviewsQuickActionModal({
   isOpen,
   onClose,
   pendingReviews,
+  onSuccess,
 }: ReviewsQuickActionModalProps) {
   const [selectedReview, setSelectedReview] = useState<ReviewItem | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
 
   const handleSendReply = async () => {
     if (!selectedReview || replyText.trim().length === 0) {
       toast.error('Please enter a reply.');
       return;
     }
+
+    if (replyText.length > 4000) {
+      toast.error('Reply is too long. Maximum 4000 characters.');
+      return;
+    }
+
     setIsSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setIsSubmitting(false);
-    toast.success('Reply sent successfully!');
-    setReplyText('');
-    setSelectedReview(null);
-    onClose();
+
+    try {
+      const result = await replyToReview(selectedReview.id, replyText.trim());
+
+      if (result.success) {
+        toast.success('Reply posted successfully!', {
+          description: 'Your reply is now visible on Google',
+        });
+        setReplyText('');
+        setSelectedReview(null);
+        onSuccess?.();
+        router.refresh();
+        onClose();
+      } else {
+        toast.error('Failed to post reply', {
+          description: result.error || 'Please try again',
+          action: result.error?.includes('reconnect') 
+            ? {
+                label: 'Settings',
+                onClick: () => router.push('/settings'),
+              }
+            : undefined,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error posting reply:', error);
+      toast.error('An unexpected error occurred', {
+        description: 'Please try again later',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const closeAndReset = () => {
@@ -84,10 +123,10 @@ export function ReviewsQuickActionModal({
                       </Badge>
                     </div>
                     <p className="text-sm text-zinc-200 line-clamp-3">
-                      {review.comment || 'No review text'}
+                      {review.comment || review.review_text || 'No review text'}
                     </p>
                     <p className="text-xs text-zinc-500">
-                      {new Date(review.created_at).toLocaleString()}
+                      {new Date(review.created_at || review.review_date || new Date()).toLocaleString()}
                     </p>
                   </div>
                 </Card>
@@ -106,20 +145,29 @@ export function ReviewsQuickActionModal({
                   Pending
                 </Badge>
               </div>
-              <p className="text-sm text-zinc-200">{selectedReview.comment || 'No review text'}</p>
+              <p className="text-sm text-zinc-200">{selectedReview.comment || selectedReview.review_text || 'No review text'}</p>
               <p className="text-xs text-zinc-500 mt-2">
-                {new Date(selectedReview.created_at).toLocaleString()}
+                {new Date(selectedReview.created_at || selectedReview.review_date || new Date()).toLocaleString()}
               </p>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm text-zinc-300">Your Reply</label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm text-zinc-300">Your Reply</label>
+                <span className={`text-xs ${replyText.length > 4000 ? 'text-red-400' : 'text-zinc-500'}`}>
+                  {replyText.length} / 4000
+                </span>
+              </div>
               <Textarea
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 placeholder="Type your reply..."
                 className="bg-zinc-800 border-zinc-700 text-zinc-100 min-h-[120px]"
+                maxLength={4100}
               />
+              {replyText.length > 4000 && (
+                <p className="text-xs text-red-400">Reply exceeds the 4000 character limit</p>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2">
