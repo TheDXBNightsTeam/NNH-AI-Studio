@@ -56,45 +56,74 @@ export function LocationsMapTab() {
     locationsRef.current = locations;
   }, [locations.length]); // Only depend on length
 
+  // Map View specific logging
+  useEffect(() => {
+    console.log('🗺️ [MapView] Component state:', {
+      loading,
+      locationsCount: locations.length,
+      isLoaded,
+      loadError: loadError?.message,
+      locationsError: locationsError?.message,
+      timestamp: new Date().toISOString()
+    });
+  }, [loading, locations.length, isLoaded, loadError, locationsError]);
+
   // Timeout for loading state (10 seconds)
   useEffect(() => {
     if (loading) {
       const timeout = setTimeout(() => {
         setLoadingTimeout(true);
-        console.warn('⚠️ Locations loading timeout - taking longer than expected');
+        console.error('❌ [MapView] Locations loading timeout - taking longer than expected', {
+          loading,
+          locationsCount: locations.length,
+          isLoaded,
+          loadError: loadError?.message,
+          locationsError: locationsError?.message,
+          timestamp: new Date().toISOString()
+        });
       }, 10000); // 10 seconds
 
       return () => clearTimeout(timeout);
     } else {
       setLoadingTimeout(false);
     }
-  }, [loading]);
+  }, [loading, locations.length, isLoaded, loadError, locationsError]);
 
   // Debug logging
   useEffect(() => {
     if (loading) {
-      console.log('🔄 Loading locations...', { 
+      console.log('🔄 [MapView] Loading locations...', { 
         timestamp: new Date().toISOString(),
-        hasError: !!locationsError 
+        hasError: !!locationsError,
+        isLoaded,
+        loadError: loadError?.message
       });
     } else if (locationsError) {
-      console.error('❌ Locations error:', {
+      console.error('❌ [MapView] Locations error:', {
         message: locationsError.message,
         name: locationsError.name,
         stack: locationsError.stack,
         timestamp: new Date().toISOString()
       });
+    } else if (loadError) {
+      console.error('❌ [MapView] Google Maps error:', {
+        message: loadError.message,
+        timestamp: new Date().toISOString()
+      });
     } else if (locations.length > 0) {
-      console.log('✅ Locations loaded:', {
+      console.log('✅ [MapView] Locations loaded:', {
         count: locations.length,
+        isLoaded,
         timestamp: new Date().toISOString()
       });
     } else {
-      console.log('ℹ️ No locations found', {
+      console.log('ℹ️ [MapView] No locations found', {
+        loading,
+        isLoaded,
         timestamp: new Date().toISOString()
       });
     }
-  }, [loading, locationsError, locations.length]);
+  }, [loading, locationsError, locations.length, isLoaded, loadError]);
 
   // Fetch stats for selected location
   const { stats, loading: statsLoading, error: statsError } = useLocationMapData(selectedLocationId);
@@ -189,16 +218,30 @@ export function LocationsMapTab() {
           <div className="flex flex-col items-center justify-center">
             <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
             <p className="text-muted-foreground mb-2">Loading locations...</p>
+            <div className="text-xs text-muted-foreground mb-2">
+              <p>Map View Status:</p>
+              <p>• Locations: {loading ? 'Loading...' : `${locations.length} found`}</p>
+              <p>• Google Maps: {isLoaded ? 'Loaded ✅' : loadError ? `Error: ${loadError.message}` : 'Loading...'}</p>
+            </div>
             {loadingTimeout && (
               <div className="mt-4 text-center">
                 <p className="text-sm text-yellow-600 dark:text-yellow-400 mb-2">
                   ⏱️ This is taking longer than expected
+                </p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Debug Info:
+                  <br />• Loading: {loading ? 'Yes' : 'No'}
+                  <br />• Locations Count: {locations.length}
+                  <br />• Google Maps Loaded: {isLoaded ? 'Yes' : 'No'}
+                  <br />• Google Maps Error: {loadError ? loadError.message : 'None'}
+                  <br />• Locations Error: {locationsError ? locationsError.message : 'None'}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   This might mean:
                   <br />• No locations exist in the database
                   <br />• There's a network issue
                   <br />• The API is slow to respond
+                  <br />• Check Console (F12) for detailed logs
                 </p>
                 <button
                   onClick={() => window.location.reload()}
@@ -232,12 +275,25 @@ export function LocationsMapTab() {
 
   // Google Maps not loaded
   if (!isLoaded) {
+    console.log('🗺️ [MapView] Google Maps not loaded yet', {
+      isLoaded,
+      loadError: loadError?.message,
+      locationsCount: locations.length,
+      timestamp: new Date().toISOString()
+    });
+    
     return (
       <Card>
         <CardContent className="p-12">
           <div className="flex flex-col items-center justify-center">
             <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">Loading Google Maps...</p>
+            <p className="text-muted-foreground mb-2">Loading Google Maps...</p>
+            <div className="text-xs text-muted-foreground">
+              <p>Locations: {locations.length} found</p>
+              {loadError && (
+                <p className="text-destructive mt-2">Error: {loadError.message}</p>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
