@@ -32,7 +32,7 @@ export function AICockpitClient() {
 
     const response = await generate({
       reviewId: selectedReview.id,
-      reviewText: selectedReview.review_text || selectedReview.comment || '',
+      reviewText: selectedReview.review_text || '',
       rating: selectedReview.rating,
       locationName: selectedReview.location_name,
     })
@@ -95,7 +95,7 @@ export function AICockpitClient() {
 
               <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
                 <p className="text-sm text-foreground whitespace-pre-wrap">
-                  {selectedReview.review_text || selectedReview.comment || 'No review text'}
+                  {selectedReview.review_text || 'No review text'}
                 </p>
               </div>
 
