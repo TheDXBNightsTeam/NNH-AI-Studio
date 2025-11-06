@@ -16,7 +16,7 @@ interface ReviewCardProps {
 
 export function ReviewCard({ review, isSelected, onClick }: ReviewCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const reviewText = review.review_text || review.comment || ""
+  const reviewText = review.review_text || ""
   const shouldTruncate = reviewText.length > 150
   const displayText = shouldTruncate && !isExpanded 
     ? reviewText.substring(0, 150) + "..." 

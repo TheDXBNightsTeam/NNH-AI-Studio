@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
           id,
 
-          name,
+          location_name,
 
           user_id
 
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
 
       .eq('gmb_locations.user_id', user.id)
 
-      .order('create_time', { ascending: false });
+      .order('review_date', { ascending: false, nullsFirst: false });
 
 
 
