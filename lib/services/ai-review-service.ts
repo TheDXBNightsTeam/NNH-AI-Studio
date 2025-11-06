@@ -102,7 +102,7 @@ export async function generateResponse(review: GMBReview): Promise<string> {
 export async function calculateStats(reviews: GMBReview[]): Promise<Stats> {
   const totalReviews = reviews.length;
   const respondedReviews = reviews.filter(r => 
-    r.reply_text || r.review_reply || r.has_response
+    r.reply_text || r.review_reply
   ).length;
   
   const responseRate = totalReviews > 0 
