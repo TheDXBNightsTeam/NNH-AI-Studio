@@ -120,14 +120,36 @@ export function ReviewCard({ review, isSelected, onClick }: ReviewCardProps) {
 
 function formatTimeAgo(date: string | undefined | null): string {
   if (!date) return 'Unknown';
-  const now = new Date();
-  const reviewDate = new Date(date);
-  const diffMs = now.getTime() - reviewDate.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return '1 day ago';
-  if (diffDays < 30) return `${diffDays} days ago`;
-  if (diffDays < 60) return '1 month ago';
-  return `${Math.floor(diffDays / 30)} months ago`;
+  try {
+    const now = new Date();
+    const reviewDate = new Date(date);
+    
+    // Check if date is valid
+    if (isNaN(reviewDate.getTime())) {
+      console.error('Invalid date:', date);
+      return 'Unknown';
+    }
+    
+    const diffMs = now.getTime() - reviewDate.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return 'Recently'; // Future date (shouldn't happen)
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
+    }
+    if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return months === 1 ? '1 month ago' : `${months} months ago`;
+    }
+    const years = Math.floor(diffDays / 365);
+    return years === 1 ? '1 year ago' : `${years} years ago`;
+  } catch (error) {
+    console.error('Date formatting error:', error, date);
+    return 'Unknown';
+  }
 }
