@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { GoogleMap, useLoadScript, Marker, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
 import { useRouter } from '@/lib/navigation';
 import { getStatusColor } from '@/components/locations/location-types';
+import { useGoogleMaps } from '@/hooks/use-google-maps';
 
 const mapContainerStyle = {
   width: '100%',
@@ -38,7 +39,7 @@ export function LocationsMapTab() {
   const { theme } = useTheme();
   const router = useRouter();
   const { locations, loading } = useLocations({});
-  const [googleMapsApiKey, setGoogleMapsApiKey] = useState<string>('');
+  const { apiKey: googleMapsApiKey, isLoaded, loadError } = useGoogleMaps();
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [mapZoom, setMapZoom] = useState(10);
@@ -46,33 +47,16 @@ export function LocationsMapTab() {
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   const isMountedRef = useRef(true);
 
-  // Fetch API key securely from server
   useEffect(() => {
-    const fetchApiKey = async () => {
-      try {
-        const response = await fetch('/api/google-maps-config');
-        const data = await response.json();
-        if (data.apiKey && isMountedRef.current) {
-          setGoogleMapsApiKey(data.apiKey);
-        }
-      } catch (error) {
-        console.error('Failed to load Google Maps API key:', error);
-        toast.error('Failed to load Google Maps configuration');
-      }
-    };
-    
-    fetchApiKey();
+    if (loadError) {
+      console.error('Failed to load Google Maps:', loadError);
+      toast.error('Failed to load Google Maps configuration');
+    }
     
     return () => {
       isMountedRef.current = false;
     };
-  }, []);
-
-  // Load Google Maps script
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: googleMapsApiKey,
-    libraries,
-  });
+  }, [loadError]);
 
   // Calculate map center from locations
   const calculatedCenter = useMemo(() => {

@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { GoogleMap, useLoadScript, Marker, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner'; 
 import Link from 'next/link'; 
 import { useTheme } from 'next-themes'; // ⭐️ للاستفادة من الثيم الداكن للمستخدم
+import { useGoogleMaps } from '@/hooks/use-google-maps';
 
 // تعريف نوع بيانات الموقع والمنافس (يجب أن يتطابق مع API)
 interface LocationData {
@@ -73,7 +74,6 @@ export function LocationMapDashboard() {
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [showCompetitors, setShowCompetitors] = useState(false);
-  const [googleMapsApiKey, setGoogleMapsApiKey] = useState<string>('');
   
   // ✅ FIX: Memory leak prevention - track map instance and cleanup
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -81,29 +81,8 @@ export function LocationMapDashboard() {
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   const isMountedRef = useRef(true);
 
-  // ✅ SECURITY FIX: Fetch API key securely from server-side API route
-  useEffect(() => {
-    const fetchApiKey = async () => {
-      try {
-        const response = await fetch('/api/google-maps-config');
-        const data = await response.json();
-        if (data.apiKey && isMountedRef.current) {
-          setGoogleMapsApiKey(data.apiKey);
-        }
-      } catch (error) {
-        console.error('Failed to load Google Maps API key:', error);
-      }
-    };
-    
-    fetchApiKey();
-  }, []);
-
-  // 1. تحميل سكربت الخريطة
-  // ✅ SECURITY: API key now loaded securely from server-side route
-  const { isLoaded, loadError: mapLoadError } = useLoadScript({
-    googleMapsApiKey: googleMapsApiKey,
-    libraries,
-  });
+  // ✅ Use shared Google Maps hook to prevent multiple API loads
+  const { apiKey: googleMapsApiKey, isLoaded, loadError: mapLoadError } = useGoogleMaps();
 
   // ✅ FIX: Cleanup on unmount - Added comprehensive cleanup for Google Maps markers and InfoWindow instances to prevent memory leaks
   useEffect(() => {

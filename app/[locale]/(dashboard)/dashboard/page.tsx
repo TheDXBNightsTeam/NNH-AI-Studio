@@ -537,73 +537,93 @@ export default function DashboardPage() {
     try {
       setSyncing(true);
       
-      // ✅ Add timeout to prevent hanging requests
+      // Sync can take a while (locations, reviews, media, metrics, etc.)
+      // Increase timeout to 3 minutes (180 seconds) for full sync
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes timeout
       
-      const response = await fetch('/api/gmb/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          account_id: gmbAccountId, 
-          sync_type: 'full' 
-        }),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      // ✅ Handle specific HTTP error codes
-      if (response.status === 401) {
-        toast.error('Session expired. Please sign in again.');
-        await supabase.auth.signOut();
-        router.push('/auth/login');
-        return;
-      }
+      // Show info message that sync is starting (takes time)
+      toast.info('Sync started. This may take a few minutes...', { duration: 3000 });
       
-      if (response.status === 429) {
-        const retryAfter = response.headers.get('Retry-After');
-        toast.error(`Rate limit exceeded. Try again in ${retryAfter || 60} seconds.`);
-        return;
-      }
-      
-      if (response.status === 403) {
-        toast.error('You do not have permission to sync this account.');
-        return;
-      }
+      try {
+        const response = await fetch('/api/gmb/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            accountId: gmbAccountId, 
+            syncType: 'full' 
+          }),
+          signal: controller.signal
+        });
 
-      if (!response.ok) {
-        let errorMessage = 'Sync failed';
-        const contentType = response.headers.get('content-type');
-        
-        // ✅ Only parse JSON if response is JSON
-        if (contentType?.includes('application/json')) {
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.error || errorData.message || errorMessage;
-          } catch (parseError) {
-            console.error('Failed to parse error response:', parseError);
-          }
+        clearTimeout(timeoutId);
+
+        // ✅ Handle specific HTTP error codes
+        if (response.status === 401) {
+          toast.error('Session expired. Please sign in again.');
+          await supabase.auth.signOut();
+          router.push('/auth/login');
+          return;
         }
         
-        throw new Error(`${errorMessage} (Status: ${response.status})`);
-      }
-
-      const data = await response.json();
-
-      if (data.ok || data.success) {
-        setLastSyncTime(new Date());
-        toast.success('Sync completed successfully!');
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          toast.error(`Rate limit exceeded. Try again in ${retryAfter || 60} seconds.`);
+          return;
+        }
         
-        // ✅ Dispatch event for other components
-        window.dispatchEvent(new CustomEvent('gmb-sync-complete', { 
-          detail: { timestamp: Date.now(), data } 
-        }));
+        if (response.status === 403) {
+          toast.error('You do not have permission to sync this account.');
+          return;
+        }
+
+        if (!response.ok) {
+          let errorMessage = 'Sync failed';
+          const contentType = response.headers.get('content-type');
+          
+          // ✅ Only parse JSON if response is JSON
+          if (contentType?.includes('application/json')) {
+            try {
+              const errorData = await response.json();
+              errorMessage = errorData.error || errorData.message || errorMessage;
+            } catch (parseError) {
+              console.error('Failed to parse error response:', parseError);
+            }
+          }
+          
+          throw new Error(`${errorMessage} (Status: ${response.status})`);
+        }
+
+        const data = await response.json();
+
+        if (data.ok || data.success) {
+          setLastSyncTime(new Date());
+          const tookSeconds = Math.round((data.took_ms || 0) / 1000);
+          toast.success(`Sync completed successfully! (took ${tookSeconds}s)`);
+          
+          // ✅ Dispatch event for other components
+          window.dispatchEvent(new CustomEvent('gmb-sync-complete', { 
+            detail: { timestamp: Date.now(), data } 
+          }));
+          
+          // ✅ Refresh dashboard data
+          await fetchDashboardData();
+        } else {
+          throw new Error(data.error || data.message || 'Sync failed without error details');
+        }
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
         
-        // ✅ Refresh dashboard data
-        await fetchDashboardData();
-      } else {
-        throw new Error(data.error || data.message || 'Sync failed without error details');
+        // ✅ Handle AbortError specifically (timeout or manual cancellation)
+        if (fetchError.name === 'AbortError') {
+          // Don't show console.warn - it's expected for long-running operations
+          // Only show user-friendly message
+          toast.error('Sync timed out. The operation may still be processing. Please wait a moment and refresh the page.');
+          return;
+        }
+        
+        // Re-throw other errors to be handled by outer catch
+        throw fetchError;
       }
     } catch (error) {
       console.error('Sync error:', error);
@@ -611,6 +631,7 @@ export default function DashboardPage() {
       // ✅ Handle specific error types
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
+          // Already handled in inner catch, but keep for safety
           toast.error('Sync timed out. Please check your connection and try again.');
         } else if (error.message.includes('fetch') || error.message.includes('network')) {
           toast.error('Network error. Please check your internet connection.');

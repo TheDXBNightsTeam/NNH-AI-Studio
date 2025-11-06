@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { addCoordinatesToLocations } from '@/lib/utils/location-coordinates';
 
 export const dynamic = 'force-dynamic';
 
@@ -111,8 +112,11 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Add coordinates field to each location (convert latitude/longitude to coordinates object)
+    const locationsWithCoordinates = addCoordinatesToLocations(data || []);
+
     return NextResponse.json({
-      data: data || [],
+      data: locationsWithCoordinates,
       total: count || 0,
       page,
       pageSize,
