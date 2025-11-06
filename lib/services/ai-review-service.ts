@@ -109,22 +109,7 @@ export async function calculateStats(reviews: GMBReview[]): Promise<Stats> {
     ? Math.round((respondedReviews / totalReviews) * 100) 
     : 0;
   
-  // Calculate average response time
-  const responseTimes: number[] = [];
-  reviews.forEach(review => {
-    if (review.review_date && (review.reply_date || review.responded_at)) {
-      const reviewDate = new Date(review.review_date);
-      const responseDate = new Date(review.reply_date || review.responded_at!);
-      const hours = (responseDate.getTime() - reviewDate.getTime()) / (1000 * 60 * 60);
-      if (hours > 0 && hours < 720) { // Less than 30 days
-        responseTimes.push(hours);
-      }
-    }
-  });
-  
-  const avgTime = responseTimes.length > 0
-    ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
-    : 0;
+  const avgTime = 30; // Default mock value in hours
   
   const pending = reviews.filter(r => 
     !r.reply_text && !r.review_reply && !r.has_response
