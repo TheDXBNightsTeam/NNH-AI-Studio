@@ -11,6 +11,80 @@ export interface Stats {
   avgTime: number; // in hours
 }
 
+export class AIReviewService {
+  static calculateSentimentData(reviews: any[]) {
+    const totalReviews = reviews.length;
+    if (totalReviews === 0) {
+      return {
+        positive: 0,
+        neutral: 0,
+        negative: 0,
+        total: 0
+      };
+    }
+
+    let positive = 0;
+    let neutral = 0;
+    let negative = 0;
+
+    reviews.forEach((review: any) => {
+      // Use ai_sentiment if available, otherwise infer from rating/star_rating
+      const rating = review.rating || review.star_rating || 0;
+      const sentiment = review.ai_sentiment;
+
+      if (sentiment) {
+        if (sentiment === 'positive') positive++;
+        else if (sentiment === 'negative') negative++;
+        else neutral++;
+      } else {
+        // Infer from rating
+        if (rating >= 4) positive++;
+        else if (rating <= 2) negative++;
+        else neutral++;
+      }
+    });
+
+    const positivePercent = Math.round((positive / totalReviews) * 100);
+    const neutralPercent = Math.round((neutral / totalReviews) * 100);
+    const negativePercent = Math.round((negative / totalReviews) * 100);
+
+    return {
+      positive: positivePercent,
+      neutral: neutralPercent,
+      negative: negativePercent,
+      total: totalReviews
+    };
+  }
+
+  static extractKeywords(reviews: any[]): Array<{ topic: string; count: number }> {
+    const keywordCounts: Record<string, number> = {};
+    
+    const commonKeywords = [
+      'service', 'quality', 'price', 'staff', 'clean', 'food', 'atmosphere',
+      'location', 'wait', 'time', 'friendly', 'professional', 'recommend',
+      'excellent', 'great', 'good', 'bad', 'poor', 'slow', 'fast', 'delicious',
+      'ambiance', 'parking', 'wifi', 'music', 'decor', 'comfortable', 'value',
+      'experience', 'customer', 'management', 'environment'
+    ];
+    
+    reviews.forEach((review: any) => {
+      const text = (review.review_text || review.comment || review.comment_text || '').toLowerCase();
+      
+      commonKeywords.forEach(keyword => {
+        if (text.includes(keyword)) {
+          keywordCounts[keyword] = (keywordCounts[keyword] || 0) + 1;
+        }
+      });
+    });
+    
+    // Return top keywords sorted by frequency
+    return Object.entries(keywordCounts)
+      .map(([topic, count]) => ({ topic, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  }
+}
+
 /**
  * Analyze sentiment of review text
  */

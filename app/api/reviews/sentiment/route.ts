@@ -1,128 +1,149 @@
+// app/api/reviews/sentiment/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
+
 import { createClient } from '@/lib/supabase/server';
+
+import { AIReviewService } from '@/lib/services/ai-review-service';
+
+
 
 export const dynamic = 'force-dynamic';
 
+
+
 export async function GET(request: NextRequest) {
+
   try {
+
     const supabase = await createClient();
+
+    
+
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
+    
+
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+      console.error('Auth error:', authError);
+
+      return NextResponse.json(
+
+        { error: 'Unauthorized', details: 'Please log in to view sentiment analysis' },
+
+        { status: 401 }
+
+      );
+
     }
 
-    // Get user's locations
-    const { data: locations } = await supabase
-      .from('gmb_locations')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('is_active', true);
 
-    if (!locations || locations.length === 0) {
-      return NextResponse.json({
-        positive: 0,
-        neutral: 0,
-        negative: 0,
-        topics: []
-      });
-    }
 
-    const locationIds = locations.map(l => l.id);
+    console.log('Fetching reviews for sentiment analysis for user:', user.id);
 
-    // Fetch all reviews
-    const { data: reviews, error: reviewsError } = await supabase
+
+
+    const { data: reviews, error } = await supabase
+
       .from('gmb_reviews')
-      .select('rating, review_text, comment, ai_sentiment')
-      .eq('user_id', user.id)
-      .in('location_id', locationIds);
 
-    if (reviewsError) {
-      console.error('Error fetching reviews:', reviewsError);
-      return NextResponse.json({ error: 'Failed to fetch reviews' }, { status: 500 });
+      .select(`
+
+        *,
+
+        gmb_locations!inner (
+
+          id,
+
+          name,
+
+          user_id
+
+        )
+
+      `)
+
+      .eq('gmb_locations.user_id', user.id)
+
+      .order('create_time', { ascending: false });
+
+
+
+    if (error) {
+
+      console.error('Database error:', error);
+
+      return NextResponse.json(
+
+        { error: 'Failed to fetch reviews', details: error.message },
+
+        { status: 500 }
+
+      );
+
     }
 
-    const allReviews = reviews || [];
-    const totalReviews = allReviews.length;
 
-    if (totalReviews === 0) {
+
+    console.log(`Analyzing sentiment for ${reviews?.length || 0} reviews`);
+
+
+
+    if (!reviews || reviews.length === 0) {
+
       return NextResponse.json({
-        positive: 0,
-        neutral: 0,
-        negative: 0,
-        topics: []
+
+        sentimentData: {
+
+          positive: 0,
+
+          neutral: 0,
+
+          negative: 0,
+
+          total: 0
+
+        },
+
+        hotTopics: []
+
       });
+
     }
 
-    // Calculate sentiment distribution
-    let positive = 0;
-    let neutral = 0;
-    let negative = 0;
 
-    allReviews.forEach(review => {
-      // Use ai_sentiment if available, otherwise infer from rating
-      if (review.ai_sentiment) {
-        if (review.ai_sentiment === 'positive') positive++;
-        else if (review.ai_sentiment === 'negative') negative++;
-        else neutral++;
-      } else {
-        // Infer from rating
-        if (review.rating >= 4) positive++;
-        else if (review.rating <= 2) negative++;
-        else neutral++;
-      }
-    });
 
-    const positivePercent = totalReviews > 0 ? Math.round((positive / totalReviews) * 100) : 0;
-    const neutralPercent = totalReviews > 0 ? Math.round((neutral / totalReviews) * 100) : 0;
-    const negativePercent = totalReviews > 0 ? Math.round((negative / totalReviews) * 100) : 0;
+    const sentimentData = AIReviewService.calculateSentimentData(reviews);
 
-    // Extract hot topics (keywords) from review text
-    const topics = extractHotTopics(allReviews);
+    const hotTopics = AIReviewService.extractKeywords(reviews);
+
+
 
     return NextResponse.json({
-      positive: positivePercent,
-      neutral: neutralPercent,
-      negative: negativePercent,
-      topics
+
+      sentimentData,
+
+      hotTopics,
+
+      total: reviews.length
+
     });
+
+
 
   } catch (error) {
-    console.error('Sentiment API error:', error);
+
+    console.error('Unexpected error:', error);
+
     return NextResponse.json(
-      { error: 'Internal server error' },
+
+      { error: 'Internal server error', details: String(error) },
+
       { status: 500 }
+
     );
+
   }
+
 }
-
-function extractHotTopics(reviews: any[]): Array<{ topic: string; count: number }> {
-  // Common keywords to look for
-  const commonKeywords = [
-    'service', 'quality', 'price', 'staff', 'clean', 'food', 'atmosphere',
-    'location', 'wait', 'time', 'friendly', 'professional', 'recommend',
-    'excellent', 'great', 'good', 'bad', 'poor', 'slow', 'fast', 'delicious',
-    'ambiance', 'parking', 'wifi', 'music', 'decor', 'comfortable'
-  ];
-
-  const topicCounts: Record<string, number> = {};
-
-  reviews.forEach(review => {
-    const text = (review.review_text || review.comment || '').toLowerCase();
-    
-    commonKeywords.forEach(keyword => {
-      if (text.includes(keyword)) {
-        topicCounts[keyword] = (topicCounts[keyword] || 0) + 1;
-      }
-    });
-  });
-
-  // Convert to array and sort by count
-  const topics = Object.entries(topicCounts)
-    .map(([topic, count]) => ({ topic, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 10); // Top 10 topics
-
-  return topics;
-}
-
