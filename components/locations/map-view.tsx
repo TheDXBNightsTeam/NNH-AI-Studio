@@ -30,10 +30,15 @@ export function MapView({
   const markersRef = useRef<google.maps.Marker[]>([]);
 
   // Create stable key based on locations content to avoid infinite loops
-  const locationsKey = useMemo(() => 
-    locations.map(l => `${l.id}-${l.coordinates?.lat}-${l.coordinates?.lng}`).join('|'),
-    [locations.length, locations.map(l => `${l.id}-${l.coordinates?.lat}-${l.coordinates?.lng}`).join('|')]
-  );
+  // Use ref to track previous value and only update when content actually changes
+  const prevLocationsRef = useRef<string>('');
+  const locationsKey = useMemo(() => {
+    const currentKey = locations.map(l => `${l.id}-${l.coordinates?.lat}-${l.coordinates?.lng}`).join('|');
+    if (currentKey !== prevLocationsRef.current) {
+      prevLocationsRef.current = currentKey;
+    }
+    return prevLocationsRef.current;
+  }, [locations]);
 
   const locationsWithCoords = useMemo(() => {
     return locations.filter(loc => 

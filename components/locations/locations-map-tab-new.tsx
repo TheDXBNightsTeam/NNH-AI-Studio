@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocations } from '@/hooks/use-locations';
 import { Location } from '@/components/locations/location-types';
 import { MapView } from '@/components/locations/map-view';
@@ -54,6 +54,17 @@ export function LocationsMapTab() {
     );
   }
 
+  // Create stable key based on locations content to avoid infinite loops
+  // Use ref to track previous value and only update when content actually changes
+  const prevLocationsRef = useRef<string>('');
+  const locationsKey = useMemo(() => {
+    const currentKey = locations.map(l => `${l.id}-${l.coordinates?.lat}-${l.coordinates?.lng}`).join('|');
+    if (currentKey !== prevLocationsRef.current) {
+      prevLocationsRef.current = currentKey;
+    }
+    return prevLocationsRef.current;
+  }, [locations]);
+
   // Set default selection to first location
   useEffect(() => {
     if (locations.length > 0 && !selectedLocationId) {
@@ -67,7 +78,7 @@ export function LocationsMapTab() {
   // Get selected location - use stable dependency
   const selectedLocation = useMemo(() => {
     return locations.find(loc => loc.id === selectedLocationId);
-  }, [selectedLocationId, locations.length, locations.map(l => l.id).join(',')]);
+  }, [selectedLocationId, locationsKey]);
 
   // Handle marker click
   const handleMarkerClick = (location: Location) => {
@@ -134,12 +145,6 @@ export function LocationsMapTab() {
       </Card>
     );
   }
-
-  // Create stable key based on locations content to avoid infinite loops
-  const locationsKey = useMemo(() => 
-    locations.map(l => `${l.id}-${l.coordinates?.lat}-${l.coordinates?.lng}`).join('|'),
-    [locations.length, locations.map(l => `${l.id}-${l.coordinates?.lat}-${l.coordinates?.lng}`).join('|')]
-  );
 
   // Filter locations with coordinates
   const locationsWithCoords = useMemo(() => {
