@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useRouter } from '@/lib/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Location } from '@/components/locations/location-types';
 import { getHealthScoreColor, formatLargeNumber } from '@/components/locations/location-types';
-import { Phone, MapPin, Eye, Settings, ExternalLink } from 'lucide-react';
+import { Phone, MapPin, Eye, Settings } from 'lucide-react';
 
 interface HorizontalLocationCardProps {
   location: Location;
@@ -14,22 +14,8 @@ interface HorizontalLocationCardProps {
 }
 
 export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLocationCardProps) {
-  // Debug logging
-  console.log('[HorizontalLocationCard] Rendering with location:', {
-    id: location?.id,
-    name: location?.name,
-    address: location?.address,
-    rating: location?.rating,
-    reviewCount: location?.reviewCount,
-    healthScore: location?.healthScore,
-    status: location?.status,
-    hasLocation: !!location,
-    locationKeys: location ? Object.keys(location) : []
-  });
-
   // Safety check
   if (!location) {
-    console.warn('[HorizontalLocationCard] No location provided!');
     return (
       <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-2xl text-red-400">
         No location data provided
@@ -38,67 +24,6 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
   }
 
   const router = useRouter();
-  const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
-  const [logoPhoto, setLogoPhoto] = useState<string | null>(null);
-  const [loadingMedia, setLoadingMedia] = useState(true);
-
-  // Fetch media for cover/logo photos
-  useEffect(() => {
-    async function fetchLocationMedia() {
-      try {
-        setLoadingMedia(true);
-        const response = await fetch(`/api/gmb/media?locationId=${location.id}`);
-        
-        if (!response.ok) {
-          return;
-        }
-        
-        const result = await response.json();
-        
-        if (result.data?.media) {
-          const media = result.data.media;
-          let foundCover = false;
-          let foundLogo = false;
-          
-          media.forEach((item: any) => {
-            const category = item.locationAssociation?.category || 
-                           item.metadata?.locationAssociation?.category ||
-                           item.metadata?.category ||
-                           item.category;
-            const url = item.sourceUrl || item.googleUrl || item.url || item.thumbnailUrl;
-            
-            if (!url) return;
-            
-            if (category === 'COVER' && !foundCover) {
-              foundCover = true;
-              setCoverPhoto(url);
-            } else if (category === 'LOGO' && !foundLogo) {
-              foundLogo = true;
-              setLogoPhoto(url);
-            }
-          });
-          
-          // If no categorized media found, use first photo as cover
-          if (!foundCover && media.length > 0) {
-            const firstPhoto = media.find((m: any) => 
-              (m.mediaFormat !== 'VIDEO' && m.type !== 'VIDEO') && 
-              (m.sourceUrl || m.googleUrl || m.url || m.thumbnailUrl)
-            );
-            if (firstPhoto) {
-              const photoUrl = firstPhoto.sourceUrl || firstPhoto.googleUrl || firstPhoto.url || firstPhoto.thumbnailUrl;
-              setCoverPhoto(photoUrl);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching location media:', error);
-      } finally {
-        setLoadingMedia(false);
-      }
-    }
-
-    fetchLocationMedia();
-  }, [location.id]);
 
   const handleViewDetails = () => {
     if (onViewDetails) {
@@ -123,8 +48,14 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
     }
   };
 
-  const healthColor = location.healthScore !== undefined
-    ? getHealthColor(location.healthScore)
+  // Get rating and healthScore from location data directly
+  // Use nullish coalescing to preserve 0 values but default undefined to 0 for display
+  const rating = location.rating ?? undefined;
+  const healthScore = location.healthScore ?? undefined;
+  const reviewCount = location.reviewCount ?? undefined;
+  
+  const healthColor = healthScore !== undefined && healthScore !== null
+    ? getHealthColor(healthScore)
     : 'gray';
 
   return (
@@ -132,31 +63,13 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
       {/* Left Side: Cover Image with Logo */}
       <div className="relative w-full md:w-[200px] h-[150px] md:h-[150px] flex-shrink-0 rounded-xl overflow-hidden">
         {/* Cover Image */}
-        {coverPhoto ? (
-          <img 
-            src={coverPhoto} 
-            alt={location.name}
-            className="w-full h-full object-cover"
-            onError={() => setCoverPhoto(null)}
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-orange-500 to-orange-600" />
-        )}
+        <div className="w-full h-full bg-gradient-to-br from-orange-500 to-orange-600" />
         
         {/* Logo Overlay */}
         <div className="absolute bottom-[-20px] left-1/2 transform -translate-x-1/2 w-16 h-16 rounded-full border-[3px] border-black bg-white overflow-hidden shadow-lg">
-          {logoPhoto ? (
-            <img 
-              src={logoPhoto} 
-              alt="Logo"
-              className="w-full h-full object-cover"
-              onError={() => setLogoPhoto(null)}
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white text-2xl font-bold">
-              {location.name[0]?.toUpperCase() || '?'}
-            </div>
-          )}
+          <div className="w-full h-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white text-2xl font-bold">
+            {location.name[0]?.toUpperCase() || '?'}
+          </div>
         </div>
       </div>
       
@@ -189,25 +102,25 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
         
         {/* Stats Row */}
         <div className="flex items-center gap-3 text-sm flex-wrap">
-          {(location.rating !== undefined && location.rating !== null) ? (
+          {rating != null && rating > 0 ? (
             <span className="text-white flex items-center gap-1">
               <span className="text-yellow-500">⭐</span>
-              {location.rating.toFixed(1)}
-              {(location.reviewCount !== undefined && location.reviewCount !== null) && (
+              {rating.toFixed(1)}
+              {reviewCount != null && reviewCount > 0 && (
                 <span className="text-gray-400 ml-1">
-                  ({formatLargeNumber(location.reviewCount)} reviews)
+                  ({formatLargeNumber(reviewCount)} reviews)
                 </span>
               )}
             </span>
           ) : (
             <span className="text-gray-400 text-sm">No rating yet</span>
           )}
-          {(location.rating !== undefined && location.healthScore !== undefined) && (
+          {rating != null && rating > 0 && healthScore != null && healthScore > 0 && (
             <span className="text-gray-500">•</span>
           )}
-          {(location.healthScore !== undefined && location.healthScore !== null) ? (
-            <span className={`font-medium ${getHealthScoreColor(location.healthScore)}`}>
-              💚 Health: {location.healthScore}%
+          {healthScore != null && healthScore > 0 ? (
+            <span className={`font-medium ${getHealthScoreColor(healthScore)}`}>
+              💚 Health: {healthScore}%
             </span>
           ) : (
             <span className="text-gray-400 text-sm">No health score</span>
