@@ -123,7 +123,15 @@ export function SelectedReviewDetail({ review }: SelectedReviewDetailProps) {
       {/* Metadata */}
       <div className="text-sm text-gray-400 space-y-1">
         <div>📍 {review.location_name || 'Unknown Location'}</div>
-        <div>🕐 Posted {formatTimeAgo(review.review_date || review.created_at)}</div>
+        <div>
+          🕐 Posted{' '}
+          <span 
+            title={review.review_date || review.created_at ? new Date(review.review_date || review.created_at || '').toLocaleString() : 'Unknown date'}
+            className="cursor-help"
+          >
+            {formatTimeAgo(review.review_date || review.created_at)}
+          </span>
+        </div>
         {review.ai_sentiment && (
           <div>
             {review.ai_sentiment === 'positive' ? '😊' :
@@ -208,22 +216,49 @@ export function SelectedReviewDetail({ review }: SelectedReviewDetailProps) {
 }
 
 function formatTimeAgo(date: string | undefined | null): string {
-  if (!date) return 'Unknown';
+  if (!date) {
+    console.log('[formatTimeAgo] No date provided');
+    return 'Unknown';
+  }
   
   try {
     const now = new Date();
-    const reviewDate = new Date(date);
+    
+    // Force UTC parsing if the date doesn't have timezone info
+    // Most database dates are stored in UTC but may not have 'Z' suffix
+    let reviewDate: Date;
+    if (date.includes('Z') || date.includes('+') || date.includes('-', 10)) {
+      // Has timezone info, parse as-is
+      reviewDate = new Date(date);
+    } else {
+      // No timezone info, assume UTC
+      reviewDate = new Date(date + 'Z');
+    }
+    
+    // DEBUG: Log the actual dates (only in development)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[formatTimeAgo] Review date string:', date);
+      console.log('[formatTimeAgo] Parsed review date:', reviewDate.toISOString());
+      console.log('[formatTimeAgo] Current date:', now.toISOString());
+    }
     
     // Check if date is valid
     if (isNaN(reviewDate.getTime())) {
-      console.error('Invalid date:', date);
+      console.error('[formatTimeAgo] Invalid date:', date);
       return 'Unknown';
     }
     
     const diffMs = now.getTime() - reviewDate.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     
-    if (diffDays < 0) return 'Recently'; // Future date (shouldn't happen)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[formatTimeAgo] Difference in days:', diffDays);
+    }
+    
+    if (diffDays < 0) {
+      console.warn('[formatTimeAgo] Future date detected:', date, 'Diff:', diffDays, 'days');
+      return 'Recently';
+    }
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return '1 day ago';
     if (diffDays < 7) return `${diffDays} days ago`;
@@ -238,7 +273,7 @@ function formatTimeAgo(date: string | undefined | null): string {
     const years = Math.floor(diffDays / 365);
     return years === 1 ? '1 year ago' : `${years} years ago`;
   } catch (error) {
-    console.error('Date formatting error:', error, date);
+    console.error('[formatTimeAgo] Date formatting error:', error, date);
     return 'Unknown';
   }
 }
