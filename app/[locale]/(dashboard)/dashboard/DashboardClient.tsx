@@ -138,7 +138,8 @@ export function QuickActionCard({
   subtitle, 
   pendingCount,
   href,
-  onClick
+  onClick,
+  disabled
 }: {
   title: string;
   icon: string;
@@ -146,13 +147,16 @@ export function QuickActionCard({
   pendingCount: number;
   href: string;
   onClick?: () => void;
+  disabled?: boolean;
 }) {
   const router = useRouter();
   
   return (
     <div
-      onClick={() => (onClick ? onClick() : router.push(href))}
-      className="bg-zinc-800/50 border-zinc-700/50 hover:border-orange-500/30 transition-all cursor-pointer rounded-lg"
+      onClick={() => !disabled && (onClick ? onClick() : router.push(href))}
+      className={`bg-zinc-800/50 border-zinc-700/50 hover:border-orange-500/30 transition-all rounded-lg ${
+        disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+      }`}
     >
       <div className="p-4">
         <div className="flex items-start justify-between">
@@ -381,9 +385,11 @@ export function LastUpdated({ updatedAt }: { updatedAt: string }) {
 export function QuickActionsInteractive({
   pendingReviews,
   unansweredQuestions,
+  locationId,
 }: {
   pendingReviews: Array<{ id: string; rating: number; comment: string | null; created_at: string }>;
   unansweredQuestions: Array<{ id: string; question_text: string; created_at: string; upvotes?: number | null }>;
+  locationId?: string;
 }) {
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const [questionsOpen, setQuestionsOpen] = useState(false);
@@ -415,6 +421,7 @@ export function QuickActionsInteractive({
           pendingCount={0}
           href="/posts"
           onClick={() => setPostOpen(true)}
+          disabled={!locationId}
         />
       </div>
       <ReviewsQuickActionModal
@@ -427,7 +434,13 @@ export function QuickActionsInteractive({
         onClose={() => setQuestionsOpen(false)}
         unansweredQuestions={unansweredQuestions}
       />
-      <CreatePostModal isOpen={postOpen} onClose={() => setPostOpen(false)} />
+      {locationId && (
+        <CreatePostModal 
+          isOpen={postOpen} 
+          onClose={() => setPostOpen(false)} 
+          locationId={locationId}
+        />
+      )}
     </>
   );
 }

@@ -445,6 +445,7 @@ export default async function DashboardPage() {
                 <QuickActionsInteractive
                   pendingReviews={pendingReviewsList}
                   unansweredQuestions={unansweredQuestionsList}
+                  locationId={activeLocation?.id}
                 />
               </CardContent>
             </Card>
