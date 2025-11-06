@@ -23,6 +23,30 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
     );
   }
 
+  // Debug: Log the entire location object
+  console.log('[HorizontalLocationCard] Full location object:', location);
+  console.log('[HorizontalLocationCard] Rating fields:', {
+    rating: location.rating,
+    avgRating: (location as any).avgRating,
+    average_rating: (location as any).average_rating,
+    averageRating: (location as any).averageRating,
+  });
+  console.log('[HorizontalLocationCard] Health score fields:', {
+    healthScore: location.healthScore,
+    health_score: (location as any).health_score,
+    avgHealthScore: (location as any).avgHealthScore,
+    average_health_score: (location as any).average_health_score,
+    averageHealthScore: (location as any).averageHealthScore,
+  });
+  console.log('[HorizontalLocationCard] Review count fields:', {
+    reviewCount: location.reviewCount,
+    reviews_count: (location as any).reviews_count,
+    reviewsCount: (location as any).reviewsCount,
+    total_reviews: (location as any).total_reviews,
+    totalReviews: (location as any).totalReviews,
+  });
+  console.log('[HorizontalLocationCard] All location keys:', Object.keys(location));
+
   const router = useRouter();
 
   const handleViewDetails = () => {
@@ -48,11 +72,51 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
     }
   };
 
-  // Get rating and healthScore from location data directly
-  // Use nullish coalescing to preserve 0 values but default undefined to 0 for display
-  const rating = location.rating ?? undefined;
-  const healthScore = location.healthScore ?? undefined;
-  const reviewCount = location.reviewCount ?? undefined;
+  // Try all possible field names for rating, healthScore, and reviewCount
+  // This matches how stats cards access the data (using || 0 fallback)
+  // Also handle string values that need parsing
+  const getNumericValue = (value: any): number | undefined => {
+    if (value == null) return undefined;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? undefined : parsed;
+    }
+    return undefined;
+  };
+
+  const rating = 
+    getNumericValue(location.rating) ?? 
+    getNumericValue((location as any).avgRating) ?? 
+    getNumericValue((location as any).average_rating) ?? 
+    getNumericValue((location as any).averageRating) ?? 
+    undefined;
+  
+  const healthScore = 
+    getNumericValue(location.healthScore) ?? 
+    getNumericValue((location as any).health_score) ?? 
+    getNumericValue((location as any).avgHealthScore) ?? 
+    getNumericValue((location as any).average_health_score) ?? 
+    getNumericValue((location as any).averageHealthScore) ?? 
+    undefined;
+  
+  const reviewCount = 
+    getNumericValue(location.reviewCount) ?? 
+    getNumericValue((location as any).reviews_count) ?? 
+    getNumericValue((location as any).reviewsCount) ?? 
+    getNumericValue((location as any).total_reviews) ?? 
+    getNumericValue((location as any).totalReviews) ?? 
+    undefined;
+
+  // Debug: Log the extracted values
+  console.log('[HorizontalLocationCard] Extracted values:', {
+    rating,
+    healthScore,
+    reviewCount,
+    ratingType: typeof rating,
+    healthScoreType: typeof healthScore,
+    reviewCountType: typeof reviewCount,
+  });
   
   const healthColor = healthScore !== undefined && healthScore !== null
     ? getHealthColor(healthScore)
@@ -105,7 +169,7 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
           {rating != null && rating > 0 ? (
             <span className="text-white flex items-center gap-1">
               <span className="text-yellow-500">⭐</span>
-              {rating.toFixed(1)}
+              {typeof rating === 'number' ? rating.toFixed(1) : rating}
               {reviewCount != null && reviewCount > 0 && (
                 <span className="text-gray-400 ml-1">
                   ({formatLargeNumber(reviewCount)} reviews)
