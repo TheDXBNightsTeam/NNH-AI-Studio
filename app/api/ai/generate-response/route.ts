@@ -19,10 +19,11 @@ export async function POST(request: NextRequest) {
 
     console.log('Received data:', { review_text, rating, reviewer_name, location_name }); // Debug
 
-    // Handle empty review text - generate response based on rating only
-    const reviewTextForPrompt = review_text && review_text !== 'No review text provided' && review_text !== 'No review text'
-      ? review_text
-      : `Customer rated ${rating} out of 5 stars${rating >= 4 ? ' - positive experience' : rating <= 2 ? ' - negative experience' : ' - neutral experience'}`;
+    // Check if review has actual text or is rating-only
+    const hasReviewText = review_text && 
+      review_text !== 'No review text provided' && 
+      review_text !== 'No review text' &&
+      !review_text.includes('star rating with no comment');
 
     // Build context-aware prompt based on rating
     let tone = '';
@@ -39,20 +40,38 @@ export async function POST(request: NextRequest) {
       instructions = 'Sincerely apologize, acknowledge their concerns, and offer to resolve the issue directly.';
     }
 
-    const prompt = `You are a professional business manager responding to a Google My Business review for ${location_name}.
+    // Generate different prompts for reviews with text vs rating-only
+    const prompt = hasReviewText
+      ? `You are a professional business manager responding to a Google My Business review for ${location_name}.
 
 Review Details:
 - Customer: ${reviewer_name}
 - Rating: ${rating}/5 stars
-- Review: "${reviewTextForPrompt}"
+- Review: "${review_text}"
 
 Generate a professional response that:
 1. Is ${tone}
 2. ${instructions}
 3. Is 2-4 sentences long (50-100 words)
 4. Sounds natural and human (not robotic)
-5. ${review_text && review_text !== 'No review text provided' && review_text !== 'No review text' ? 'Addresses specific points from their review when possible' : 'Acknowledges their rating and experience'}
+5. Addresses specific points from their review when possible
 6. Uses proper English
+7. Signs off appropriately (e.g., "Best regards, The ${location_name} Team")
+
+Important: Write ONLY the response text, no additional commentary or explanations.`
+      : `You are a professional business manager responding to a Google My Business review for ${location_name}.
+
+Review Details:
+- Customer: ${reviewer_name}
+- Rating: ${rating}/5 stars only (no written comment)
+
+Generate a professional response that:
+1. Is ${tone}
+2. ${instructions}
+3. Is 2-3 sentences long (40-60 words)
+4. Thanks them for the ${rating}-star rating
+5. Sounds warm and appreciative
+6. Invites them back
 7. Signs off appropriately (e.g., "Best regards, The ${location_name} Team")
 
 Important: Write ONLY the response text, no additional commentary or explanations.`;
