@@ -103,6 +103,20 @@ export async function GET(request: NextRequest) {
       // Get review text - prefer 'comment' field, fallback to 'review_text'
       const reviewText = (r.comment || r.review_text || '').trim();
       
+      // DEBUG: Log date fields to help diagnose date issues
+      if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
+        // Log 10% of reviews to avoid spam
+        console.log('[Reviews API] Review dates:', {
+          id: r.id,
+          reviewer: r.reviewer_name,
+          review_date: r.review_date,
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+          review_date_type: typeof r.review_date,
+          created_at_type: typeof r.created_at
+        });
+      }
+      
       return {
         id: r.id,
         review_id: r.review_id,
@@ -112,13 +126,13 @@ export async function GET(request: NextRequest) {
         review_text: reviewText,
         reply_text: r.reply_text || '',
         has_reply: Boolean(r.reply_text || r.has_reply),
-        review_date: r.review_date,
+        review_date: r.review_date, // Use review_date (from GMB API) - this is the actual review date
+        created_at: r.created_at, // Keep created_at for fallback
         replied_at: r.replied_at,
         ai_sentiment: r.ai_sentiment,
         location_id: r.location_id,
         external_review_id: r.external_review_id,
         gmb_account_id: r.gmb_account_id,
-        created_at: r.created_at,
         updated_at: r.updated_at,
         location_name: locationName
       };
