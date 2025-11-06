@@ -30,13 +30,29 @@ import {
  * - Glassmorphism UI effects
  */
 export function LocationsMapTab() {
-  const { locations, loading } = useLocations({});
+  const { locations, loading, error: locationsError } = useLocations({});
   const { apiKey: googleMapsApiKey, isLoaded, loadError } = useGoogleMaps();
   const [selectedLocationId, setSelectedLocationId] = useState<string | undefined>(undefined);
   const isMobile = useIsMobile();
   
   // Fetch stats for selected location
-  const { stats, loading: statsLoading } = useLocationMapData(selectedLocationId);
+  const { stats, loading: statsLoading, error: statsError } = useLocationMapData(selectedLocationId);
+
+  // Handle locations error
+  if (locationsError) {
+    return (
+      <Card>
+        <CardContent className="p-12">
+          <div className="text-center">
+            <p className="text-destructive font-medium mb-2">Failed to load locations</p>
+            <p className="text-sm text-muted-foreground">
+              {locationsError.message || 'Please try refreshing the page'}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Set default selection to first location
   useEffect(() => {
