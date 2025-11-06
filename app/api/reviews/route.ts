@@ -18,26 +18,11 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
 
     // Build query - select all fields including comment and review_text
+    // Use * to get all fields, then join with locations
     let query = supabase
       .from('gmb_reviews')
       .select(`
-        id,
-        review_id,
-        reviewer_name,
-        reviewer_profile_photo_url,
-        rating,
-        comment,
-        review_text,
-        reply_text,
-        has_reply,
-        review_date,
-        replied_at,
-        ai_sentiment,
-        location_id,
-        external_review_id,
-        gmb_account_id,
-        created_at,
-        updated_at,
+        *,
         gmb_locations!inner (
           id,
           location_name,
@@ -69,14 +54,29 @@ export async function GET(request: NextRequest) {
 
     // Transform data properly - use comment field which is the actual review text
     // Note: gmb_locations is an array from the join, so we access the first element
-    let reviewsWithLocation = (reviews || []).map(r => {
-      const location = Array.isArray(r.gmb_locations) ? r.gmb_locations[0] : r.gmb_locations;
+    let reviewsWithLocation = (reviews || []).map((r: any) => {
+      // Handle gmb_locations - it can be an array or single object
+      let location = null;
+      if (Array.isArray(r.gmb_locations)) {
+        location = r.gmb_locations[0];
+      } else if (r.gmb_locations) {
+        location = r.gmb_locations;
+      }
+      
+      // Extract location name
+      const locationName = location?.location_name || location?.name || 'Unknown Location';
+      
+      // Get review text - try comment first, then review_text
+      const reviewText = (r.comment || r.review_text || '').trim();
+      
       return {
         ...r,
-        location_name: location?.location_name || location?.name || 'Unknown Location',
+        location_name: locationName,
         // Use 'comment' field which is the actual review text, fallback to review_text
-        review_text: r.comment || r.review_text || '',
-        reviewer_name: r.reviewer_name || 'Anonymous'
+        review_text: reviewText,
+        reviewer_name: r.reviewer_name || 'Anonymous',
+        // Remove the gmb_locations array from the response to avoid confusion
+        gmb_locations: undefined
       };
     });
 
