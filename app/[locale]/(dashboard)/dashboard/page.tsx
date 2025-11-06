@@ -1,5 +1,4 @@
-'use client';
-
+import { createClient } from '@/lib/supabase/server';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,89 +10,301 @@ import {
   MapPin, 
   Star, 
   Zap, 
-  MessageSquare, 
-  HelpCircle, 
-  FileText,
-  Activity,
   TrendingUp,
   TrendingDown,
-  Shield,
-  AlertTriangle,
-  Target,
-  Trophy,
   BarChart3,
-  Lightbulb,
   Settings
 } from 'lucide-react';
+import { RefreshButton } from './refresh-button';
+import { TimeFilterButtons } from './time-filter-buttons';
+import { ActiveLocationActions } from './active-location-actions';
+import { QuickActionButtons } from './quick-action-buttons';
+import { WeeklyTasksButton } from './weekly-tasks-button';
+import { ProfileProtectionButton } from './profile-protection-button';
+import { LocationDetailsButton } from './location-details-button';
 
-export default function DashboardPage() {
-  // Placeholder data - all static for now
-  const lastUpdatedMinutes = 5;
-  const activeLocation = {
-    name: "The DXB Night Club ...",
-    rating: 4.3,
-    isConnected: true,
+// TypeScript Interfaces
+interface DashboardStats {
+  totalLocations: number;
+  totalReviews: number;
+  avgRating: string;
+  responseRate: string;
+  healthScore: number;
+  pendingReviews: number;
+  pendingQuestions: number;
+}
+
+interface Location {
+  id: string;
+  location_name: string;
+  rating: number | null;
+  review_count: number | null;
+  response_rate: number | null;
+  is_active: boolean | null;
+  address: string | null;
+  category: string | null;
+}
+
+interface Review {
+  id: string;
+  rating: number;
+  comment: string | null;
+  review_reply: string | null;
+  status: string | null;
+  ai_sentiment: string | null;
+  created_at: string;
+}
+
+interface Question {
+  id: string;
+  question_text: string;
+  answer_text: string | null;
+  answer_status: string | null;
+  created_at: string;
+}
+
+// Data Fetching Function
+async function getDashboardData() {
+  const supabase = await createClient();
+  
+  try {
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      console.error('User fetch error:', userError);
+      return {
+        reviews: [] as Review[],
+        locations: [] as Location[],
+        questions: [] as Question[]
+      };
+    }
+    
+    // Fetch reviews for current user
+    const { data: reviews, error: reviewsError } = await supabase
+      .from('gmb_reviews')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    
+    if (reviewsError) {
+      console.error('Reviews fetch error:', reviewsError);
+    }
+    
+    // Fetch locations for current user
+    const { data: locations, error: locationsError } = await supabase
+      .from('gmb_locations')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('is_active', true);
+    
+    if (locationsError) {
+      console.error('Locations fetch error:', locationsError);
+    }
+    
+    // Fetch questions for current user
+    const { data: questions, error: questionsError } = await supabase
+      .from('gmb_questions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    
+    if (questionsError) {
+      console.error('Questions fetch error:', questionsError);
+    }
+    
+    return {
+      reviews: (reviews || []) as Review[],
+      locations: (locations || []) as Location[],
+      questions: (questions || []) as Question[]
+    };
+  } catch (error) {
+    console.error('Dashboard data fetch error:', error);
+    return {
+      reviews: [] as Review[],
+      locations: [] as Location[],
+      questions: [] as Question[]
+    };
+  }
+}
+
+// Stats Calculation Helper Functions
+function calculateAverageRating(reviews: Review[]): string {
+  if (!reviews || reviews.length === 0) return '0.0';
+  const sum = reviews.reduce((acc, review) => acc + (review.rating || 0), 0);
+  return (sum / reviews.length).toFixed(1);
+}
+
+function calculateResponseRate(reviews: Review[]): string {
+  if (!reviews || reviews.length === 0) return '0.0';
+  const replied = reviews.filter(r => r.review_reply && r.review_reply.trim() !== '').length;
+  return ((replied / reviews.length) * 100).toFixed(1);
+}
+
+function calculateHealthScore(stats: {
+  avgRating: string;
+  responseRate: string;
+  totalReviews: number;
+}): number {
+  // Health score formula:
+  // 40% based on rating (out of 5)
+  // 50% based on response rate (out of 100)
+  // 10% based on having reviews
+  
+  const ratingScore = (parseFloat(stats.avgRating) / 5) * 40;
+  const responseScore = (parseFloat(stats.responseRate) / 100) * 50;
+  const reviewsScore = stats.totalReviews > 0 ? 10 : 0;
+  
+  return Math.round(ratingScore + responseScore + reviewsScore);
+}
+
+function getPendingReviews(reviews: Review[]): number {
+  return reviews.filter(r => !r.review_reply || r.review_reply.trim() === '').length;
+}
+
+function getPendingQuestions(questions: Question[]): number {
+  return questions.filter(q => !q.answer_text || q.answer_text.trim() === '' || q.answer_status === 'pending').length;
+}
+
+function getTopLocation(locations: Location[]): Location | null {
+  if (!locations || locations.length === 0) return null;
+  return locations.reduce((prev, current) => 
+    (current.rating || 0) > (prev.rating || 0) ? current : prev
+  , locations[0]);
+}
+
+// Main Component
+export default async function DashboardPage() {
+  // Fetch all data
+  const { reviews, locations, questions } = await getDashboardData();
+  
+  // Calculate stats
+  const avgRating = calculateAverageRating(reviews);
+  const responseRate = calculateResponseRate(reviews);
+  const pendingReviews = getPendingReviews(reviews);
+  const pendingQuestions = getPendingQuestions(questions);
+  
+  const stats: DashboardStats = {
+    totalLocations: locations.length,
+    totalReviews: reviews.length,
+    avgRating,
+    responseRate,
+    healthScore: calculateHealthScore({ avgRating, responseRate, totalReviews: reviews.length }),
+    pendingReviews,
+    pendingQuestions
   };
   
-  const stats = {
-    healthScore: 60,
-    totalLocations: 1,
-    averageRating: 4.0,
-    totalReviews: 412,
-    responseRate: 0.5,
-    responseTarget: 90,
-  };
-
-  const pendingCounts = {
-    reviews: 45,
-    questions: 7,
-  };
-
+  // Get active location and top performer
+  const activeLocation = locations[0] || null;
+  const topLocation = getTopLocation(locations);
+  
+  // Generate dynamic alerts
+  const alerts: Array<{
+    priority: 'HIGH' | 'MEDIUM';
+    message: string;
+    type: string;
+    icon: string;
+  }> = [];
+  
+  if (pendingReviews > 0) {
+    alerts.push({
+      priority: 'HIGH',
+      message: `${pendingReviews} reviews awaiting response.`,
+      type: 'reviews',
+      icon: '🚨'
+    });
+  }
+  
+  if (pendingQuestions > 0) {
+    alerts.push({
+      priority: 'HIGH',
+      message: `${pendingQuestions} customer questions need answering`,
+      type: 'questions',
+      icon: '🚨'
+    });
+  }
+  
+  if (parseFloat(responseRate) < 80) {
+    alerts.push({
+      priority: 'MEDIUM',
+      message: `Response rate (${responseRate}%) is below target. Aim for 80%+.`,
+      type: 'response_rate',
+      icon: '⚠️'
+    });
+  }
+  
+  // Generate insights based on data
+  const insights: Array<{
+    id: number;
+    title: string;
+    emoji: string;
+    borderColor: string;
+  }> = [];
+  
+  if (parseFloat(avgRating) >= 4.0) {
+    insights.push({
+      id: 1,
+      title: 'Rating Trending Up',
+      emoji: '📈',
+      borderColor: 'green'
+    });
+  }
+  
+  if (parseFloat(responseRate) < 50) {
+    insights.push({
+      id: 2,
+      title: 'Improve Response Rate',
+      emoji: '⚠️',
+      borderColor: 'orange'
+    });
+  }
+  
+  if (pendingQuestions > 0) {
+    insights.push({
+      id: 3,
+      title: 'Questions Need Answers',
+      emoji: '❓',
+      borderColor: 'red'
+    });
+  }
+  
+  // Weekly tasks (static for now, can be made dynamic later)
   const weeklyTasks = [
-    { id: 1, title: "Complete GMB Profile", emoji: "✅", priority: "MEDIUM", duration: "10 min" },
-    { id: 2, title: "Upload 5 New Photos", emoji: "📸", priority: "MEDIUM", duration: "20 min" },
-    { id: 3, title: "Create a GMB Post", emoji: "📝", priority: "LOW", duration: "15 min" },
-  ];
-
-  const alerts = [
-    { id: 1, priority: "HIGH", message: "450 reviews awaiting response.", color: "red" },
-    { id: 2, priority: "HIGH", message: "7 customer questions need answering", color: "red" },
-    { id: 3, priority: "MEDIUM", message: "Response rate (0.5%) is below target...", color: "yellow" },
-  ];
-
-  const topPerformer = {
-    name: "The DXB Night Club",
-    nameAr: "نادي دبي الليلي",
-    rating: 4.8,
-    reviews: 412,
-    change: 100.0,
-    pendingReviews: 445,
-  };
-
-  const performanceComparison = {
-    questions: { value: 2, change: 2.0, trend: "up" },
-    rating: { value: 4.0, change: 100.0, trend: "up" },
-    reviews: { value: 0, change: 12.0, trend: "down" },
-  };
-
-  const insights = [
-    { id: 1, title: "Rating Trending Up", emoji: "📈", borderColor: "green" },
-    { id: 2, title: "Improve Response Rate", emoji: "⚠️", borderColor: "orange" },
-    { id: 3, title: "Questions Need Answers", emoji: "❓", borderColor: "red" },
-  ];
-
-  const achievements = [
-    { label: "Response Rate", current: 0, target: 90, gradient: "from-orange-500 to-orange-600" },
-    { label: "Health Score", current: 60, target: 100, gradient: "from-orange-500 to-yellow-500" },
-    { label: "Reviews Count", current: 412, target: 500, gradient: "from-blue-500 to-blue-600" },
+    { id: 1, title: "Complete GMB Profile", emoji: "✅", priority: "MEDIUM" as const, duration: "10 min" },
+    { id: 2, title: "Upload 5 New Photos", emoji: "📸", priority: "MEDIUM" as const, duration: "20 min" },
+    { id: 3, title: "Create a GMB Post", emoji: "📝", priority: "LOW" as const, duration: "15 min" },
   ];
   
+  // Achievements with real data
+  const achievements = [
+    { 
+      label: "Response Rate", 
+      current: parseFloat(responseRate), 
+      target: 90, 
+      gradient: "from-orange-500 to-orange-600" 
+    },
+    { 
+      label: "Health Score", 
+      current: stats.healthScore, 
+      target: 100, 
+      gradient: "from-orange-500 to-yellow-500" 
+    },
+    { 
+      label: "Reviews Count", 
+      current: stats.totalReviews, 
+      target: 500, 
+      gradient: "from-blue-500 to-blue-600" 
+    },
+  ];
+  
+  const lastUpdatedMinutes = 0; // Can be calculated from last sync time
+
   return (
     <div className="min-h-screen bg-zinc-950 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* HEADER SECTION */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
+        <div>
             <h1 className="text-3xl md:text-4xl font-bold text-zinc-100 flex items-center gap-2">
               🤖 AI Command Center
             </h1>
@@ -101,67 +312,22 @@ export default function DashboardPage() {
               Proactive risk and growth optimization dashboard
             </p>
           </div>
-
+          
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm">
               <CardContent className="p-3 flex items-center gap-2">
                 <Clock className="w-4 h-4 text-orange-500" />
                 <span className="text-sm text-zinc-300">
-                  Last Updated: {lastUpdatedMinutes} minutes ago
+                  Last Updated: {lastUpdatedMinutes === 0 ? 'Just now' : `${lastUpdatedMinutes} minutes ago`}
                 </span>
               </CardContent>
             </Card>
-            <Button 
-              className="bg-orange-600 hover:bg-orange-700 text-white"
-              onClick={() => console.log('Refresh clicked')}
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh Now
-            </Button>
+            <RefreshButton />
           </div>
         </div>
 
         {/* TIME FILTER BUTTONS */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            className="border-orange-500/20 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10"
-          >
-            <Calendar className="w-4 h-4 mr-2" />
-            Last 7 Days
-          </Button>
-          <Button 
-            size="sm"
-            className="bg-orange-600 hover:bg-orange-700 text-white"
-          >
-            <Calendar className="w-4 h-4 mr-2" />
-            Last 30 Days
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            className="border-orange-500/20 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10"
-          >
-            <Calendar className="w-4 h-4 mr-2" />
-            Last 90 Days
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            className="border-orange-500/20 text-zinc-300 hover:border-orange-500/50 hover:bg-orange-500/10"
-          >
-            <Calendar className="w-4 h-4 mr-2" />
-            Custom
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-          >
-            Reset
-          </Button>
-        </div>
+        <TimeFilterButtons />
 
         {/* MAIN GRID LAYOUT */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -176,46 +342,29 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Badge className={activeLocation.isConnected ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-orange-500/20 text-orange-400 border-orange-500/30"}>
-                    {activeLocation.isConnected ? "Connected" : "Disconnected"}
+                  <Badge className={activeLocation ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-orange-500/20 text-orange-400 border-orange-500/30"}>
+                    {activeLocation ? "Connected" : "Disconnected"}
                   </Badge>
-                </div>
-                
-                <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
-                    onClick={() => console.log('Sync Now clicked')}
-                  >
-                    Sync Now
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    className="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10"
-                    onClick={() => console.log('Disconnect clicked')}
-                  >
-                    Disconnect
-                  </Button>
-                </div>
+      </div>
 
-                <div className="bg-zinc-800/50 rounded-lg p-4 space-y-2 border border-zinc-700/50">
-                  <p className="text-zinc-100 font-medium truncate">{activeLocation.name}</p>
-                  <div className="flex items-center gap-1 text-sm text-zinc-400">
-                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                    <span>{activeLocation.rating} / 5.0</span>
+                <ActiveLocationActions />
+                
+                {activeLocation ? (
+                  <div className="bg-zinc-800/50 rounded-lg p-4 space-y-2 border border-zinc-700/50">
+                    <p className="text-zinc-100 font-medium truncate">{activeLocation.location_name}</p>
+                    <div className="flex items-center gap-1 text-sm text-zinc-400">
+                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                      <span>{activeLocation.rating?.toFixed(1) || 'N/A'} / 5.0</span>
+                    </div>
+                    {activeLocation.id && <LocationDetailsButton locationId={activeLocation.id} />}
                   </div>
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    className="w-full text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 mt-2"
-                    onClick={() => console.log('Go to Location clicked')}
-                  >
-                    Go to Location →
-                  </Button>
-                </div>
-        </CardContent>
-      </Card>
+                ) : (
+                  <div className="text-center text-zinc-500 py-4">
+                    No active location found
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Quick Actions Section */}
             <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
@@ -224,17 +373,10 @@ export default function DashboardPage() {
                   <CardTitle className="text-zinc-100 flex items-center gap-2">
                     ⚡ Quick Actions
                   </CardTitle>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="text-orange-400 hover:text-orange-300"
-                    onClick={() => console.log('Sync All clicked')}
-                  >
-                    Sync All
-                  </Button>
+                  <QuickActionButtons />
                 </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
+              </CardHeader>
+              <CardContent className="space-y-3">
                 <Card className="bg-zinc-800/50 border-zinc-700/50 hover:border-orange-500/30 transition-all cursor-pointer">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
@@ -243,11 +385,13 @@ export default function DashboardPage() {
                         <div>
                           <p className="text-zinc-100 font-medium">Reply to Reviews</p>
                           <p className="text-zinc-400 text-sm">Respond to pending reviews</p>
-          </div>
-        </div>
-                      <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
-                        + {pendingCounts.reviews} pending
-                      </Badge>
+                        </div>
+                      </div>
+                      {stats.pendingReviews > 0 && (
+                        <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+                          + {stats.pendingReviews} pending
+                        </Badge>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -260,12 +404,14 @@ export default function DashboardPage() {
                         <div>
                           <p className="text-zinc-100 font-medium">Answer Questions</p>
                           <p className="text-zinc-400 text-sm">Reply to customer questions</p>
-            </div>
-            </div>
-                      <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
-                        + {pendingCounts.questions} pending
-                      </Badge>
-            </div>
+                        </div>
+                      </div>
+                      {stats.pendingQuestions > 0 && (
+                        <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+                          + {stats.pendingQuestions} pending
+                        </Badge>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -276,12 +422,12 @@ export default function DashboardPage() {
                       <div>
                         <p className="text-zinc-100 font-medium">Create New Post</p>
                         <p className="text-zinc-400 text-sm">Share updates with customers</p>
-          </div>
-        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
-      </CardContent>
-    </Card>
+              </CardContent>
+            </Card>
           </div>
 
           {/* CENTER COLUMN */}
@@ -298,7 +444,7 @@ export default function DashboardPage() {
                 <p className="text-zinc-400 text-sm mb-3">Visibility and Compliance</p>
                 <Progress value={stats.healthScore} className="h-2 bg-zinc-800" />
               </CardContent>
-      </Card>
+            </Card>
 
             {/* Total Locations Card */}
             <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
@@ -306,15 +452,15 @@ export default function DashboardPage() {
                 <CardTitle className="text-zinc-100 flex items-center gap-2 text-sm">
                   📍 Total Locations
                 </CardTitle>
-      </CardHeader>
-      <CardContent>
+              </CardHeader>
+              <CardContent>
                 <div className="text-4xl font-bold text-zinc-100 mb-2">{stats.totalLocations}</div>
                 <p className="text-green-400 text-sm flex items-center gap-1">
                   <TrendingUp className="w-4 h-4" />
                   ↑ vs last period
                 </p>
-      </CardContent>
-    </Card>
+              </CardContent>
+            </Card>
 
             {/* Average Rating Card */}
             <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
@@ -322,15 +468,17 @@ export default function DashboardPage() {
                 <CardTitle className="text-zinc-100 flex items-center gap-2 text-sm">
                   ⭐ Average Rating
                 </CardTitle>
-    </CardHeader>
-    <CardContent>
-                <div className="text-4xl font-bold text-zinc-100 mb-2">{stats.averageRating}/5.0</div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-4xl font-bold text-zinc-100 mb-2">
+                  {stats.avgRating}<span className="text-2xl text-zinc-500">/5.0</span>
+                </div>
                 <p className="text-green-400 text-sm flex items-center gap-1">
                   <TrendingUp className="w-4 h-4" />
-                  ↑ {performanceComparison.rating.change}%
-      </p>
-    </CardContent>
-  </Card>
+                  ↑ vs last period
+                </p>
+              </CardContent>
+            </Card>
 
             {/* Total Reviews Card */}
             <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
@@ -353,9 +501,11 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold text-red-400 mb-2">{stats.responseRate}%</div>
-                <p className="text-zinc-400 text-sm mb-3">Target: {stats.responseTarget}%</p>
-                <Progress value={stats.responseRate} className="h-2 bg-zinc-800" />
+                <div className={`text-4xl font-bold mb-2 ${parseFloat(stats.responseRate) < 50 ? 'text-red-400' : 'text-zinc-100'}`}>
+                  {stats.responseRate}%
+                </div>
+                <p className="text-zinc-400 text-sm mb-3">Target: 90%</p>
+                <Progress value={parseFloat(stats.responseRate)} className="h-2 bg-zinc-800" />
               </CardContent>
             </Card>
           </div>
@@ -382,12 +532,7 @@ export default function DashboardPage() {
                       Generate your personalized recommendations...
                     </p>
                   </div>
-                  <Button 
-                    className="bg-orange-600 hover:bg-orange-700 text-white"
-                    onClick={() => console.log('Generate Weekly Tasks clicked')}
-                  >
-                    Generate Weekly Tasks
-                  </Button>
+                  <WeeklyTasksButton />
                 </div>
 
                 {/* Recommended Quick Wins */}
@@ -427,25 +572,26 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="text-5xl font-bold text-zinc-100 text-center">0/1</div>
+                <div className="text-5xl font-bold text-zinc-100 text-center">
+                  {stats.healthScore >= 70 ? stats.totalLocations : 0}/{stats.totalLocations}
+                </div>
                 
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-yellow-400">
-                    <span>⚠️</span>
-                    <span>Remove health score to activate</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-yellow-400">
-                    <span>⚠️</span>
-                    <span>Pending weekly email provision</span>
-                  </div>
+                  {stats.healthScore < 70 && (
+                    <div className="flex items-center gap-2 text-sm text-yellow-400">
+                      <span>⚠️</span>
+                      <span>Improve health score to activate</span>
+                    </div>
+                  )}
+                  {pendingReviews > 0 && (
+                    <div className="flex items-center gap-2 text-sm text-yellow-400">
+                      <span>⚠️</span>
+                      <span>Pending items need attention</span>
+        </div>
+      )}
                 </div>
 
-                <Button 
-                  className="w-full bg-orange-600 hover:bg-orange-700 text-white"
-                  onClick={() => console.log('Manage Protection clicked')}
-                >
-                  Manage Protection
-                </Button>
+                <ProfileProtectionButton />
               </CardContent>
             </Card>
           </div>
@@ -456,8 +602,8 @@ export default function DashboardPage() {
           {/* AI Risk & Opportunity Feed */}
           <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
             <CardHeader>
-      <div className="flex items-center justify-between">
-        <div>
+              <div className="flex items-center justify-between">
+                <div>
                   <CardTitle className="text-zinc-100 flex items-center gap-2">
                     🎯 AI Risk & Opportunity Feed
                   </CardTitle>
@@ -465,38 +611,47 @@ export default function DashboardPage() {
                     Proactive alerts and recommended actions
                   </p>
                 </div>
-                <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
-                  {alerts.length} alerts
-                </Badge>
+                {alerts.length > 0 && (
+                  <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+                    {alerts.length} alerts
+                  </Badge>
+                )}
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {alerts.map((alert) => (
-                <Card 
-                  key={alert.id}
-                  className={`bg-zinc-800/50 border-l-4 ${
-                    alert.color === "red" ? "border-red-500" : 
-                    alert.color === "yellow" ? "border-yellow-500" : 
-                    "border-blue-500"
-                  }`}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <Badge 
-                          className={`mb-2 ${
-                            alert.priority === "HIGH" ? "bg-red-500/20 text-red-400 border-red-500/30" :
-                            "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-                          }`}
-                        >
-                          {alert.priority} PRIORITY
-                        </Badge>
-                        <p className="text-zinc-200 text-sm">{alert.message}</p>
+              {alerts.length > 0 ? (
+                alerts.map((alert, index) => (
+                  <Card 
+                    key={index}
+                    className={`bg-zinc-800/50 border-l-4 ${
+                      alert.priority === 'HIGH' 
+                        ? 'border-red-500' 
+                        : 'border-yellow-500'
+                    }`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <Badge 
+                            className={`mb-2 ${
+                              alert.priority === 'HIGH'
+                                ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                                : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                            }`}
+                          >
+                            {alert.priority} PRIORITY
+                          </Badge>
+                          <p className="text-zinc-200 text-sm mt-2">{alert.message}</p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center text-zinc-500 py-8">
+                  🎉 No urgent alerts! Everything looks good.
+        </div>
+      )}
             </CardContent>
           </Card>
 
@@ -508,40 +663,38 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-2xl">🏆</span>
-                  <h4 className="text-zinc-300 font-medium">Top Performer</h4>
+              {topLocation ? (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-2xl">🏆</span>
+                    <h4 className="text-zinc-300 font-medium">Top Performer</h4>
+                  </div>
+                  <Card className="bg-zinc-800/50 border-zinc-700/50">
+                    <CardContent className="p-4 space-y-3">
+                      <div>
+                        <p className="text-zinc-100 font-medium">{topLocation.location_name}</p>
+                      </div>
+                      <div className="flex items-center gap-1 text-sm">
+                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                        <span className="text-zinc-300">{topLocation.rating?.toFixed(1) || 'N/A'} / 5.0</span>
+                      </div>
+                      <p className="text-zinc-400 text-sm">{topLocation.review_count || 0} reviews</p>
+                      
+                      {pendingReviews > 0 && (
+                        <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 w-fit">
+                          {pendingReviews} pending reviews
+                        </Badge>
+                      )}
+                      
+                      {topLocation.id && <LocationDetailsButton locationId={topLocation.id} />}
+                    </CardContent>
+                  </Card>
                 </div>
-                <Card className="bg-zinc-800/50 border-zinc-700/50">
-                  <CardContent className="p-4 space-y-3">
-                    <div>
-                      <p className="text-zinc-100 font-medium">{topPerformer.name}</p>
-                      <p className="text-zinc-500 text-sm">{topPerformer.nameAr}</p>
-                    </div>
-                    <div className="flex items-center gap-1 text-sm">
-                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                      <span className="text-zinc-300">{topPerformer.rating} / 5.0</span>
-                    </div>
-                    <p className="text-zinc-400 text-sm">{topPerformer.reviews} reviews</p>
-                    <p className="text-green-400 text-sm flex items-center gap-1">
-                      <TrendingUp className="w-4 h-4" />
-                      +{topPerformer.change}%
-                    </p>
-                    <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 w-fit">
-                      {topPerformer.pendingReviews} pending reviews
-                    </Badge>
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      className="w-full text-orange-400 hover:text-orange-300 hover:bg-orange-500/10"
-                      onClick={() => console.log('View Details clicked')}
-                    >
-                      View Details →
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
+              ) : (
+                <div className="text-center text-zinc-500 py-8">
+                  No locations to display
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -559,27 +712,18 @@ export default function DashboardPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
                   <p className="text-zinc-400 text-xs mb-1">Questions</p>
-                  <p className="text-zinc-100 text-xl font-bold">{performanceComparison.questions.value}</p>
-                  <p className="text-green-400 text-xs flex items-center gap-1 mt-1">
-                    <TrendingUp className="w-3 h-3" />
-                    ↑ +{performanceComparison.questions.change}%
-                  </p>
+                  <p className="text-zinc-100 text-xl font-bold">{stats.pendingQuestions}</p>
+                  <p className="text-zinc-400 text-xs mt-1">Current</p>
                 </div>
                 <div className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
                   <p className="text-zinc-400 text-xs mb-1">Rating</p>
-                  <p className="text-zinc-100 text-xl font-bold">{performanceComparison.rating.value}</p>
-                  <p className="text-green-400 text-xs flex items-center gap-1 mt-1">
-                    <TrendingUp className="w-3 h-3" />
-                    ↑ +{performanceComparison.rating.change}%
-                  </p>
+                  <p className="text-zinc-100 text-xl font-bold">{stats.avgRating}</p>
+                  <p className="text-zinc-400 text-xs mt-1">Average</p>
                 </div>
                 <div className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
                   <p className="text-zinc-400 text-xs mb-1">Reviews</p>
-                  <p className="text-zinc-100 text-xl font-bold">{performanceComparison.reviews.value}</p>
-                  <p className="text-red-400 text-xs flex items-center gap-1 mt-1">
-                    <TrendingDown className="w-3 h-3" />
-                    ↓ -{performanceComparison.reviews.change}%
-          </p>
+                  <p className="text-zinc-100 text-xl font-bold">{stats.totalReviews}</p>
+                  <p className="text-zinc-400 text-xs mt-1">Total</p>
         </div>
       </div>
 
@@ -602,8 +746,8 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 rounded-full bg-blue-500"></div>
                   <span className="text-zinc-400">Reviews</span>
-        </div>
-      </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -618,21 +762,27 @@ export default function DashboardPage() {
               </p>
             </CardHeader>
             <CardContent className="space-y-3">
-              {insights.map((insight) => (
-                <Card 
-                  key={insight.id}
-                  className={`bg-zinc-800/50 border-l-4 ${
-                    insight.borderColor === "green" ? "border-green-500" :
-                    insight.borderColor === "orange" ? "border-orange-500" :
-                    "border-red-500"
-                  }`}
-                >
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <span className="text-2xl">{insight.emoji}</span>
-                    <p className="text-zinc-200 text-sm font-medium flex-1">{insight.title}</p>
-                  </CardContent>
-                </Card>
-              ))}
+              {insights.length > 0 ? (
+                insights.map((insight) => (
+                  <Card 
+                    key={insight.id}
+                    className={`bg-zinc-800/50 border-l-4 ${
+                      insight.borderColor === "green" ? "border-green-500" :
+                      insight.borderColor === "orange" ? "border-orange-500" :
+                      "border-red-500"
+                    }`}
+                  >
+                    <CardContent className="p-4 flex items-center gap-3">
+                      <span className="text-2xl">{insight.emoji}</span>
+                      <p className="text-zinc-200 text-sm font-medium flex-1">{insight.title}</p>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center text-zinc-500 py-4">
+                  No insights available
+        </div>
+      )}
               <div className="flex items-center gap-2 text-xs text-zinc-500 pt-2 border-t border-zinc-700/50">
                 <Settings className="w-3 h-3" />
                 <span>⚙️ Auto-updated based on latest data</span>
@@ -656,7 +806,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-zinc-300">{achievement.label}</span>
                     <span className="text-zinc-400">
-                      {achievement.current} / {achievement.target}
+                      {achievement.current.toFixed(1)} / {achievement.target}
                     </span>
                   </div>
                   <div className="relative h-3 bg-zinc-800 rounded-full overflow-hidden">
@@ -665,7 +815,7 @@ export default function DashboardPage() {
                       style={{ width: `${Math.min(percentage, 100)}%` }}
                     ></div>
                   </div>
-        </div>
+                </div>
               );
             })}
           </CardContent>
