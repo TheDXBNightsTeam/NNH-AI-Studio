@@ -7,19 +7,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { createPost } from '@/server/actions/gmb-posts';
+import { useRouter } from 'next/navigation';
 
 type PostType = 'whats_new' | 'event' | 'offer' | 'product';
 
 interface CreatePostModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit?: (data: {
-    type: PostType;
-    title: string;
-    description: string;
-    cta?: string;
-    url?: string;
-  }) => Promise<void> | void;
+  locationId: string;
+  onSuccess?: () => void;
 }
 
 const CTA_OPTIONS = [
@@ -31,35 +28,70 @@ const CTA_OPTIONS = [
   { value: 'CALL', label: 'Call' },
 ];
 
-export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalProps) {
+export function CreatePostModal({ isOpen, onClose, locationId, onSuccess }: CreatePostModalProps) {
   const [postType, setPostType] = useState<PostType>('whats_new');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [cta, setCta] = useState<string>('');
   const [url, setUrl] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
+  const router = useRouter();
 
   const handlePublish = async () => {
-    if (title.trim().length === 0 || description.trim().length === 0) {
-      toast.error('Please fill in title and description');
+    // Validation
+    if (description.trim().length === 0) {
+      toast.error('Please enter a description for your post');
       return;
     }
-    setIsPublishing(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    try {
-      await onSubmit?.({
-        type: postType,
-        title,
-        description,
-        cta: cta || undefined,
-        url: url || undefined,
-      });
-    } catch {
-      // ignore custom errors in mock mode
+
+    if (description.length > 1500) {
+      toast.error('Description is too long. Maximum 1500 characters.');
+      return;
     }
-    toast.success('Post published!');
-    setIsPublishing(false);
-    handleClose();
+
+    if (cta && !url) {
+      toast.error('Please provide a URL for your call-to-action');
+      return;
+    }
+
+    setIsPublishing(true);
+
+    try {
+      const result = await createPost({
+        locationId,
+        postType,
+        title: title || undefined,
+        description: description.trim(),
+        ctaType: cta ? (cta as any) : undefined,
+        ctaUrl: url || undefined,
+      });
+
+      if (result.success) {
+        toast.success('Post published successfully!', {
+          description: 'Your post is now live on Google',
+        });
+        onSuccess?.();
+        router.refresh();
+        handleClose();
+      } else {
+        toast.error('Failed to publish post', {
+          description: result.error || 'Please try again',
+          action: result.error?.includes('reconnect')
+            ? {
+                label: 'Settings',
+                onClick: () => router.push('/settings'),
+              }
+            : undefined,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error publishing post:', error);
+      toast.error('An unexpected error occurred', {
+        description: 'Please try again later',
+      });
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const handleClose = () => {
@@ -118,14 +150,23 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="desc" className="text-zinc-300">Description</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="desc" className="text-zinc-300">Description *</Label>
+              <span className={`text-xs ${description.length > 1500 ? 'text-red-400' : 'text-zinc-500'}`}>
+                {description.length} / 1500
+              </span>
+            </div>
             <Textarea
               id="desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Write a compelling description..."
               className="bg-zinc-800 border-zinc-700 text-zinc-100 min-h-[120px]"
+              maxLength={1600}
             />
+            {description.length > 1500 && (
+              <p className="text-xs text-red-400">Description exceeds the 1500 character limit</p>
+            )}
           </div>
 
           <div className="space-y-2">

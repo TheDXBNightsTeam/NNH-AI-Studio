@@ -37,7 +37,7 @@
 - User feedback
 
 ## Phase 7 – Final Gate
-**GPT-5 Pro** - Comprehensive validation
+**Claude Opus 4.1** - Comprehensive validation
 - Integration testing
 - Edge cases
 - Production readiness
