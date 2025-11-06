@@ -17,14 +17,31 @@ export async function GET(request: NextRequest) {
     const sentiment = searchParams.get('sentiment');
     const search = searchParams.get('search');
 
-    // Build query
+    // Build query - select all fields including comment and review_text
     let query = supabase
       .from('gmb_reviews')
       .select(`
-        *,
+        id,
+        review_id,
+        reviewer_name,
+        reviewer_profile_photo_url,
+        rating,
+        comment,
+        review_text,
+        reply_text,
+        has_reply,
+        review_date,
+        replied_at,
+        ai_sentiment,
+        location_id,
+        external_review_id,
+        gmb_account_id,
+        created_at,
+        updated_at,
         gmb_locations!inner (
           id,
           location_name,
+          name,
           address,
           user_id
         )
@@ -50,10 +67,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Add location_name to each review and filter by search if provided
+    // Transform data properly - use comment field which is the actual review text
     let reviewsWithLocation = (reviews || []).map(r => ({
       ...r,
-      location_name: r.gmb_locations?.location_name || 'Unknown Location',
+      location_name: r.gmb_locations?.location_name || r.gmb_locations?.name || 'Unknown Location',
+      // Use 'comment' field which is the actual review text, fallback to review_text
+      review_text: r.comment || r.review_text || '',
       reviewer_name: r.reviewer_name || 'Anonymous'
     }));
 
