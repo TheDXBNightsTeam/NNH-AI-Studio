@@ -45,13 +45,14 @@ export function MapView({
   }, [locations]);
 
   // Create stable string key from locations array to avoid infinite loops
-  // Calculate this once and use primitive string as dependency
+  // Use JSON.stringify of locations array to create stable dependency
+  // This prevents infinite loops when locations array reference changes but content is same
   const locationsKeyString = useMemo(() => {
     return locations
       .filter(loc => loc.coordinates?.lat && loc.coordinates?.lng)
       .map(l => `${l.id}:${l.coordinates?.lat},${l.coordinates?.lng}`)
       .join('|');
-  }, [locations]);
+  }, [locations.map(l => `${l.id}:${l.coordinates?.lat},${l.coordinates?.lng}`).join('|')]);
 
   // Calculate center from locations if not provided
   const calculatedCenter = useMemo(() => {
