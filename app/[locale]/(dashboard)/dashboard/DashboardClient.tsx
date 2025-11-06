@@ -413,7 +413,7 @@ export function QuickActionsInteractive({
           icon="📝"
           subtitle="Share updates with customers"
           pendingCount={0}
-          href="/gmb-posts"
+          href="/posts"
           onClick={() => setPostOpen(true)}
         />
       </div>
