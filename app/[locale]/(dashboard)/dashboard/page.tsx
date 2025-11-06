@@ -550,9 +550,9 @@ export default async function DashboardPage() {
                   <h4 className="text-zinc-300 font-medium text-sm">Recommended Quick Wins</h4>
                   {weeklyTasks.map((task) => {
                     const link =
-                      task.title.includes('Profile') ? '/locations' :
+                      task.title.includes('Profile') ? '/features' :
                       task.title.includes('Photos') ? '/media' :
-                      task.title.includes('Post') ? '/gmb-posts' :
+                      task.title.includes('Post') ? '/posts' :
                       '/dashboard';
                     return (
                       <Link key={task.id} href={link} className="block">
