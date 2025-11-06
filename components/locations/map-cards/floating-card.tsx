@@ -74,11 +74,6 @@ export function FloatingCard({
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: {
-        duration: 0.6,
-        delay,
-        ease: [0.16, 1, 0.3, 1] as const,
-      },
     },
   };
 
@@ -87,6 +82,11 @@ export function FloatingCard({
       initial="initial"
       animate="animate"
       variants={animationVariants}
+      transition={{
+        duration: 0.6,
+        delay,
+        ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
+      }}
       className={`
         absolute ${positionClasses}
         glass-strong
