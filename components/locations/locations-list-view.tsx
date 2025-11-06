@@ -24,27 +24,30 @@ export function LocationsListView() {
   const [sortBy, setSortBy] = useState<'name' | 'rating' | 'reviews' | 'healthScore'>('name');
   const [quickFilter, setQuickFilter] = useState<'none' | 'attention' | 'top'>('none');
 
-  // Build filters for useLocations hook
-  const filters: LocationFilters = useMemo(() => {
-    const filterObj: LocationFilters = {
-      search: searchQuery || undefined,
-      category: categoryFilter !== 'all' ? categoryFilter : undefined,
-      status: statusFilter !== 'all' ? statusFilter as any : 'all',
+  // Use empty filters like Map View to get all locations
+  // Then do client-side filtering for better control
+  const { locations, loading, error, total } = useLocations({});
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('[LocationsListView] Debug info:', {
+      locationsCount: locations.length,
+      total,
+      loading,
+      error: error?.message,
+      searchQuery,
+      categoryFilter,
+      statusFilter,
       sortBy,
-      sortOrder: 'asc',
-    };
-
-    // Apply quick filters
-    if (quickFilter === 'attention') {
-      filterObj.healthScoreMax = 50;
-    } else if (quickFilter === 'top') {
-      filterObj.ratingMin = 4.5;
+      quickFilter,
+      filteredCount: filteredLocations.length,
+    });
+    if (locations.length > 0) {
+      console.log('[LocationsListView] Sample location:', locations[0]);
+    } else if (!loading) {
+      console.warn('[LocationsListView] No locations found - check if data is being fetched correctly');
     }
-
-    return filterObj;
-  }, [searchQuery, categoryFilter, statusFilter, sortBy, quickFilter]);
-
-  const { locations, loading, error, total } = useLocations(filters);
+  }, [locations, total, loading, error, searchQuery, categoryFilter, statusFilter, sortBy, quickFilter, filteredLocations.length]);
 
   // Get unique categories from locations
   const categories = useMemo(() => {
@@ -57,11 +60,11 @@ export function LocationsListView() {
     return Array.from(cats).sort();
   }, [locations]);
 
-  // Client-side filtering and sorting (additional to server-side)
+  // Client-side filtering and sorting
   const filteredLocations = useMemo(() => {
     let filtered = [...locations];
 
-    // Additional client-side search (in case server doesn't handle it)
+    // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(loc =>
@@ -70,25 +73,28 @@ export function LocationsListView() {
       );
     }
 
-    // Additional client-side category filter
+    // Category filter
     if (categoryFilter !== 'all') {
       filtered = filtered.filter(loc => loc.category === categoryFilter);
     }
 
-    // Additional client-side status filter
+    // Status filter
     if (statusFilter !== 'all') {
-      const isVerified = statusFilter === 'verified';
-      filtered = filtered.filter(loc => loc.status === (isVerified ? 'verified' : 'pending'));
+      if (statusFilter === 'verified') {
+        filtered = filtered.filter(loc => loc.status === 'verified');
+      } else if (statusFilter === 'pending') {
+        filtered = filtered.filter(loc => loc.status === 'pending' || loc.status === 'suspended');
+      }
     }
 
-    // Additional client-side quick filters
+    // Quick filters
     if (quickFilter === 'attention') {
       filtered = filtered.filter(loc => (loc.healthScore || 0) < 50);
     } else if (quickFilter === 'top') {
       filtered = filtered.filter(loc => (loc.rating || 0) >= 4.5);
     }
 
-    // Client-side sorting
+    // Sorting
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'name':
@@ -223,7 +229,10 @@ export function LocationsListView() {
       {/* Results Count */}
       {!loading && (
         <div className="text-sm text-muted-foreground">
-          Showing {filteredLocations.length} of {total} location{total !== 1 ? 's' : ''}
+          Showing {filteredLocations.length} of {locations.length} location{locations.length !== 1 ? 's' : ''}
+          {hasActiveFilters && filteredLocations.length !== locations.length && (
+            <span className="ml-2 text-xs">(filtered from {locations.length} total)</span>
+          )}
         </div>
       )}
 
