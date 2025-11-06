@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Star } from "lucide-react"
+import { Star, CheckCircle2 } from "lucide-react"
 import type { GMBReview } from "@/lib/types/database"
 import { motion } from "framer-motion"
 import { useState } from "react"
@@ -16,11 +16,26 @@ interface ReviewCardProps {
 
 export function ReviewCard({ review, isSelected, onClick }: ReviewCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [showFullReply, setShowFullReply] = useState(false)
   const reviewText = review.review_text || ""
   const shouldTruncate = reviewText.length > 150
   const displayText = shouldTruncate && !isExpanded 
     ? reviewText.substring(0, 150) + "..." 
     : reviewText
+  
+  // Check if review needs response
+  const needsResponse = !review.has_reply && !review.has_response && !review.reply_text && !review.review_reply
+  const hasReply = review.has_reply || review.has_response || review.reply_text || review.review_reply
+  const replyText = review.reply_text || review.review_reply || review.response_text || ""
+  const replyPreview = replyText.length > 100 ? replyText.substring(0, 100) + "..." : replyText
+  
+  // Get priority color based on rating
+  const getPriorityColor = () => {
+    if (needsResponse) return "border-l-4 border-l-orange-500"
+    if (review.rating <= 2) return "border-l-4 border-l-red-500"
+    if (review.rating === 3) return "border-l-4 border-l-yellow-500"
+    return "border-l-4 border-l-green-500"
+  }
 
   const formatDate = (dateString: string | undefined | null) => {
     if (!dateString) return ''
@@ -59,9 +74,11 @@ export function ReviewCard({ review, isSelected, onClick }: ReviewCardProps) {
       whileTap={{ scale: 0.98 }}
     >
       <Card
-        className={`bg-zinc-900 border transition-colors cursor-pointer ${
+        className={`bg-zinc-900 border transition-colors cursor-pointer ${getPriorityColor()} ${
           isSelected 
             ? "border-orange-500 shadow-lg shadow-orange-500/20" 
+            : needsResponse
+            ? "border-orange-500/50 hover:border-orange-500"
             : "border-zinc-800 hover:border-orange-500/50"
         }`}
         onClick={onClick}
@@ -84,7 +101,11 @@ export function ReviewCard({ review, isSelected, onClick }: ReviewCardProps) {
                         key={i}
                         className={`w-3.5 h-3.5 ${
                           i < review.rating 
-                            ? "fill-orange-500 text-orange-500" 
+                            ? review.rating >= 4
+                              ? "fill-green-500 text-green-500"
+                              : review.rating <= 2
+                              ? "fill-red-500 text-red-500"
+                              : "fill-yellow-500 text-yellow-500"
                             : "text-zinc-600"
                         }`}
                       />
@@ -96,11 +117,16 @@ export function ReviewCard({ review, isSelected, onClick }: ReviewCardProps) {
                 </div>
               </div>
             </div>
-            {review.ai_sentiment && (
-              <Badge className={getSentimentColor(review.ai_sentiment)}>
-                {review.ai_sentiment}
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {hasReply && (
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+              )}
+              {review.ai_sentiment && (
+                <Badge className={getSentimentColor(review.ai_sentiment)}>
+                  {review.ai_sentiment}
+                </Badge>
+              )}
+            </div>
           </div>
 
           {/* Review Text */}
@@ -119,6 +145,30 @@ export function ReviewCard({ review, isSelected, onClick }: ReviewCardProps) {
                 </button>
               )}
             </p>
+          )}
+
+          {/* Reply Preview */}
+          {hasReply && replyText && (
+            <div className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
+              <div className="flex items-center gap-2 mb-1">
+                <CheckCircle2 className="w-3 h-3 text-green-500" />
+                <span className="text-xs font-semibold text-green-500">Your Reply:</span>
+              </div>
+              <p className="text-xs text-foreground/80">
+                {showFullReply ? replyText : replyPreview}
+                {replyText.length > 100 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowFullReply(!showFullReply)
+                    }}
+                    className="ml-1 text-orange-500 hover:text-orange-400 font-medium"
+                  >
+                    {showFullReply ? " Show Less" : " View Full"}
+                  </button>
+                )}
+              </p>
+            </div>
           )}
 
           {/* Location */}
