@@ -23,13 +23,13 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
 
     // Build query - fetch ALL reviews with proper joins
+    // Removed reviewer_profile_photo_url (column doesn't exist)
     let query = supabase
       .from('gmb_reviews')
       .select(`
         id,
         review_id,
         reviewer_name,
-        reviewer_profile_photo_url,
         rating,
         comment,
         review_text,
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     console.log(`Found ${reviews?.length || 0} reviews`);
 
     // Transform data properly - handle both 'comment' and 'review_text' fields
-    const reviewsWithLocation = (reviews || []).map((r: any) => {
+    const transformedReviews = (reviews || []).map((r: any) => {
       // Handle gmb_locations - it can be an array or single object
       let location = null;
       if (Array.isArray(r.gmb_locations)) {
@@ -102,24 +102,31 @@ export async function GET(request: NextRequest) {
       const reviewText = (r.comment || r.review_text || '').trim();
       
       return {
-        ...r,
-        location_name: locationName,
-        // Use 'comment' field which is the actual review text, fallback to review_text
-        review_text: reviewText,
-        comment: reviewText, // Keep both for compatibility
+        id: r.id,
+        review_id: r.review_id,
         reviewer_name: r.reviewer_name || 'Anonymous',
-        // Ensure has_reply is boolean
-        has_reply: r.has_reply || false,
-        // Remove the gmb_locations array from the response to avoid confusion
-        gmb_locations: undefined
+        rating: r.rating || 0,
+        comment: reviewText,
+        review_text: reviewText,
+        reply_text: r.reply_text || '',
+        has_reply: Boolean(r.reply_text || r.has_reply),
+        review_date: r.review_date,
+        replied_at: r.replied_at,
+        ai_sentiment: r.ai_sentiment,
+        location_id: r.location_id,
+        external_review_id: r.external_review_id,
+        gmb_account_id: r.gmb_account_id,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+        location_name: locationName
       };
     });
 
     // Client-side search filter (since Supabase text search might be complex)
-    let filteredReviews = reviewsWithLocation;
+    let filteredReviews = transformedReviews;
     if (search) {
       const searchLower = search.toLowerCase();
-      filteredReviews = reviewsWithLocation.filter(r => 
+      filteredReviews = transformedReviews.filter(r => 
         r.review_text?.toLowerCase().includes(searchLower) ||
         r.reviewer_name?.toLowerCase().includes(searchLower) ||
         r.location_name?.toLowerCase().includes(searchLower)
