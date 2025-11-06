@@ -1,22 +1,228 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ErrorBoundary } from '@/components/error-boundary';
-import { LocationsOverviewTab } from '@/components/locations/locations-overview-tab';
 import { LocationsMapTab } from '@/components/locations/locations-map-tab-new';
-import { LocationsAnalyticsTab } from '@/components/locations/locations-analytics-tab';
-import { MapPin, BarChart3, LayoutGrid } from 'lucide-react';
+import { LocationsStatsCardsAPI } from '@/components/locations/locations-stats-cards-api';
+import { Button } from '@/components/ui/button';
+import { MapPin, List, RefreshCw, Download, Plus, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { Card, CardContent } from '@/components/ui/card';
+import { LocationFormDialog } from '@/components/locations/location-form-dialog';
+import { GMBConnectionBanner } from '@/components/locations/gmb-connection-banner';
 
 export default function LocationsPage() {
   const t = useTranslations('Locations');
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
+  const [syncing, setSyncing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [hasGmbAccount, setHasGmbAccount] = useState<boolean | null>(null);
+  const [gmbAccountId, setGmbAccountId] = useState<string | null>(null);
 
-  return (
-    <ErrorBoundary>
-      <div className="space-y-6">
-          {/* Page Header */}
+  // Check GMB account on mount
+  useEffect(() => {
+    const checkGMBAccount = async () => {
+      try {
+        const res = await fetch('/api/gmb/accounts');
+        const data = await res.json();
+        if (data && data.length > 0) {
+          setHasGmbAccount(true);
+          // Get the first active account ID
+          const activeAccount = data.find((acc: any) => acc.is_active) || data[0];
+          if (activeAccount?.id) {
+            setGmbAccountId(activeAccount.id);
+          }
+        } else {
+          setHasGmbAccount(false);
+          setGmbAccountId(null);
+        }
+      } catch (error) {
+        console.error('Failed to check GMB account:', error);
+        setHasGmbAccount(false);
+        setGmbAccountId(null);
+      }
+    };
+    checkGMBAccount();
+  }, []);
+
+  const handleSync = async () => {
+    // Check if account ID is available
+    if (!gmbAccountId) {
+      console.warn('Sync attempted but gmbAccountId is null/undefined');
+      toast.error('No GMB account found. Please connect a GMB account first.');
+      return;
+    }
+
+    // Prevent multiple concurrent syncs
+    if (syncing) {
+      toast.info('Sync already in progress');
+      return;
+    }
+
+    console.log('Starting sync for account:', gmbAccountId);
+
+    try {
+      setSyncing(true);
+      
+      // Sync can take a while (locations, reviews, media, metrics, etc.)
+      // Increase timeout to 3 minutes (180 seconds) for full sync
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes timeout
+      
+      // Show info message that sync is starting (takes time)
+      toast.info('Sync started. This may take a few minutes...', { duration: 3000 });
+      
+      try {
+        const requestBody = { 
+          accountId: gmbAccountId,
+          syncType: 'full' 
+        };
+        
+        console.log('Sync request body:', requestBody);
+        
+        const response = await fetch('/api/gmb/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        // Handle specific HTTP error codes
+        if (response.status === 401) {
+          toast.error('Session expired. Please sign in again.');
+          return;
+        }
+        
+        if (response.status === 400) {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage = errorData.message || errorData.error || 'Bad request';
+          console.error('Sync API error (400):', {
+            errorData,
+            requestBody,
+            accountId: gmbAccountId
+          });
+          toast.error(`Sync failed: ${errorMessage}`);
+          return;
+        }
+        
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          toast.error(`Rate limit exceeded. Try again in ${retryAfter || 60} seconds.`);
+          return;
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || errorData.error || `Sync failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        const tookSeconds = Math.round((data.took_ms || 0) / 1000);
+        toast.success(`Locations synced successfully! (took ${tookSeconds}s)`);
+        
+        // Refresh the page to update stats
+        window.location.reload();
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        // Handle AbortError specifically (timeout or manual cancellation)
+        if (fetchError.name === 'AbortError') {
+          toast.error('Sync timed out. The operation may still be processing. Please wait a moment and refresh the page.');
+          return;
+        }
+        
+        // Re-throw other errors to be handled by outer catch
+        throw fetchError;
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          // Already handled in inner catch
+          return;
+        } else if (error.message.includes('fetch') || error.message.includes('network')) {
+          toast.error('Network error. Please check your internet connection.');
+        } else {
+          toast.error(error.message || 'Failed to sync locations');
+        }
+      } else {
+        toast.error('An unexpected error occurred during sync');
+      }
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+
+      // Build export URL
+      const params = new URLSearchParams();
+      params.set('format', 'csv');
+
+      const response = await fetch(`/api/locations/export?${params.toString()}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        // Handle error response
+        if (response.status === 401) {
+          throw new Error('Authentication required. Please log in again.');
+        } else if (response.status === 404) {
+          throw new Error('No locations found to export.');
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to export locations');
+        }
+      }
+
+      // Get CSV content
+      const csvContent = await response.text();
+      
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Get filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = 'locations-export.csv';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/i);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Locations exported successfully!');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to export locations');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // Show GMB connection banner if no account
+  if (hasGmbAccount === false) {
+    return (
+      <ErrorBoundary>
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
@@ -25,48 +231,120 @@ export default function LocationsPage() {
               </p>
             </div>
           </div>
+          <GMBConnectionBanner />
+        </div>
+      </ErrorBoundary>
+    );
+  }
 
-        {/* Main Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 glass-strong border-primary/30">
-            <TabsTrigger 
-              value="overview" 
-              className="data-[state=active]:bg-primary data-[state=active]:text-white"
+  return (
+    <ErrorBoundary>
+      <div className="space-y-6">
+        {/* Page Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+            <p className="text-muted-foreground mt-2">
+              {t('subtitle') || 'Manage and monitor all your business locations'}
+            </p>
+          </div>
+          
+          {/* Action Bar */}
+          <div className="flex items-center gap-2">
+            {/* View Toggle */}
+            <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1 border border-primary/20">
+              <Button
+                variant={viewMode === 'map' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('map')}
+                className={`gap-2 ${viewMode === 'map' ? 'bg-gradient-to-r from-primary to-accent text-white' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <MapPin className="w-4 h-4" />
+                Map View
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className={`gap-2 ${viewMode === 'list' ? 'bg-gradient-to-r from-primary to-accent text-white' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <List className="w-4 h-4" />
+                List View
+              </Button>
+            </div>
+            
+            {/* Sync Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSync}
+              disabled={syncing}
             >
-              <LayoutGrid className="w-4 h-4 mr-2" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger 
-              value="map" 
-              className="data-[state=active]:bg-primary data-[state=active]:text-white"
+              <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Syncing...' : 'Sync'}
+            </Button>
+            
+            {/* Export Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={exporting}
             >
-              <MapPin className="w-4 h-4 mr-2" />
-              Map View
-            </TabsTrigger>
-            <TabsTrigger 
-              value="analytics" 
-              className="data-[state=active]:bg-primary data-[state=active]:text-white"
+              {exporting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export
+                </>
+              )}
+            </Button>
+            
+            {/* Add Location Button */}
+            <Button
+              onClick={() => setShowAddDialog(true)}
+              size="sm"
             >
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Analytics
-            </TabsTrigger>
-          </TabsList>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Location
+            </Button>
+          </div>
+        </div>
 
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6 mt-6">
-            <LocationsOverviewTab />
-          </TabsContent>
+        {/* Stats Cards - Always Visible */}
+        <LocationsStatsCardsAPI />
 
-          {/* Map View Tab */}
-          <TabsContent value="map" className="space-y-6 mt-6">
-            <LocationsMapTab />
-          </TabsContent>
+        {/* Main Content Area */}
+        {viewMode === 'map' ? (
+          <LocationsMapTab />
+        ) : (
+          <Card>
+            <CardContent className="p-12">
+              <div className="text-center">
+                <List className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <h3 className="text-lg font-semibold mb-2">List View</h3>
+                <p className="text-sm text-muted-foreground">
+                  Coming Soon - List view will be available in the next update
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-          {/* Analytics Tab */}
-          <TabsContent value="analytics" className="space-y-6 mt-6">
-            <LocationsAnalyticsTab />
-          </TabsContent>
-        </Tabs>
+        {/* Add Location Dialog */}
+        <LocationFormDialog
+          open={showAddDialog}
+          onOpenChange={setShowAddDialog}
+          onSuccess={() => {
+            setShowAddDialog(false);
+            // Refresh the page to update stats
+            window.location.reload();
+          }}
+        />
       </div>
     </ErrorBoundary>
   );

@@ -54,9 +54,13 @@ export async function GET(request: NextRequest) {
 
     // Calculate statistics
     const totalLocations = locations?.length || 0;
-    const avgRating = totalLocations > 0
-      ? locations!.reduce((sum, loc) => sum + (loc.rating || 0), 0) / totalLocations
+    
+    // Calculate average rating - only from locations with valid ratings (> 0)
+    const locationsWithRating = locations?.filter(loc => loc.rating && loc.rating > 0) || [];
+    const avgRating = locationsWithRating.length > 0
+      ? locationsWithRating.reduce((sum, loc) => sum + (loc.rating || 0), 0) / locationsWithRating.length
       : 0;
+    
     const totalReviews = locations?.reduce((sum, loc) => sum + (loc.review_count || 0), 0) || 0;
     const avgHealthScore = totalLocations > 0
       ? locations!.reduce((sum, loc) => sum + (loc.health_score || 0), 0) / totalLocations
