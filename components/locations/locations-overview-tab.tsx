@@ -60,7 +60,9 @@ export function LocationsOverviewTab() {
   }, []);
 
   const handleSync = async () => {
+    // Check if account ID is available
     if (!gmbAccountId) {
+      console.warn('Sync attempted but gmbAccountId is null/undefined');
       toast.error('No GMB account found. Please connect a GMB account first.');
       return;
     }
@@ -71,21 +73,31 @@ export function LocationsOverviewTab() {
       return;
     }
 
+    console.log('Starting sync for account:', gmbAccountId);
+
     try {
       setSyncing(true);
       
-      // Add timeout to prevent hanging requests
+      // Sync can take a while (locations, reviews, media, metrics, etc.)
+      // Increase timeout to 3 minutes (180 seconds) for full sync
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes timeout
+      
+      // Show info message that sync is starting (takes time)
+      toast.info('Sync started. This may take a few minutes...', { duration: 3000 });
       
       try {
+        const requestBody = { 
+          accountId: gmbAccountId,
+          syncType: 'full' 
+        };
+        
+        console.log('Sync request body:', requestBody);
+        
         const response = await fetch('/api/gmb/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            accountId: gmbAccountId,
-            syncType: 'full' 
-          }),
+          body: JSON.stringify(requestBody),
           signal: controller.signal
         });
 
@@ -100,8 +112,12 @@ export function LocationsOverviewTab() {
         if (response.status === 400) {
           const errorData = await response.json().catch(() => ({}));
           const errorMessage = errorData.message || errorData.error || 'Bad request';
+          console.error('Sync API error (400):', {
+            errorData,
+            requestBody,
+            accountId: gmbAccountId
+          });
           toast.error(`Sync failed: ${errorMessage}`);
-          console.error('Sync API error (400):', errorData);
           return;
         }
         
@@ -117,15 +133,17 @@ export function LocationsOverviewTab() {
         }
 
         const data = await response.json();
-        toast.success('Locations synced successfully!');
+        const tookSeconds = Math.round((data.took_ms || 0) / 1000);
+        toast.success(`Locations synced successfully! (took ${tookSeconds}s)`);
         await refetch();
       } catch (fetchError: any) {
         clearTimeout(timeoutId);
         
         // Handle AbortError specifically (timeout or manual cancellation)
         if (fetchError.name === 'AbortError') {
-          console.warn('Sync request was aborted (timeout or cancellation)');
-          toast.error('Sync timed out. Please check your connection and try again.');
+          // Don't show console.warn - it's expected for long-running operations
+          // Only show user-friendly message
+          toast.error('Sync timed out. The operation may still be processing. Please wait a moment and refresh the page.');
           return;
         }
         

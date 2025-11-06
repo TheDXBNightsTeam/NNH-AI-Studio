@@ -537,9 +537,13 @@ export default function DashboardPage() {
     try {
       setSyncing(true);
       
-      // ✅ Add timeout to prevent hanging requests
+      // Sync can take a while (locations, reviews, media, metrics, etc.)
+      // Increase timeout to 3 minutes (180 seconds) for full sync
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes timeout
+      
+      // Show info message that sync is starting (takes time)
+      toast.info('Sync started. This may take a few minutes...', { duration: 3000 });
       
       try {
         const response = await fetch('/api/gmb/sync', {
@@ -594,7 +598,8 @@ export default function DashboardPage() {
 
         if (data.ok || data.success) {
           setLastSyncTime(new Date());
-          toast.success('Sync completed successfully!');
+          const tookSeconds = Math.round((data.took_ms || 0) / 1000);
+          toast.success(`Sync completed successfully! (took ${tookSeconds}s)`);
           
           // ✅ Dispatch event for other components
           window.dispatchEvent(new CustomEvent('gmb-sync-complete', { 
@@ -611,8 +616,9 @@ export default function DashboardPage() {
         
         // ✅ Handle AbortError specifically (timeout or manual cancellation)
         if (fetchError.name === 'AbortError') {
-          console.warn('Sync request was aborted (timeout or cancellation)');
-          toast.error('Sync timed out. Please check your connection and try again.');
+          // Don't show console.warn - it's expected for long-running operations
+          // Only show user-friendly message
+          toast.error('Sync timed out. The operation may still be processing. Please wait a moment and refresh the page.');
           return;
         }
         

@@ -262,21 +262,26 @@ export function useLocations(
             // Check if this is actually an error or just a status message
             const errorStatus = error?.status || '';
             const errorMessage = error?.message || '';
+            const errorString = JSON.stringify(error);
             
             // Ignore success messages that are logged as errors
-            if (errorStatus === 'ok' || errorMessage.includes('Subscribed to PostgreSQL')) {
+            if (errorStatus === 'ok' || 
+                errorMessage.includes('Subscribed to PostgreSQL') ||
+                errorString.includes('Subscribed to PostgreSQL')) {
               // This is actually a success message, not an error
               return;
             }
             
-            console.error('Realtime subscription error:', error);
-            
             // Check if it's a Realtime configuration error
             if (errorMessage.includes('Realtime is enabled') || 
-                errorMessage.includes('Unable to subscribe')) {
+                errorMessage.includes('Unable to subscribe') ||
+                errorString.includes('Realtime is enabled')) {
               console.warn('⚠️ Realtime may not be enabled for gmb_locations table. Continuing without real-time updates.');
-              // Don't show error toast to user - it's a configuration issue, not a critical error
+              return; // Don't log as error
             }
+            
+            // Only log actual errors that are not configuration issues
+            console.error('Realtime subscription error:', error);
           })
           .subscribe((status, err) => {
             if (status === 'SUBSCRIBED') {
