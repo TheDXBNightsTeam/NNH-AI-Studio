@@ -33,17 +33,53 @@ interface LocationDetailHeaderProps {
   locationId: string;
   metadata: any;
   onRefresh: () => void;
+  gmbAccountId?: string; // Optional: pass accountId if available
 }
 
 export function LocationDetailHeader({ 
   location, 
   locationId, 
   metadata,
-  onRefresh 
+  onRefresh,
+  gmbAccountId
 }: LocationDetailHeaderProps) {
   const router = useRouter();
   const [syncing, setSyncing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [accountId, setAccountId] = useState<string | null>(gmbAccountId || null);
+
+  // Fetch accountId if not provided
+  React.useEffect(() => {
+    if (accountId) return; // Already have accountId
+    
+    const fetchAccountId = async () => {
+      try {
+        // Try to get accountId from location detail API
+        const res = await fetch(`/api/gmb/location/${locationId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.gmb_account_id) {
+            setAccountId(data.gmb_account_id);
+            return;
+          }
+        }
+        
+        // Fallback: get first active account
+        const accountsRes = await fetch('/api/gmb/accounts');
+        const accountsData = await accountsRes.json();
+        if (accountsData && accountsData.length > 0) {
+          const activeAccount = accountsData.find((acc: any) => acc.is_active) || accountsData[0];
+          if (activeAccount?.id) {
+            setAccountId(activeAccount.id);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch accountId:', error);
+      }
+    };
+
+    fetchAccountId();
+  }, [locationId, accountId]);
 
   const name = location?.name || location?.title || 'Unnamed Location';
   const address = location?.storefrontAddress?.addressLines?.[0] || 
@@ -62,26 +98,95 @@ export function LocationDetailHeader({
   const isOpen = location?.openInfo?.status === 'OPEN' || metadata?.isOpen;
 
   const handleSync = async () => {
+    if (!accountId) {
+      toast.error('No GMB account found. Please connect a GMB account first.');
+      return;
+    }
+
+    // Prevent multiple concurrent syncs
+    if (syncing) {
+      toast.info('Sync already in progress');
+      return;
+    }
+
     try {
       setSyncing(true);
-      const response = await fetch('/api/gmb/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          sync_type: 'location',
-          location_id: locationId 
-        }),
-      });
+      
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      
+      try {
+        const response = await fetch('/api/gmb/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            accountId: accountId,
+            syncType: 'location',
+            locationId: locationId 
+          }),
+          signal: controller.signal
+        });
 
-      if (!response.ok) {
-        throw new Error('Sync failed');
+        clearTimeout(timeoutId);
+
+        // Handle specific HTTP error codes
+        if (response.status === 401) {
+          toast.error('Session expired. Please sign in again.');
+          return;
+        }
+        
+        if (response.status === 400) {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage = errorData.message || errorData.error || 'Bad request';
+          toast.error(`Sync failed: ${errorMessage}`);
+          console.error('Sync API error (400):', errorData);
+          return;
+        }
+        
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          toast.error(`Rate limit exceeded. Try again in ${retryAfter || 60} seconds.`);
+          return;
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || errorData.error || `Sync failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        toast.success('Location synced successfully!');
+        onRefresh();
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        // Handle AbortError specifically (timeout or manual cancellation)
+        if (fetchError.name === 'AbortError') {
+          console.warn('Sync request was aborted (timeout or cancellation)');
+          toast.error('Sync timed out. Please check your connection and try again.');
+          return;
+        }
+        
+        // Re-throw other errors to be handled by outer catch
+        throw fetchError;
       }
-
-      toast.success('Location synced successfully!');
-      onRefresh();
     } catch (error) {
       console.error('Sync error:', error);
-      toast.error('Failed to sync location');
+      
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          // Already handled in inner catch
+          return;
+        } else if (error.message.includes('fetch') || error.message.includes('network')) {
+          toast.error('Network error. Please check your internet connection.');
+        } else {
+          toast.error(error.message || 'Failed to sync location');
+        }
+      } else {
+        toast.error('An unexpected error occurred during sync');
+      }
     } finally {
       setSyncing(false);
     }

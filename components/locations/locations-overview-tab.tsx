@@ -31,40 +31,123 @@ export function LocationsOverviewTab() {
 
   const { locations, loading, error, total, refetch, hasMore, loadMore } = useLocations(filters);
 
+  const [gmbAccountId, setGmbAccountId] = useState<string | null>(null);
+
   // Check GMB account on mount
   React.useEffect(() => {
     const checkGMBAccount = async () => {
       try {
         const res = await fetch('/api/gmb/accounts');
         const data = await res.json();
-        setHasGmbAccount(data && data.length > 0);
+        if (data && data.length > 0) {
+          setHasGmbAccount(true);
+          // Get the first active account ID
+          const activeAccount = data.find((acc: any) => acc.is_active) || data[0];
+          if (activeAccount?.id) {
+            setGmbAccountId(activeAccount.id);
+          }
+        } else {
+          setHasGmbAccount(false);
+          setGmbAccountId(null);
+        }
       } catch (error) {
         console.error('Failed to check GMB account:', error);
         setHasGmbAccount(false);
+        setGmbAccountId(null);
       }
     };
     checkGMBAccount();
   }, []);
 
   const handleSync = async () => {
+    if (!gmbAccountId) {
+      toast.error('No GMB account found. Please connect a GMB account first.');
+      return;
+    }
+
+    // Prevent multiple concurrent syncs
+    if (syncing) {
+      toast.info('Sync already in progress');
+      return;
+    }
+
     try {
       setSyncing(true);
-      const response = await fetch('/api/gmb/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sync_type: 'full' }),
-      });
+      
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      
+      try {
+        const response = await fetch('/api/gmb/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            accountId: gmbAccountId,
+            syncType: 'full' 
+          }),
+          signal: controller.signal
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Sync failed');
+        clearTimeout(timeoutId);
+
+        // Handle specific HTTP error codes
+        if (response.status === 401) {
+          toast.error('Session expired. Please sign in again.');
+          return;
+        }
+        
+        if (response.status === 400) {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage = errorData.message || errorData.error || 'Bad request';
+          toast.error(`Sync failed: ${errorMessage}`);
+          console.error('Sync API error (400):', errorData);
+          return;
+        }
+        
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          toast.error(`Rate limit exceeded. Try again in ${retryAfter || 60} seconds.`);
+          return;
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || errorData.error || `Sync failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        toast.success('Locations synced successfully!');
+        await refetch();
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        // Handle AbortError specifically (timeout or manual cancellation)
+        if (fetchError.name === 'AbortError') {
+          console.warn('Sync request was aborted (timeout or cancellation)');
+          toast.error('Sync timed out. Please check your connection and try again.');
+          return;
+        }
+        
+        // Re-throw other errors to be handled by outer catch
+        throw fetchError;
       }
-
-      toast.success('Locations synced successfully!');
-      await refetch();
     } catch (error) {
       console.error('Sync error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to sync locations');
+      
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          // Already handled in inner catch
+          return;
+        } else if (error.message.includes('fetch') || error.message.includes('network')) {
+          toast.error('Network error. Please check your internet connection.');
+        } else {
+          toast.error(error.message || 'Failed to sync locations');
+        }
+      } else {
+        toast.error('An unexpected error occurred during sync');
+      }
     } finally {
       setSyncing(false);
     }
