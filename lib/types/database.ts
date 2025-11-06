@@ -76,23 +76,28 @@ export interface GMBReview {
   user_id: string
   gmb_account_id?: string
   external_review_id?: string
-  review_id: string
+  review_id?: string
   reviewer_name: string
   rating: number
-  comment?: string
   review_text?: string
-  review_reply?: string
-  reply_text?: string
   review_date?: string
-  replied_at?: string
+  reply_text?: string
   reply_date?: string
+  review_reply?: string
+  replied_at?: string
   has_reply?: boolean
-  ai_suggested_reply?: string
-  ai_generated_response?: string
+  has_response?: boolean
+  response_text?: string
+  responded_at?: string
   ai_sentiment?: "positive" | "neutral" | "negative"
-  status: "new" | "in_progress" | "responded"
+  ai_generated_response?: string
+  ai_suggested_reply?: string
+  status?: "new" | "in_progress" | "responded"
   created_at: string
   updated_at: string
+  // Join fields
+  location_name?: string
+  location_address?: string
 }
 
 export interface Profile {

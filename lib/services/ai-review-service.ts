@@ -28,8 +28,8 @@ export class AIReviewService {
     let negative = 0;
 
     reviews.forEach((review: any) => {
-      // Use ai_sentiment if available, otherwise infer from rating/star_rating
-      const rating = review.rating || review.star_rating || 0;
+      // Use ai_sentiment if available, otherwise infer from rating
+      const rating = review.rating || 0;
       const sentiment = review.ai_sentiment;
 
       if (sentiment) {
@@ -68,7 +68,7 @@ export class AIReviewService {
     ];
     
     reviews.forEach((review: any) => {
-      const text = (review.review_text || review.comment || review.comment_text || '').toLowerCase();
+      const text = (review.review_text || '').toLowerCase();
       
       commonKeywords.forEach(keyword => {
         if (text.includes(keyword)) {
@@ -144,7 +144,7 @@ export async function extractKeywords(reviews: GMBReview[]): Promise<string[]> {
   ];
   
   reviews.forEach(review => {
-    const text = (review.review_text || review.comment || '').toLowerCase();
+    const text = (review.review_text || '').toLowerCase();
     
     commonKeywords.forEach(keyword => {
       if (text.includes(keyword)) {

@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 
           id,
 
-          name,
+          location_name,
 
           address,
 
@@ -66,11 +66,9 @@ export async function GET(request: NextRequest) {
 
       .eq('gmb_locations.user_id', user.id)
 
-      .is('reply_text', null)
+      .or('has_reply.is.null,has_reply.eq.false,and(reply_text.is.null,review_reply.is.null)')
 
-      .is('review_reply', null)
-
-      .order('create_time', { ascending: false })
+      .order('review_date', { ascending: false, nullsFirst: false })
 
       .limit(50);
 
@@ -98,11 +96,15 @@ export async function GET(request: NextRequest) {
 
     const sortedReviews = (reviews || []).sort((a, b) => {
 
-      if (a.star_rating <= 2 && b.star_rating > 2) return -1;
+      if (a.rating <= 2 && b.rating > 2) return -1;
 
-      if (a.star_rating > 2 && b.star_rating <= 2) return 1;
+      if (a.rating > 2 && b.rating <= 2) return 1;
 
-      return new Date(b.create_time).getTime() - new Date(a.create_time).getTime();
+      const aDate = a.review_date ? new Date(a.review_date).getTime() : 0;
+
+      const bDate = b.review_date ? new Date(b.review_date).getTime() : 0;
+
+      return bDate - aDate;
 
     });
 

@@ -59,12 +59,12 @@ export function ReviewResponseCockpit() {
                 // Transform API response to match Review interface
                 const transformedReviews: Review[] = (result.reviews || []).map((r: any) => ({
                     id: r.id,
-                    review_date: r.create_time || r.review_date || r.created_at,
+                    review_date: r.review_date || r.created_at,
                     reviewer_name: r.reviewer_name || 'Anonymous',
-                    rating: r.star_rating || r.rating || 0,
-                    review_text: r.comment_text || r.review_text || r.comment || '',
+                    rating: r.rating || 0,
+                    review_text: r.review_text || '',
                     review_reply: r.reply_text || r.review_reply || null,
-                    location_name: r.gmb_locations?.name || r.location_name || 'Unknown Location',
+                    location_name: r.gmb_locations?.location_name || r.location_name || 'Unknown Location',
                     location_id: r.location_id,
                     platform: 'google' as const
                 }));
