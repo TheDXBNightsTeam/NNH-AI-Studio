@@ -64,10 +64,10 @@ export function LocationsMapTab() {
     }
   }, [locations, selectedLocationId]);
 
-  // Get selected location
+  // Get selected location - use stable dependency
   const selectedLocation = useMemo(() => {
     return locations.find(loc => loc.id === selectedLocationId);
-  }, [locations, selectedLocationId]);
+  }, [selectedLocationId, locations.length, locations.map(l => l.id).join(',')]);
 
   // Handle marker click
   const handleMarkerClick = (location: Location) => {
@@ -135,6 +135,12 @@ export function LocationsMapTab() {
     );
   }
 
+  // Create stable key based on locations content to avoid infinite loops
+  const locationsKey = useMemo(() => 
+    locations.map(l => `${l.id}-${l.coordinates?.lat}-${l.coordinates?.lng}`).join('|'),
+    [locations.length, locations.map(l => `${l.id}-${l.coordinates?.lat}-${l.coordinates?.lng}`).join('|')]
+  );
+
   // Filter locations with coordinates
   const locationsWithCoords = useMemo(() => {
     return locations.filter(loc => 
@@ -143,21 +149,7 @@ export function LocationsMapTab() {
       !isNaN(loc.coordinates.lat) &&
       !isNaN(loc.coordinates.lng)
     );
-  }, [locations]);
-
-  // Create stable string key from locations array to avoid infinite loops
-  // Calculate locations string representation first, then use it as dependency
-  const locationsString = useMemo(() => 
-    locations.map(l => `${l.id}:${l.coordinates?.lat},${l.coordinates?.lng}`).join('|'),
-    [locations]
-  );
-  
-  const locationsKeyString = useMemo(() => {
-    return locations
-      .filter(loc => loc.coordinates?.lat && loc.coordinates?.lng)
-      .map(l => `${l.id}:${l.coordinates?.lat},${l.coordinates?.lng}`)
-      .join('|');
-  }, [locationsString]);
+  }, [locationsKey]);
 
   const mapCenter = useMemo(() => {
     if (selectedLocation?.coordinates) {
@@ -188,14 +180,14 @@ export function LocationsMapTab() {
   }, [
     selectedLocation?.coordinates?.lat, 
     selectedLocation?.coordinates?.lng,
-    locationsKeyString
+    locationsKey
   ]);
 
   return (
     <div className="relative w-full h-[calc(100vh-200px)] min-h-[600px] md:min-h-[700px]">
       {/* Map View */}
       <MapView
-        locations={locations}
+        locations={locationsWithCoords}
         selectedLocationId={selectedLocationId}
         onMarkerClick={handleMarkerClick}
         center={mapCenter}
