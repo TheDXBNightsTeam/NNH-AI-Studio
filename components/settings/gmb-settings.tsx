@@ -10,14 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Save, Bell, Globe, Key, Users, CreditCard, Shield, Link2, Sparkles, Clock, CheckCircle, Unlink, AlertTriangle, Download, Database } from "lucide-react"
+import { Save, Bell, Globe, Key, Users, CreditCard, Sparkles, Clock, CheckCircle, Database } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { disconnectGMBAccount, type DisconnectOption } from "@/server/actions/gmb-account"
 import { DataManagement } from "./data-management"
-import { GMBConnectionActions } from "@/components/gmb/gmb-connection-actions"
+import { GMBConnectionManager } from "@/components/gmb/gmb-connection-manager"
 
 export function GMBSettings() {
   const supabase = createClient()
@@ -28,13 +26,10 @@ export function GMBSettings() {
   const [aiResponseTone, setAiResponseTone] = useState("professional")
   const [autoPublish, setAutoPublish] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [gmbConnected, setGmbConnected] = useState(false)
   const [gmbAccounts, setGmbAccounts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [disconnecting, setDisconnecting] = useState(false)
   const [syncSchedule, setSyncSchedule] = useState<string>('manual')
   const [syncSettings, setSyncSettings] = useState<any>({})
-  const [syncingAll, setSyncingAll] = useState(false)
 
   // Check GMB connection status
   useEffect(() => {
@@ -51,17 +46,15 @@ export function GMBSettings() {
         if (error) {
           console.error('Error fetching GMB accounts:', error)
           setGmbAccounts([])
-          setGmbConnected(false)
           setLoading(false)
           return
         }
 
         const accountsArray = accounts || []
-        const activeAccounts = accountsArray.filter((acc: any) => acc && acc.is_active) || []
         setGmbAccounts(accountsArray)
-        setGmbConnected(activeAccounts.length > 0)
         
         // Load sync settings from first active account
+        const activeAccounts = accountsArray.filter((acc: any) => acc && acc.is_active) || []
         if (activeAccounts.length > 0 && activeAccounts[0] && activeAccounts[0].settings) {
           const settings = activeAccounts[0].settings
           if (settings && typeof settings === 'object') {
@@ -139,67 +132,18 @@ export function GMBSettings() {
     }
   }
 
-
-  const handleSyncAll = async () => {
-    try {
-      setSyncingAll(true)
-      const active = (gmbAccounts || []).filter((a: any) => a && a.is_active)
-      if (active.length === 0) {
-        toast.error('No active accounts to sync')
-        return
-      }
-      for (const acc of active) {
-        const res = await fetch('/api/gmb/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ accountId: acc.id, syncType: 'incremental' })
-        })
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}))
-          throw new Error(data?.error || 'Failed to sync')
-        }
-      }
-      toast.success('Sync completed')
-      // refresh last_sync
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: accounts } = await supabase
-          .from('gmb_accounts')
-          .select('id, account_name, is_active, last_sync, settings')
-          .eq('user_id', user.id)
-        setGmbAccounts(accounts || [])
-      }
-    } catch (e: any) {
-      toast.error(e?.message || 'Sync failed')
-    } finally {
-      setSyncingAll(false)
+  // Callback after GMB operations
+  const handleGMBSuccess = async () => {
+    // Refresh accounts list
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: accounts } = await supabase
+        .from('gmb_accounts')
+        .select('id, account_name, is_active, last_sync, settings')
+        .eq('user_id', user.id)
+      setGmbAccounts(accounts || [])
     }
-  }
-
-  const handleConnectGMB = async () => {
-    try {
-      const response = await fetch('/api/gmb/create-auth-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create auth URL')
-      }
-
-      // Redirect to Google OAuth
-      const authUrl = data.authUrl || data.url
-      if (authUrl) {
-        router.push(authUrl)
-      } else {
-        throw new Error('No authorization URL received')
-      }
-    } catch (error: any) {
-      console.error('Error connecting GMB:', error)
-      toast.error(error.message || 'Failed to connect')
-    }
+    router.refresh()
   }
 
   return (
@@ -210,64 +154,12 @@ export function GMBSettings() {
         <p className="text-muted-foreground">Manage your Google My Business integration settings</p>
       </div>
 
-      {/* Connection Banner - prominent CTA */}
-      <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center justify-between gap-3">
-            <span className="text-lg">Google My Business Connection</span>
-            <div className="flex items-center gap-2">
-              {loading ? (
-                <Badge variant="secondary" className="bg-secondary text-muted-foreground">
-                  <Clock className="h-3 w-3 mr-1 animate-spin" /> Checking...
-                </Badge>
-              ) : gmbConnected ? (
-                <Badge variant="default" className="bg-green-500/20 text-green-500 border-green-500/30">
-                  <Link2 className="h-3 w-3 mr-1" /> Connected
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="bg-orange-500/20 text-orange-500 border-orange-500/30">
-                  <AlertTriangle className="h-3 w-3 mr-1" /> Not Connected
-                </Badge>
-              )}
-            </div>
-          </CardTitle>
-          <CardDescription>
-            {gmbConnected
-              ? 'Your account is connected. You can sync data, re-authenticate, or disconnect.'
-              : 'Connect your Google My Business to sync locations, reviews, and insights.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <GMBConnectionActions
-            isConnected={gmbConnected}
-            accountId={gmbAccounts.find(acc => acc.is_active)?.id}
-            isSyncing={syncingAll}
-            isDisconnecting={disconnecting}
-            onSync={async () => {
-              await handleSyncAll()
-            }}
-            onConnect={handleConnectGMB}
-            onDisconnectComplete={async () => {
-              setGmbConnected(false)
-              const { data: { user } } = await supabase.auth.getUser()
-              if (user) {
-                const { data: accounts } = await supabase
-                  .from('gmb_accounts')
-                  .select('id, account_name, is_active, last_sync, settings')
-                  .eq('user_id', user.id)
-                setGmbAccounts(accounts || [])
-              }
-              router.refresh()
-            }}
-            layout="horizontal"
-            className="flex-col sm:flex-row"
-            showDisconnectOptions={true}
-          />
-          {!gmbConnected && (
-            <p className="text-xs text-muted-foreground mt-3 sm:self-center">Required scopes will be requested from Google</p>
-          )}
-        </CardContent>
-      </Card>
+      {/* GMB Connection Manager - المكون المركزي الجديد */}
+      <GMBConnectionManager 
+        variant="full"
+        showLastSync={true}
+        onSuccess={handleGMBSuccess}
+      />
 
   {/* Settings Tabs */}
       <Tabs defaultValue="general" className="space-y-6">
@@ -543,37 +435,15 @@ export function GMBSettings() {
               <CardDescription>Manage your Google My Business API connection</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Connection Status</Label>
-                <div className="flex items-center gap-2">
-                  {loading ? (
-                    <Badge variant="secondary" className="bg-secondary text-muted-foreground">
-                      <Clock className="h-3 w-3 mr-1 animate-spin" />
-                      Checking...
-                    </Badge>
-                  ) : gmbConnected ? (
-                    <>
-                      <Badge variant="default" className="bg-green-500/20 text-green-500 border-green-500/30">
-                        <Link2 className="h-3 w-3 mr-1" />
-                        Connected
-                      </Badge>
-                      {Array.isArray(gmbAccounts) && gmbAccounts.length > 0 && (
-                        <span className="text-sm text-muted-foreground">
-                          {gmbAccounts.filter((a: any) => a && a.is_active).length} account(s) connected
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <Badge variant="secondary" className="bg-orange-500/20 text-orange-500 border-orange-500/30">
-                      <AlertTriangle className="h-3 w-3 mr-1" />
-                      Not Connected
-                    </Badge>
-                  )}
-                </div>
-              </div>
+              {/* استخدام المكون المركزي للإدارة */}
+              <GMBConnectionManager 
+                variant="compact"
+                showLastSync={true}
+                onSuccess={handleGMBSuccess}
+              />
 
               {Array.isArray(gmbAccounts) && gmbAccounts.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-2 mt-4">
                   <Label>Connected Accounts</Label>
                   <div className="space-y-2">
                     {gmbAccounts.map((account: any) => {
@@ -593,58 +463,6 @@ export function GMBSettings() {
                   </div>
                 </div>
               )}
-
-              {/* API Usage tracking disabled for production */}
-              {/* Uncomment when implementing proper usage tracking
-              <div className="space-y-2">
-                <Label>API Usage</Label>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">API Calls (This Month)</span>
-                    <span className="font-medium">Loading...</span>
-                  </div>
-                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-primary to-accent"
-                      style={{ width: "0%" }}
-                    />
-                  </div>
-                </div>
-              </div>
-              */}
-
-              <div className="pt-4 space-y-3 border-t border-primary/20">
-                <GMBConnectionActions
-                  isConnected={gmbConnected}
-                  accountId={gmbAccounts.find(acc => acc.is_active)?.id}
-                  isSyncing={syncingAll}
-                  isDisconnecting={disconnecting}
-                  onSync={async () => {
-                    await handleSyncAll()
-                  }}
-                  onConnect={handleConnectGMB}
-                  onDisconnectComplete={async () => {
-                    setGmbConnected(false)
-                    const { data: { user } } = await supabase.auth.getUser()
-                    if (user) {
-                      const { data: accounts } = await supabase
-                        .from('gmb_accounts')
-                        .select('id, account_name, is_active, last_sync, settings')
-                        .eq('user_id', user.id)
-                      setGmbAccounts(accounts || [])
-                    }
-                    router.refresh()
-                  }}
-                  layout="vertical"
-                  showActions={gmbConnected ? ["reauthenticate", "disconnect"] : ["connect"]}
-                  showDisconnectOptions={true}
-                />
-                {!gmbConnected && (
-                  <p className="text-xs text-muted-foreground">
-                    Connect your Google My Business account to sync locations, reviews, and insights automatically
-                  </p>
-                )}
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
