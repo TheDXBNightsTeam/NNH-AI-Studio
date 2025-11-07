@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
-  MapPin, Star, BarChart3, CheckCircle2, Sparkles, TrendingUpIcon, Shield, Plus
+  MapPin, Star, BarChart3, CheckCircle2, Sparkles, TrendingUpIcon, Shield, Plus, Users
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/lib/navigation';
@@ -11,6 +11,18 @@ import { useRouter } from '@/lib/navigation';
 export const GMBConnectionBanner = () => {
   const t = useTranslations('Locations');
   const router = useRouter();
+  const [isConnecting, setIsConnecting] = React.useState(false);
+
+  const handleConnectGMB = async () => {
+    try {
+      setIsConnecting(true);
+      // Navigate to GMB connect/onboarding route. Adjust path if your app uses a different one.
+      router.push('/api/gmb/connect');
+    } finally {
+      // Keep disabled state only during navigation trigger
+      setIsConnecting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
