@@ -56,7 +56,7 @@ export function Sidebar({ isOpen = true, onClose, userProfile }: SidebarProps) {
     },
     {
       nameKey: 'nav.gmbPosts',
-      href: '/gmb-posts',
+      href: '/posts',
       icon: FileText,
     },
     {

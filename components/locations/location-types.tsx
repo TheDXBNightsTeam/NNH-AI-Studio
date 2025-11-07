@@ -328,7 +328,7 @@ export const HealthScoreDetails = ({ location }: { location: Location }) => {
       },
       posts: {
         label: t('actions.createPost'),
-        onClick: () => router.push(`/gmb-posts?location=${location.id}`),
+        onClick: () => router.push(`/posts?location=${location.id}`),
       },
       responses: {
         label: t('actions.viewReviews'),

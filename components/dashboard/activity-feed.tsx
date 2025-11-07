@@ -64,7 +64,7 @@ const getActivityLink = (activity: ActivityLog): string | null => {
   
   // GMB Posts
   if (activity.activity_type.includes('post')) {
-    return '/gmb-posts'
+    return '/posts'
   }
   
   // GMB Reviews
