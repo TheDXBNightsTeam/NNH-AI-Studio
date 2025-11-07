@@ -75,7 +75,7 @@ export function QuickActionsBar({
       label: 'Create New Post',
       labelAr: 'إنشاء منشور جديد',
       icon: <FileText className="w-5 h-5" />,
-      href: '/gmb-posts',
+      href: '/posts',
       color: 'text-success',
       gradient: 'from-success/10 to-success/5',
       description: 'Share updates with customers',
