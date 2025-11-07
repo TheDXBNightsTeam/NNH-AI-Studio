@@ -1525,6 +1525,7 @@ export async function POST(request: NextRequest) {
     console.log(`[GMB Sync API] Sync completed in ${took}ms`, counts);
 
     return NextResponse.json({
+      success: true, // For consistency with dashboard checks
       ok: true,
       accountId,
       syncType,
