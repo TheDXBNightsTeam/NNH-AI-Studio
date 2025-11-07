@@ -139,7 +139,7 @@ export function AIAssistantSidebar({ selectedReview, pendingReviewsCount, locati
           <h3 className="text-xl font-bold text-white">AI Assistant</h3>
           <p className="text-xs text-zinc-400 flex items-center gap-1">
             <Sparkles className="w-3 h-3" />
-            Powered by Claude
+            Powered by Google Gemini
           </p>
         </div>
       </div>
