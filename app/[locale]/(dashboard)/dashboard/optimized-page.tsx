@@ -32,6 +32,7 @@ import { WeeklyTasksWidget } from '@/components/dashboard/weekly-tasks-widget';
 import { BottlenecksWidget } from '@/components/dashboard/bottlenecks-widget';
 import { QuickActionsBar } from '@/components/dashboard/quick-actions-bar';
 import { RealtimeUpdatesIndicator } from '@/components/dashboard/realtime-updates-indicator';
+import { GMBConnectionActions } from '@/components/gmb/gmb-connection-actions';
 
 interface DashboardStats {
   totalLocations: number;
@@ -80,37 +81,6 @@ interface DashboardStats {
 const GMBConnectionBanner = () => {
   const t = useTranslations('Dashboard.connectionBanner');
   const { isMobile } = useResponsiveLayout();
-  const router = useRouter();
-  const [connecting, setConnecting] = useState(false);
-
-  const handleConnect = async () => {
-    setConnecting(true);
-    try {
-      // Call the existing GMB auth URL endpoint
-      const response = await fetch('/api/gmb/create-auth-url', {
-        method: 'POST',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to start GMB connection');
-      }
-      
-      const data = await response.json();
-      
-      if (data.url) {
-        // Redirect to Google OAuth
-        window.location.href = data.url;
-      } else {
-        throw new Error('No OAuth URL returned');
-      }
-    } catch (error) {
-      console.error('Connection error:', error);
-      toast.error('Failed to connect. Please try again or go to Settings.');
-      setConnecting(false);
-      // Fallback to settings page
-      router.push('/settings');
-    }
-  };
   
   return (
     <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent overflow-hidden relative">
@@ -162,24 +132,13 @@ const GMBConnectionBanner = () => {
             "flex gap-2 md:gap-3 w-full lg:w-auto lg:flex-shrink-0",
             isMobile ? "flex-col" : "flex-col sm:flex-row"
           )}>
-            <Button 
-              size={isMobile ? "default" : "lg"} 
-              className="gap-2 gradient-orange"
-              onClick={handleConnect}
-              disabled={connecting}
-            >
-              {connecting ? (
-                <>
-                  <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4 md:w-5 md:h-5" />
-                  Connect Google My Business
-                </>
-              )}
-            </Button>
+            <GMBConnectionActions
+              isConnected={false}
+              size={isMobile ? "default" : "lg"}
+              showActions={["connect"]}
+              layout={isMobile ? "vertical" : "horizontal"}
+              className={isMobile ? "w-full" : ""}
+            />
             <Button asChild size={isMobile ? "default" : "lg"} variant="outline" className="gap-2">
               <a 
                 href="https://business.google.com" 
@@ -358,27 +317,10 @@ export default function OptimizedDashboardPage() {
   };
 
   const handleDisconnect = async () => {
-    if (!gmbAccountId || !confirm('Are you sure you want to disconnect?')) return;
-
-    try {
-      setDisconnecting(true);
-      const response = await fetch('/api/gmb/disconnect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountId: gmbAccountId }),
-      });
-
-      if (!response.ok) throw new Error('Failed to disconnect');
-
-      toast.success('Disconnected successfully');
-      setGmbConnected(false);
-      setGmbAccountId(null);
-      cacheUtils.clear();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to disconnect');
-    } finally {
-      setDisconnecting(false);
-    }
+    setGmbConnected(false);
+    setGmbAccountId(null);
+    cacheUtils.clear();
+    await fetchConnectionStatus();
   };
 
   return (
@@ -458,6 +400,22 @@ export default function OptimizedDashboardPage() {
               <HealthScoreCard loading={loading} healthScore={currentStats.healthScore} />
             </DashboardSection>
           </ResponsiveGrid>
+          
+          {/* Centralized GMB Actions - Always visible when connected */}
+          <DashboardSection section="GMB Actions">
+            <GMBConnectionActions
+              isConnected={gmbConnected}
+              accountId={gmbAccountId || undefined}
+              isSyncing={syncing}
+              isDisconnecting={disconnecting}
+              onSync={handleSync}
+              onDisconnectComplete={handleDisconnect}
+              size="default"
+              layout="horizontal"
+              showActions={["sync", "disconnect"]}
+              showDisconnectOptions={true}
+            />
+          </DashboardSection>
 
           <DashboardSection section="Quick Actions">
             <QuickActionsBar 
