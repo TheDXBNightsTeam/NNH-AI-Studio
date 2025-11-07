@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, MapPin, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import type { GmbAccount } from '@/lib/types/database';
-import { GMBConnectionActions } from "@/components/gmb/gmb-connection-actions";
 
 interface AccountCardProps {
   account: GmbAccount;

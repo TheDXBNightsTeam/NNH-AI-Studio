@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/lib/navigation';
-import { GMBConnectionActions } from '@/components/gmb/gmb-connection-actions';
 
 // No GMB Account Banner Component
 export const GMBConnectionBanner = () => {

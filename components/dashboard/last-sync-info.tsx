@@ -4,7 +4,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { RefreshCw, Clock, CheckCircle2, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDistanceToNow } from "date-fns"
-import { GMBConnectionActions } from "@/components/gmb/gmb-connection-actions"
 
 interface LastSyncInfoProps {
   lastSyncTime: Date | null
