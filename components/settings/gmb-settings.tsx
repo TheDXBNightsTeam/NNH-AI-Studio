@@ -154,7 +154,7 @@ export function GMBSettings() {
         <p className="text-muted-foreground">Manage your Google My Business integration settings</p>
       </div>
 
-      {/* GMB Connection Manager - المكون المركزي الجديد */}
+      {/* GMB Connection Manager - centralized component */}
       <GMBConnectionManager 
         variant="full"
         showLastSync={true}

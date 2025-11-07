@@ -12,8 +12,9 @@ const requestCounts = new Map<string, { count: number; resetAt: number }>();
 
 // Create next-intl middleware
 const intlMiddleware = createIntlMiddleware({
-  locales: ['en', 'ar'],
+  locales: ['en'],
   defaultLocale: 'en',
+  localePrefix: 'as-needed',
 });
 
 export async function middleware(request: NextRequest) {
@@ -78,7 +79,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/',
-    '/(en|ar)/:path*',
+    '/(en)/:path*',
     '/((?!_next|_vercel|.*\\..*).*)',
     '/api/:path*'
   ],

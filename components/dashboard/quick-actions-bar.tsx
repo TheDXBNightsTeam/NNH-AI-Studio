@@ -2,7 +2,7 @@
 
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Link, useRouter } from '@/lib/navigation';
+import { Link } from '@/lib/navigation';
 import { 
   MessageSquare, 
   HelpCircle, 
@@ -16,65 +16,53 @@ import { motion } from 'framer-motion';
 interface QuickAction {
   id: string;
   label: string;
-  labelAr: string;
   icon: React.ReactNode;
   count?: number;
   href: string;
   color: string;
   gradient: string;
   description: string;
-  descriptionAr: string;
 }
 
 interface QuickActionsBarProps {
   pendingReviews: number;
   unansweredQuestions: number;
-  locale?: string;
 }
 
 export function QuickActionsBar({ 
   pendingReviews, 
-  unansweredQuestions,
-  locale = 'en'
+  unansweredQuestions
 }: QuickActionsBarProps) {
-  const isArabic = locale === 'ar';
-  const router = useRouter();
 
   const quickActions: QuickAction[] = [
     {
       id: 'reviews',
       label: 'Reply to Reviews',
-      labelAr: 'الرد على المراجعات',
       icon: <MessageSquare className="w-5 h-5" />,
       count: pendingReviews,
       href: '/reviews',
       color: 'text-info',
       gradient: 'from-info/10 to-info/5',
-      description: 'Respond to pending reviews',
-      descriptionAr: 'الرد على المراجعات المعلقة'
+      description: 'Respond to pending reviews'
     },
     {
       id: 'questions',
       label: 'Answer Questions',
-      labelAr: 'الإجابة على الأسئلة',
       icon: <HelpCircle className="w-5 h-5" />,
       count: unansweredQuestions,
       href: '/questions',
       color: 'text-primary',
       gradient: 'from-primary/10 to-primary/5',
-      description: 'Reply to customer questions',
-      descriptionAr: 'الرد على أسئلة العملاء'
+      description: 'Reply to customer questions'
     },
     {
       id: 'posts',
       label: 'Create New Post',
-      labelAr: 'إنشاء منشور جديد',
       icon: <FileText className="w-5 h-5" />,
       href: '/posts',
       color: 'text-success',
       gradient: 'from-success/10 to-success/5',
-      description: 'Share updates with customers',
-      descriptionAr: 'مشاركة التحديثات مع العملاء'
+      description: 'Share updates with customers'
     }
   ];
 
@@ -83,12 +71,10 @@ export function QuickActionsBar({
       <div className="mb-4">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Zap className="w-5 h-5 text-primary" />
-          {isArabic ? 'إجراءات سريعة' : 'Quick Actions'}
+          Quick Actions
         </h3>
         <p className="text-sm text-muted-foreground mt-1">
-          {isArabic 
-            ? 'الإجراءات الأكثر شيوعاً في مكان واحد' 
-            : 'Most common actions in one place'}
+          Most common actions in one place
         </p>
       </div>
 
@@ -102,7 +88,7 @@ export function QuickActionsBar({
           >
             <Link 
               href={action.href}
-              aria-label={`${isArabic ? action.labelAr : action.label}. ${isArabic ? action.descriptionAr : action.description}. ${action.count !== undefined && action.count > 0 ? `${action.count} pending items` : 'No pending items'}.`}
+              aria-label={`${action.label}. ${action.description}. ${action.count !== undefined && action.count > 0 ? `${action.count} pending items` : 'No pending items'}.`}
               className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-lg"
             >
               <Card 
@@ -145,13 +131,13 @@ export function QuickActionsBar({
                         id={`action-${action.id}-title`}
                         className="font-semibold text-foreground group-hover:text-primary transition-colors"
                       >
-                        {isArabic ? action.labelAr : action.label}
+                        {action.label}
                       </h4>
                       <p 
                         id={`action-${action.id}-description`}
                         className="text-xs text-muted-foreground mt-1"
                       >
-                        {isArabic ? action.descriptionAr : action.description}
+                        {action.description}
                       </p>
                       
                       {action.count !== undefined && (
@@ -162,7 +148,7 @@ export function QuickActionsBar({
                           aria-live="polite"
                         >
                           <span className="w-2 h-2 rounded-full bg-primary animate-pulse" aria-hidden="true" />
-                          {action.count} {isArabic ? 'معلق' : 'pending'}
+                          {action.count} pending
                         </div>
                       )}
                     </div>
@@ -171,8 +157,7 @@ export function QuickActionsBar({
                   <ArrowRight 
                     className={cn(
                     "w-4 h-4 text-muted-foreground group-hover:text-primary",
-                    "group-hover:translate-x-1 transition-all",
-                    isArabic && "rotate-180"
+                    "group-hover:translate-x-1 transition-all"
                     )}
                     aria-hidden="true"
                   />

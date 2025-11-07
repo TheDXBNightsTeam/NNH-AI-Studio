@@ -11,60 +11,48 @@ interface RealtimeUpdatesIndicatorProps {
   lastUpdated: Date | null;
   onRefresh: () => void;
   isRefreshing: boolean;
-  autoRefreshInterval?: number; // بالدقائق
-  locale?: string;
+  autoRefreshInterval?: number; // minutes
 }
 
 export function RealtimeUpdatesIndicator({
   lastUpdated,
   onRefresh,
   isRefreshing,
-  autoRefreshInterval = 5,
-  locale = 'en'
+  autoRefreshInterval = 5
 }: RealtimeUpdatesIndicatorProps) {
   const [timeAgo, setTimeAgo] = useState<string>('');
   const [nextRefresh, setNextRefresh] = useState<number>(autoRefreshInterval * 60);
-  const isArabic = locale === 'ar';
 
-  // حساب الوقت منذ آخر تحديث
+  // Calculate elapsed time since last refresh
   useEffect(() => {
     const calculateTimeAgo = () => {
       if (!lastUpdated) {
-        setTimeAgo(isArabic ? 'غير متاح' : 'Never');
+        setTimeAgo('Never');
         return;
       }
 
       const now = new Date();
-      const diff = Math.floor((now.getTime() - lastUpdated.getTime()) / 1000); // بالثواني
+      const diff = Math.floor((now.getTime() - lastUpdated.getTime()) / 1000); // seconds
 
       if (diff < 60) {
-        setTimeAgo(isArabic ? 'الآن' : 'Just now');
+        setTimeAgo('Just now');
       } else if (diff < 3600) {
         const minutes = Math.floor(diff / 60);
-        setTimeAgo(isArabic 
-          ? `منذ ${minutes} ${minutes === 1 ? 'دقيقة' : 'دقائق'}`
-          : `${minutes} minute${minutes > 1 ? 's' : ''} ago`
-        );
+        setTimeAgo(`${minutes} minute${minutes > 1 ? 's' : ''} ago`);
       } else if (diff < 86400) {
         const hours = Math.floor(diff / 3600);
-        setTimeAgo(isArabic
-          ? `منذ ${hours} ${hours === 1 ? 'ساعة' : 'ساعات'}`
-          : `${hours} hour${hours > 1 ? 's' : ''} ago`
-        );
+        setTimeAgo(`${hours} hour${hours > 1 ? 's' : ''} ago`);
       } else {
         const days = Math.floor(diff / 86400);
-        setTimeAgo(isArabic
-          ? `منذ ${days} ${days === 1 ? 'يوم' : 'أيام'}`
-          : `${days} day${days > 1 ? 's' : ''} ago`
-        );
+        setTimeAgo(`${days} day${days > 1 ? 's' : ''} ago`);
       }
     };
 
     calculateTimeAgo();
-    const interval = setInterval(calculateTimeAgo, 10000); // تحديث كل 10 ثواني
+    const interval = setInterval(calculateTimeAgo, 10000); // update every 10 seconds
 
     return () => clearInterval(interval);
-  }, [lastUpdated, isArabic]);
+  }, [lastUpdated]);
 
   // ✅ FIX: Stabilize onRefresh callback to prevent race conditions
   const onRefreshRef = useRef(onRefresh);
@@ -73,7 +61,7 @@ export function RealtimeUpdatesIndicator({
     onRefreshRef.current = onRefresh;
   }, [onRefresh]);
 
-  // العداد التنازلي للتحديث التلقائي
+  // Auto-refresh countdown
   useEffect(() => {
     if (isRefreshing) {
       setNextRefresh(autoRefreshInterval * 60);
@@ -98,17 +86,15 @@ export function RealtimeUpdatesIndicator({
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
     if (minutes > 0) {
-      return isArabic 
-        ? `${minutes}:${secs.toString().padStart(2, '0')} دقيقة`
-        : `${minutes}:${secs.toString().padStart(2, '0')} min`;
+      return `${minutes}:${secs.toString().padStart(2, '0')} min`;
     }
-    return isArabic ? `${secs} ثانية` : `${secs}s`;
+    return `${secs}s`;
   };
 
   return (
     <Card className="p-4 border border-muted bg-gradient-to-r from-background to-muted/20">
       <div className="flex items-center justify-between gap-4">
-        {/* معلومات آخر تحديث */}
+        {/* Last update information */}
         <div className="flex items-center gap-3 flex-1">
           <div className="relative">
             <Clock className="w-5 h-5 text-muted-foreground" />
@@ -127,7 +113,7 @@ export function RealtimeUpdatesIndicator({
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-foreground">
-                {isArabic ? 'آخر تحديث:' : 'Last Updated:'}
+                Last Updated:
               </span>
               <span className="text-sm text-muted-foreground font-mono">
                 {timeAgo}
@@ -138,17 +124,14 @@ export function RealtimeUpdatesIndicator({
               <div className="flex items-center gap-1 mt-1">
                 <CheckCircle2 className="w-3 h-3 text-success" />
                 <span className="text-xs text-muted-foreground">
-                  {isArabic 
-                    ? `التحديث التالي في ${formatNextRefresh(nextRefresh)}`
-                    : `Next refresh in ${formatNextRefresh(nextRefresh)}`
-                  }
+                  {`Next refresh in ${formatNextRefresh(nextRefresh)}`}
                 </span>
               </div>
             )}
           </div>
         </div>
 
-        {/* زر التحديث */}
+        {/* Refresh button */}
         <Button
           variant="outline"
           size="sm"
@@ -166,15 +149,12 @@ export function RealtimeUpdatesIndicator({
             )} 
           />
           <span className="hidden sm:inline">
-            {isRefreshing 
-              ? (isArabic ? 'جاري التحديث...' : 'Refreshing...')
-              : (isArabic ? 'تحديث الآن' : 'Refresh Now')
-            }
+            {isRefreshing ? 'Refreshing...' : 'Refresh Now'}
           </span>
         </Button>
       </div>
 
-      {/* شريط التقدم للتحديث التلقائي */}
+      {/* Auto-refresh progress bar */}
       <motion.div 
         className="mt-3 h-1 bg-muted rounded-full overflow-hidden"
         initial={{ opacity: 0 }}

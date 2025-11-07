@@ -37,13 +37,13 @@ import { cn } from "@/lib/utils"
 import { formatDistanceToNow } from "date-fns"
 
 interface GMBConnectionManagerProps {
-  /** تخصيص المظهر - compact للـ dashboard، full للـ settings */
+  /** UI density - compact for dashboard widgets, full for settings page */
   variant?: 'compact' | 'full'
-  /** إظهار معلومات آخر مزامنة */
+  /** Show last sync information */
   showLastSync?: boolean
-  /** CSS classes إضافية */
+  /** Additional CSS classes */
   className?: string
-  /** Callback عند نجاح العملية */
+  /** Callback invoked after a successful action */
   onSuccess?: () => void
 }
 
@@ -57,8 +57,8 @@ interface GMBAccount {
 }
 
 /**
- * مكون مركزي موحد لإدارة اتصال Google My Business
- * يحتوي على جميع الأزرار والوظائف المتعلقة بـ GMB في مكان واحد
+ * Centralized component for managing the Google My Business connection.
+ * Provides all buttons and actions related to GMB in one place.
  */
 export function GMBConnectionManager({
   variant = 'compact',
@@ -88,7 +88,7 @@ export function GMBConnectionManager({
   const [showDisconnectDialog, setShowDisconnectDialog] = useState(false)
   const [disconnectOption, setDisconnectOption] = useState<DisconnectOption>('keep')
 
-  // تحميل حالة الاتصال
+  // Load current connection state
   const loadConnectionStatus = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -154,7 +154,7 @@ export function GMBConnectionManager({
     }
   }, [loadConnectionStatus])
 
-  // ربط الحساب
+  // Start OAuth connection flow
   const handleConnect = async () => {
     setConnecting(true)
     console.log('[GMB Connect] Starting connection process')
@@ -175,7 +175,7 @@ export function GMBConnectionManager({
 
       const authUrl = data.authUrl || data.url
       if (!authUrl || typeof authUrl !== 'string') {
-        throw new Error('رابط التفويض غير صالح')
+        throw new Error('Invalid authorization URL')
       }
 
       // Redirect to Google OAuth
@@ -185,18 +185,18 @@ export function GMBConnectionManager({
       // Note: setConnecting(false) is not needed because we're redirecting
     } catch (error: any) {
       console.error('[GMB Connect] Error:', error)
-      toast.error('فشل الاتصال', {
-        description: error.message || 'تعذر إنشاء رابط التفويض. حاول مرة أخرى'
+      toast.error('Connection failed', {
+        description: error.message || 'Unable to generate the authorization link. Please try again.'
       })
       setConnecting(false)
     }
   }
 
-  // مزامنة البيانات
+  // Sync account data
   const handleSync = async () => {
     if (!activeAccount) {
-      toast.error('لا يوجد حساب نشط', {
-        description: 'الرجاء الاتصال بحساب Google My Business أولاً'
+      toast.error('No active account', {
+        description: 'Connect a Google My Business account first.'
       })
       return
     }
@@ -218,15 +218,15 @@ export function GMBConnectionManager({
       console.log('[GMB Sync] Response:', data)
 
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'فشلت المزامنة')
+        throw new Error(data.error || data.message || 'Sync failed')
       }
 
       // Check if sync was successful
       if (data.success || data.ok) {
-        toast.success('تمت المزامنة بنجاح', {
+        toast.success('Sync complete', {
           description: data.counts ? 
-            `تم مزامنة ${data.counts.locations || 0} موقع و ${data.counts.reviews || 0} مراجعة` :
-            'تم تحديث البيانات'
+            `Synced ${data.counts.locations || 0} locations and ${data.counts.reviews || 0} reviews` :
+            'Data updated successfully'
         })
         
         await loadConnectionStatus()
@@ -236,23 +236,23 @@ export function GMBConnectionManager({
         // Dispatch event for other components
         window.dispatchEvent(new Event('gmb-sync-complete'))
       } else {
-        throw new Error('فشلت المزامنة - استجابة غير متوقعة')
+        throw new Error('Unexpected sync response')
       }
     } catch (error: any) {
       console.error('[GMB Sync] Error:', error)
-      toast.error('خطأ في المزامنة', {
-        description: error.message || 'حاول مرة أخرى'
+      toast.error('Sync error', {
+        description: error.message || 'Please try again.'
       })
     } finally {
       setSyncing(false)
     }
   }
 
-  // قطع الاتصال
+  // Disconnect the active account
   const handleDisconnect = async () => {
     if (!activeAccount) {
-      toast.error('لا يوجد حساب متصل', {
-        description: 'لا يمكن قطع الاتصال'
+      toast.error('No connected account', {
+        description: 'Nothing to disconnect.'
       })
       return
     }
@@ -266,7 +266,7 @@ export function GMBConnectionManager({
       console.log('[GMB Disconnect] Result:', result)
 
       if (result.success) {
-        // تنزيل البيانات المُصدّرة إن وُجدت
+        // Download exported data if available
         if (result.exportData) {
           try {
             const blob = new Blob([JSON.stringify(result.exportData, null, 2)], { 
@@ -313,13 +313,13 @@ export function GMBConnectionManager({
         // Dispatch event for dashboard to hide sync button
         window.dispatchEvent(new Event('gmb-disconnected'))
       } else {
-        throw new Error(result.error || 'فشل قطع الاتصال')
+        throw new Error(result.error || 'Disconnect failed')
       }
     } catch (error: any) {
       console.error('[GMB Disconnect] Error:', error)
       if (isMounted.current) {
-        toast.error('خطأ في قطع الاتصال', {
-          description: error.message || 'حاول مرة أخرى',
+        toast.error('Disconnect error', {
+          description: error.message || 'Please try again.',
         })
       }
     } finally {
@@ -330,17 +330,17 @@ export function GMBConnectionManager({
     }
   }
 
-  // حساب الوقت منذ آخر مزامنة
+  // Calculate human-readable last sync time
   const getTimeAgo = () => {
-    if (!lastSyncTime) return "لم يتم المزامنة بعد"
+    if (!lastSyncTime) return "Not synced yet"
     try {
       return formatDistanceToNow(lastSyncTime, { addSuffix: true })
     } catch {
-      return "مؤخراً"
+      return "Recently"
     }
   }
 
-  // حالة التحميل
+  // Loading state
   if (loading) {
     return (
       <Card className={cn("border-primary/30", className)}>
@@ -351,13 +351,13 @@ export function GMBConnectionManager({
     )
   }
 
-  // ============ Compact View (للـ Dashboard) ============
+  // ============ Compact View (Dashboard) ============
   if (variant === 'compact') {
     return (
       <Card className={cn("bg-card border-primary/30", className)}>
         <CardContent className="p-4">
           <div className="flex items-center justify-between gap-3">
-            {/* حالة الاتصال */}
+            {/* Connection status */}
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className={cn(
                 "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
@@ -372,16 +372,16 @@ export function GMBConnectionManager({
               
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-muted-foreground mb-0.5">
-                  {gmbConnected ? 'متصل بـ GMB' : 'غير متصل'}
+                  {gmbConnected ? 'Connected to GMB' : 'Not connected'}
                 </p>
                 <div className="flex items-center gap-2">
                   {gmbConnected ? (
                     <>
                       <p className="text-sm font-semibold text-foreground truncate">
                         {showLastSync && lastSyncTime ? (
-                          syncing ? "جاري المزامنة..." : getTimeAgo()
+                          syncing ? "Syncing..." : getTimeAgo()
                         ) : (
-                          activeAccount?.account_name || 'حساب نشط'
+                          activeAccount?.account_name || 'Active account'
                         )}
                       </p>
                       {syncSchedule !== 'manual' && (
@@ -392,14 +392,14 @@ export function GMBConnectionManager({
                     </>
                   ) : (
                     <p className="text-sm font-semibold text-muted-foreground">
-                      قم بربط حسابك للبدء
+                      Connect your account to get started
                     </p>
                   )}
                 </div>
               </div>
             </div>
             
-            {/* الأزرار */}
+            {/* Action buttons */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <AnimatePresence mode="wait">
                 {gmbConnected ? (
@@ -422,7 +422,7 @@ export function GMBConnectionManager({
                         "h-4 w-4 mr-2",
                         syncing && "animate-spin"
                       )} />
-                      {syncing ? "مزامنة..." : "مزامنة"}
+                      {syncing ? "Syncing..." : "Sync"}
                     </Button>
                     <Button
                       size="sm"
@@ -435,7 +435,7 @@ export function GMBConnectionManager({
                         "h-4 w-4 mr-2",
                         disconnecting && "animate-spin"
                       )} />
-                      {disconnecting ? "قطع..." : "قطع"}
+                      {disconnecting ? "Disconnecting..." : "Disconnect"}
                     </Button>
                   </motion.div>
                 ) : (
@@ -455,7 +455,7 @@ export function GMBConnectionManager({
                       {connecting ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          جاري الربط...
+                          Connecting...
                         </>
                       ) : (
                         <>
@@ -485,7 +485,7 @@ export function GMBConnectionManager({
     )
   }
 
-  // ============ Full View (للـ Settings) ============
+  // ============ Full View (Settings) ============
   return (
     <Card className={cn("border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5", className)}>
       <CardHeader className="pb-4">
@@ -496,8 +496,8 @@ export function GMBConnectionManager({
             </CardTitle>
             <CardDescription className="mt-1">
               {gmbConnected
-                ? 'حسابك متصل. يمكنك المزامنة، إعادة المصادقة، أو قطع الاتصال.'
-                : 'قم بربط حساب Google My Business الخاص بك لمزامنة المواقع والمراجعات والإحصائيات.'}
+                ? 'Your account is connected. You can sync, re-authenticate, or disconnect at any time.'
+                : 'Connect your Google My Business account to sync locations, reviews, and analytics.'}
             </CardDescription>
           </div>
           <Badge 
@@ -511,15 +511,15 @@ export function GMBConnectionManager({
           >
             {loading ? (
               <>
-                <Clock className="h-3 w-3 mr-1 animate-spin" /> جاري التحقق...
+                <Clock className="h-3 w-3 mr-1 animate-spin" /> Checking...
               </>
             ) : gmbConnected ? (
               <>
-                <Link2 className="h-3 w-3 mr-1" /> متصل
+                <Link2 className="h-3 w-3 mr-1" /> Connected
               </>
             ) : (
               <>
-                <AlertTriangle className="h-3 w-3 mr-1" /> غير متصل
+                <AlertTriangle className="h-3 w-3 mr-1" /> Not connected
               </>
             )}
           </Badge>
@@ -527,7 +527,7 @@ export function GMBConnectionManager({
       </CardHeader>
 
       <CardContent>
-        {/* معلومات الحساب النشط */}
+        {/* Active account information */}
         {gmbConnected && activeAccount && (
           <div className="mb-4 p-4 bg-secondary/40 rounded-lg border border-primary/10">
             <div className="flex items-center justify-between">
@@ -541,7 +541,7 @@ export function GMBConnectionManager({
               </div>
               {showLastSync && lastSyncTime && (
                 <div className="text-right">
-                  <p className="text-xs text-muted-foreground">آخر مزامنة</p>
+                  <p className="text-xs text-muted-foreground">Last synced</p>
                   <p className="text-xs font-medium text-foreground">{getTimeAgo()}</p>
                 </div>
               )}
@@ -549,7 +549,7 @@ export function GMBConnectionManager({
           </div>
         )}
 
-        {/* الأزرار */}
+        {/* Action buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
           <AnimatePresence mode="wait">
             {gmbConnected ? (
@@ -569,11 +569,11 @@ export function GMBConnectionManager({
                 >
                   {syncing ? (
                     <>
-                      <Clock className="h-4 w-4 mr-2 animate-spin" /> جاري المزامنة...
+                      <Clock className="h-4 w-4 mr-2 animate-spin" /> Syncing...
                     </>
                   ) : (
                     <>
-                      <Shield className="h-4 w-4 mr-2" /> مزامنة الآن
+                      <Shield className="h-4 w-4 mr-2" /> Sync now
                     </>
                   )}
                 </Button>
@@ -583,7 +583,7 @@ export function GMBConnectionManager({
                   className="sm:w-auto w-full"
                   variant="outline"
                 >
-                  <Key className="h-4 w-4 mr-2" /> إعادة المصادقة
+                  <Key className="h-4 w-4 mr-2" /> Re-authenticate
                 </Button>
                 <Button 
                   onClick={() => setShowDisconnectDialog(true)}
@@ -591,7 +591,7 @@ export function GMBConnectionManager({
                   className="sm:w-auto w-full"
                   variant="destructive"
                 >
-                  <Unlink className="h-4 w-4 mr-2" /> قطع الاتصال
+                  <Unlink className="h-4 w-4 mr-2" /> Disconnect
                 </Button>
               </motion.div>
             ) : (
@@ -610,11 +610,11 @@ export function GMBConnectionManager({
                 >
                   {connecting ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" /> جاري الربط...
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Connecting...
                     </>
                   ) : (
                     <>
-                      <Link2 className="h-4 w-4 mr-2" /> ربط Google My Business
+                      <Link2 className="h-4 w-4 mr-2" /> Connect Google My Business
                     </>
                   )}
                 </Button>
@@ -625,7 +625,7 @@ export function GMBConnectionManager({
 
         {!gmbConnected && (
           <p className="text-xs text-muted-foreground mt-3">
-            سيتم طلب الأذونات المطلوبة من Google
+            Google will request the required permissions during the next step.
           </p>
         )}
       </CardContent>
@@ -669,13 +669,13 @@ function DisconnectDialog({
     if (isExporting) {
       return {
         icon: <Download className="h-4 w-4 mr-2 animate-bounce" />,
-        text: "جاري التصدير..."
+        text: "Exporting..."
       }
     }
     if (disconnecting) {
       return {
         icon: <Clock className="h-4 w-4 mr-2 animate-spin" />,
-        text: "جاري قطع الاتصال..."
+        text: "Disconnecting..."
       }
     }
     
@@ -698,7 +698,7 @@ function DisconnectDialog({
       default:
         return {
           icon: <Unlink className="h-4 w-4 mr-2" />,
-          text: "قطع الاتصال"
+          text: "Disconnect"
         }
     }
   }
@@ -726,10 +726,10 @@ function DisconnectDialog({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2 text-zinc-100">
             <Unlink className="h-5 w-5 text-orange-500" />
-            قطع اتصال Google My Business؟
+            Disconnect Google My Business?
           </AlertDialogTitle>
           <AlertDialogDescription className="text-zinc-400">
-            اختر ماذا سيحدث لبياناتك عند قطع الاتصال:
+            Choose what happens to your data after disconnecting:
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -744,10 +744,10 @@ function DisconnectDialog({
                 <RadioGroupItem value="keep" id="keep" className="mt-1" />
                 <div className="flex-1 space-y-1">
                   <Label htmlFor="keep" className="text-sm font-medium text-zinc-200 cursor-pointer">
-                    الاحتفاظ بالبيانات التاريخية (موصى به)
+                    Keep historical data (recommended)
                   </Label>
                   <p className="text-xs text-zinc-500">
-                    إخفاء الهوية وأرشفة بياناتك للتحليل التاريخي. سيتم إزالة المعلومات الشخصية ولكن ستُحفظ الإحصائيات.
+                    Anonymize and archive your data for historical analysis. Personal info is removed while stats stay intact.
                   </p>
                 </div>
                 <Shield className="h-5 w-5 text-green-500 flex-shrink-0" />
@@ -758,10 +758,10 @@ function DisconnectDialog({
                 <RadioGroupItem value="export" id="export" className="mt-1" />
                 <div className="flex-1 space-y-1">
                   <Label htmlFor="export" className="text-sm font-medium text-zinc-200 cursor-pointer">
-                    تصدير البيانات ثم الأرشفة
+                    Export data then archive
                   </Label>
                   <p className="text-xs text-zinc-500">
-                    تنزيل جميع بياناتك بصيغة JSON، ثم إخفاء الهوية والأرشفة. ستحصل على نسخة احتياطية كاملة.
+                    Download all data as JSON, then anonymize and archive it for a complete backup.
                   </p>
                 </div>
                 <Download className="h-5 w-5 text-blue-500 flex-shrink-0" />
@@ -772,10 +772,10 @@ function DisconnectDialog({
                 <RadioGroupItem value="delete" id="delete" className="mt-1" />
                 <div className="flex-1 space-y-1">
                   <Label htmlFor="delete" className="text-sm font-medium text-red-400 cursor-pointer">
-                    حذف جميع البيانات فوراً
+                    Delete all data immediately
                   </Label>
                   <p className="text-xs text-red-300/70">
-                    حذف دائم لجميع المواقع والمراجعات والأسئلة والمنشورات. هذا الإجراء لا يمكن التراجع عنه!
+                    Permanently remove all locations, reviews, questions, and posts. This action cannot be undone.
                   </p>
                 </div>
                 <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
@@ -789,7 +789,7 @@ function DisconnectDialog({
             disabled={disconnecting || isExporting}
             className="border-zinc-700"
           >
-            إلغاء
+            Cancel
           </AlertDialogCancel>
           <div className="flex flex-col items-end gap-1">
             <AlertDialogAction

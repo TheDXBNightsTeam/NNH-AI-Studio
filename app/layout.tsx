@@ -33,18 +33,13 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
 }
 
-export default async function RootLayout({
-  children,
-  params,
+export default function RootLayout({
+  children
 }: Readonly<{
   children: React.ReactNode
-  params: Promise<{ locale?: string }>
 }>) {
-  const { locale = 'en' } = await params
-  const dir = locale === 'ar' ? 'rtl' : 'ltr'
-  
   return (
-    <html className="dark" lang={locale} dir={dir}>
+    <html className="dark" lang="en" dir="ltr">
       <body className={inter.className}>
         {children}
       </body>

@@ -31,16 +31,13 @@ interface LocationHighlight {
 interface LocationHighlightsCarouselProps {
   locations: LocationHighlight[];
   loading?: boolean;
-  locale?: string;
 }
 
 export function LocationHighlightsCarousel({
   locations,
-  loading = false,
-  locale = 'en'
+  loading = false
 }: LocationHighlightsCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const isArabic = locale === 'ar';
 
   // Auto-rotate carousel
   useEffect(() => {
@@ -48,7 +45,7 @@ export function LocationHighlightsCarousel({
     
     const timer = setInterval(() => {
       setNextAnimate();
-    }, 5000); // كل 5 ثواني
+    }, 5000); // every 5 seconds
 
     return () => clearInterval(timer);
   }, [currentIndex, locations.length]);
@@ -69,7 +66,7 @@ export function LocationHighlightsCarousel({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{isArabic ? 'أبرز المواقع' : 'Location Highlights'}</CardTitle>
+          <CardTitle>Location Highlights</CardTitle>
         </CardHeader>
         <CardContent className="h-[200px] space-y-4">
           <div className="space-y-3">
@@ -88,7 +85,7 @@ export function LocationHighlightsCarousel({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{isArabic ? 'أبرز المواقع' : 'Location Highlights'}</CardTitle>
+          <CardTitle>Location Highlights</CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           <div className="flex flex-col items-center justify-center text-center py-12">
@@ -96,12 +93,10 @@ export function LocationHighlightsCarousel({
               <MapPin className="w-8 h-8 text-primary" aria-hidden="true" />
             </div>
             <h3 className="text-2xl font-bold mb-3 text-foreground">
-              {isArabic ? 'لا توجد مواقع متاحة' : 'No locations available'}
+              No locations available
             </h3>
             <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-              {isArabic 
-                ? 'قم بتوصيل حساب Google My Business لعرض إحصائيات المواقع'
-                : 'Connect your Google My Business account to see location statistics'}
+              Connect your Google My Business account to see location statistics
             </p>
           </div>
         </CardContent>
@@ -113,28 +108,28 @@ export function LocationHighlightsCarousel({
 
   const categoryConfig = {
     top: {
-      label: isArabic ? '🏆 الأفضل أداءً' : '🏆 Top Performer',
+      label: '🏆 Top Performer',
       icon: Award,
       color: 'text-warning',
       bgColor: 'bg-gradient-to-br from-warning/10 to-warning/5',
       borderColor: 'border-warning/30',
-      description: isArabic ? 'أعلى تقييم بين جميع المواقع' : 'Highest rating across all locations'
+      description: 'Highest rating across all locations'
     },
     attention: {
-      label: isArabic ? '⚠️ يحتاج اهتمام' : '⚠️ Needs Attention',
+      label: '⚠️ Needs Attention',
       icon: AlertTriangle,
       color: 'text-destructive',
       bgColor: 'bg-gradient-to-br from-destructive/10 to-destructive/5',
       borderColor: 'border-destructive/30',
-      description: isArabic ? 'يتطلب ردوداً أو تحسينات' : 'Requires responses or improvements'
+      description: 'Requires responses or improvements'
     },
     improved: {
-      label: isArabic ? '📈 الأكثر تحسناً' : '📈 Most Improved',
+      label: '📈 Most Improved',
       icon: TrendingUp,
       color: 'text-success',
       bgColor: 'bg-gradient-to-br from-success/10 to-success/5',
       borderColor: 'border-success/30',
-      description: isArabic ? 'أكبر تحسن في التقييم' : 'Biggest rating improvement'
+      description: 'Biggest rating improvement'
     }
   };
 
@@ -147,11 +142,11 @@ export function LocationHighlightsCarousel({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <MapPin className="w-5 h-5 text-primary" />
-            {isArabic ? 'أبرز المواقع' : 'Location Highlights'}
+            Location Highlights
           </CardTitle>
           
           {locations.length > 1 && (
-            <div className="flex items-center gap-2" role="group" aria-label={isArabic ? "تنقل بين المواقع" : "Navigate between locations"}>
+            <div className="flex items-center gap-2" role="group" aria-label="Navigate between locations">
               <Button
                 variant="ghost"
                 size="icon"
@@ -159,7 +154,7 @@ export function LocationHighlightsCarousel({
                 onKeyDown={(e) => {
                   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                     e.preventDefault();
-                    if (e.key === 'ArrowLeft' || (isArabic && e.key === 'ArrowRight')) {
+                    if (e.key === 'ArrowLeft') {
                       setPrevious();
                     } else {
                       setNext();
@@ -167,10 +162,10 @@ export function LocationHighlightsCarousel({
                   }
                 }}
                 className="h-8 w-8 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                aria-label={isArabic ? "الموقع السابق" : "Previous location"}
+                aria-label="Previous location"
                 aria-describedby="location-counter"
               >
-                <ChevronLeft className={cn("w-4 h-4", isArabic && "rotate-180")} aria-hidden="true" />
+                <ChevronLeft className="w-4 h-4" aria-hidden="true" />
               </Button>
               <span 
                 id="location-counter" 
@@ -187,7 +182,7 @@ export function LocationHighlightsCarousel({
                 onKeyDown={(e) => {
                   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                     e.preventDefault();
-                    if (e.key === 'ArrowRight' || (isArabic && e.key === 'ArrowLeft')) {
+                    if (e.key === 'ArrowRight') {
                       setNext();
                     } else {
                       setPrevious();
@@ -195,10 +190,10 @@ export function LocationHighlightsCarousel({
                   }
                 }}
                 className="h-8 w-8 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                aria-label={isArabic ? "الموقع التالي" : "Next location"}
+                aria-label="Next location"
                 aria-describedby="location-counter"
               >
-                <ChevronRight className={cn("w-4 h-4", isArabic && "rotate-180")} aria-hidden="true" />
+                <ChevronRight className="w-4 h-4" aria-hidden="true" />
               </Button>
             </div>
           )}
@@ -217,7 +212,7 @@ export function LocationHighlightsCarousel({
             role="region"
             aria-live="polite"
             aria-atomic="true"
-            aria-label={isArabic ? `تفاصيل الموقع: ${currentLocation.name}` : `Location details: ${currentLocation.name}`}
+            aria-label={`Location details: ${currentLocation.name}`}
           >
             {/* Category Badge */}
             <div className="flex items-center gap-2 mb-4">
@@ -247,7 +242,7 @@ export function LocationHighlightsCarousel({
 
                   {/* Review Count */}
                   <div className="text-sm text-muted-foreground">
-                    {currentLocation.reviewCount} {isArabic ? 'مراجعات' : 'reviews'}
+                    {currentLocation.reviewCount} reviews
                   </div>
 
                   {/* Rating Change */}
@@ -273,7 +268,7 @@ export function LocationHighlightsCarousel({
                 <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-warning/10 border border-warning/30">
                   <AlertTriangle className="w-4 h-4 text-warning" />
                   <span className="text-sm text-warning">
-                    {currentLocation.pendingReviews} {isArabic ? 'مراجعات معلقة' : 'pending reviews'}
+                    {currentLocation.pendingReviews} pending reviews
                   </span>
                 </div>
               )}
@@ -281,7 +276,7 @@ export function LocationHighlightsCarousel({
               {/* Action Button */}
               <Button asChild variant="outline" size="sm" className="w-full">
                 <Link href={`/locations?id=${currentLocation.id}`}>
-                  {isArabic ? 'عرض التفاصيل' : 'View Details'}
+                  View Details
                 </Link>
               </Button>
             </div>
@@ -293,7 +288,7 @@ export function LocationHighlightsCarousel({
           <div 
             className="flex items-center justify-center gap-2 mt-4"
             role="tablist"
-            aria-label={isArabic ? "مؤشرات المواقع" : "Location indicators"}
+            aria-label="Location indicators"
           >
             {locations.map((_, index) => (
               <button
@@ -313,7 +308,7 @@ export function LocationHighlightsCarousel({
                 )}
                 role="tab"
                 aria-selected={index === currentIndex}
-                aria-label={isArabic ? `الموقع ${index + 1}` : `Location ${index + 1}`}
+                aria-label={`Location ${index + 1}`}
                 tabIndex={index === currentIndex ? 0 : -1}
               />
             ))}
