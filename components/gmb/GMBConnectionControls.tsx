@@ -59,7 +59,7 @@ export const GMBConnectionControls: React.FC<GMBConnectionControlsProps> = ({
           </Button>
         ) : null}
 
-        {status === 'connected' || status === 'syncing' ? (
+        {status === 'connected' || status === 'syncing' || status === 'disconnecting' ? (
           <>
             <Button variant="secondary" onClick={onSync} disabled={isBusy}>
               {status === 'syncing' ? (
