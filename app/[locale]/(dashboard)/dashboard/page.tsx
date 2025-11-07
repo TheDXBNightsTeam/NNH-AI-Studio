@@ -114,7 +114,7 @@ async function getDashboardData(startDate?: string, endDate?: string) {
     }
     
     const { data: reviews, error: reviewsError } = await reviewsQuery
-      .order('review_date', { ascending: false, nullsLast: true })
+      .order('review_date', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false });
     
     if (reviewsError) {
