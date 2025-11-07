@@ -2,11 +2,11 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
-  MapPin, Star, BarChart3, CheckCircle2, Sparkles, TrendingUpIcon, Shield, Plus, Users
+  MapPin, Star, BarChart3, CheckCircle2, Sparkles, TrendingUpIcon, Shield, Plus
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/lib/navigation';
-import GMBConnectionControls from '@/components/gmb/GMBConnectionControls';
+import { GMBConnectionManager } from '@/components/gmb/gmb-connection-manager';
 
 // No GMB Account Banner Component
 export const GMBConnectionBanner = () => {
@@ -58,15 +58,9 @@ export const GMBConnectionBanner = () => {
               </div>
             </div>
 
-            {/* CTA Controls */}
+            {/* CTA Controls (Unified Manager) */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-              <GMBConnectionControls
-                status={'disconnected'}
-                onConnect={async () => router.push('/api/gmb/connect')}
-                onSync={async () => {/* no-op here in empty state */}}
-                onDisconnect={async () => {/* no-op here in empty state */}}
-                compact
-              />
+              <GMBConnectionManager variant="compact" />
               <Button 
                 size="lg" 
                 variant="outline"
