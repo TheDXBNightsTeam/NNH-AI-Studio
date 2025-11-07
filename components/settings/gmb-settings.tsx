@@ -15,19 +15,9 @@ import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
-  AlertDialogCancel, 
-  AlertDialogContent, 
-  AlertDialogDescription, 
-  AlertDialogFooter, 
-  AlertDialogHeader, 
-  AlertDialogTitle 
-} from "@/components/ui/alert-dialog"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { disconnectGMBAccount, type DisconnectOption } from "@/server/actions/gmb-account"
 import { DataManagement } from "./data-management"
+import { GMBConnectionActions } from "@/components/gmb/gmb-connection-actions"
 
 export function GMBSettings() {
   const supabase = createClient()
@@ -44,10 +34,7 @@ export function GMBSettings() {
   const [disconnecting, setDisconnecting] = useState(false)
   const [syncSchedule, setSyncSchedule] = useState<string>('manual')
   const [syncSettings, setSyncSettings] = useState<any>({})
-  const [showDisconnectDialog, setShowDisconnectDialog] = useState(false)
   const [syncingAll, setSyncingAll] = useState(false)
-  const [disconnectOption, setDisconnectOption] = useState<DisconnectOption>('keep')
-  const [isExporting, setIsExporting] = useState(false)
 
   // Check GMB connection status
   useEffect(() => {
@@ -152,73 +139,6 @@ export function GMBSettings() {
     }
   }
 
-  const handleDisconnectGMB = async () => {
-    if (!gmbAccounts.length || !gmbAccounts[0]?.id) {
-      toast.error('No account found to disconnect')
-      return
-    }
-
-    setDisconnecting(true)
-    setIsExporting(disconnectOption === 'export')
-    
-    try {
-      const accountId = gmbAccounts.find(acc => acc.is_active)?.id
-      if (!accountId) {
-        throw new Error('No active account found')
-      }
-
-      const result = await disconnectGMBAccount(accountId, disconnectOption)
-
-      if (result.success) {
-        // Download exported data if available
-        if (result.exportData) {
-          const blob = new Blob([JSON.stringify(result.exportData, null, 2)], { 
-            type: 'application/json' 
-          })
-          const url = window.URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = `gmb-data-export-${new Date().toISOString()}.json`
-          document.body.appendChild(a)
-          a.click()
-          window.URL.revokeObjectURL(url)
-          document.body.removeChild(a)
-        }
-
-        toast.success('Success', {
-          description: result.message,
-        })
-        
-        setGmbConnected(false)
-        setShowDisconnectDialog(false)
-        
-        // Refresh accounts list
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          const { data: accounts } = await supabase
-            .from('gmb_accounts')
-            .select('id, account_name, is_active, last_sync, settings')
-            .eq('user_id', user.id)
-          setGmbAccounts(accounts || [])
-        }
-        
-        // Refresh router to update UI
-        router.refresh()
-      } else {
-        toast.error('Disconnect failed', {
-          description: result.error || 'Failed to disconnect account',
-        })
-      }
-    } catch (error: any) {
-      console.error('Error disconnecting GMB:', error)
-      toast.error('Error', {
-        description: error.message || 'Failed to disconnect',
-      })
-    } finally {
-      setDisconnecting(false)
-      setIsExporting(false)
-    }
-  }
 
   const handleSyncAll = async () => {
     try {
@@ -318,49 +238,33 @@ export function GMBSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {gmbConnected ? (
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button 
-                onClick={handleSyncAll}
-                disabled={syncingAll}
-                className="sm:w-auto w-full"
-                variant="outline"
-              >
-                {syncingAll ? (
-                  <>
-                    <Clock className="h-4 w-4 mr-2 animate-spin" /> Syncing...
-                  </>
-                ) : (
-                  <>
-                    <Shield className="h-4 w-4 mr-2" /> Sync Now
-                  </>
-                )}
-              </Button>
-              <Button 
-                onClick={handleConnectGMB}
-                className="sm:w-auto w-full"
-                variant="outline"
-              >
-                <Key className="h-4 w-4 mr-2" /> Re-authenticate
-              </Button>
-              <Button 
-                onClick={() => setShowDisconnectDialog(true)}
-                className="sm:w-auto w-full"
-                variant="destructive"
-              >
-                <Unlink className="h-4 w-4 mr-2" /> Disconnect
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button 
-                className="w-full sm:w-auto bg-gradient-to-r from-primary to-accent text-white"
-                onClick={handleConnectGMB}
-              >
-                <Link2 className="h-4 w-4 mr-2" /> Connect Google My Business
-              </Button>
-              <p className="text-xs text-muted-foreground sm:self-center">Required scopes will be requested from Google</p>
-            </div>
+          <GMBConnectionActions
+            isConnected={gmbConnected}
+            accountId={gmbAccounts.find(acc => acc.is_active)?.id}
+            isSyncing={syncingAll}
+            isDisconnecting={disconnecting}
+            onSync={async () => {
+              await handleSyncAll()
+            }}
+            onConnect={handleConnectGMB}
+            onDisconnectComplete={async () => {
+              setGmbConnected(false)
+              const { data: { user } } = await supabase.auth.getUser()
+              if (user) {
+                const { data: accounts } = await supabase
+                  .from('gmb_accounts')
+                  .select('id, account_name, is_active, last_sync, settings')
+                  .eq('user_id', user.id)
+                setGmbAccounts(accounts || [])
+              }
+              router.refresh()
+            }}
+            layout="horizontal"
+            className="flex-col sm:flex-row"
+            showDisconnectOptions={true}
+          />
+          {!gmbConnected && (
+            <p className="text-xs text-muted-foreground mt-3 sm:self-center">Required scopes will be requested from Google</p>
           )}
         </CardContent>
       </Card>
@@ -710,42 +614,35 @@ export function GMBSettings() {
               */}
 
               <div className="pt-4 space-y-3 border-t border-primary/20">
-                {gmbConnected ? (
-                  <>
-                    <Button 
-                      variant="outline" 
-                      className="w-full sm:w-auto bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/30"
-                      onClick={() => setShowDisconnectDialog(true)}
-                      disabled={disconnecting}
-                    >
-                      <Unlink className="h-4 w-4 mr-2" />
-                      Disconnect GMB
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
-                      Disconnecting will stop syncing but won't delete your existing data
-                    </p>
-                    <Button 
-                      variant="outline" 
-                      className="w-full sm:w-auto"
-                      onClick={handleConnectGMB}
-                    >
-                      <Shield className="h-4 w-4 mr-2" />
-                      Re-authenticate
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button 
-                      className="w-full sm:w-auto bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white"
-                      onClick={handleConnectGMB}
-                    >
-                      <Link2 className="h-4 w-4 mr-2" />
-                      Connect Google My Business
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
-                      Connect your Google My Business account to sync locations, reviews, and insights automatically
-                    </p>
-                  </>
+                <GMBConnectionActions
+                  isConnected={gmbConnected}
+                  accountId={gmbAccounts.find(acc => acc.is_active)?.id}
+                  isSyncing={syncingAll}
+                  isDisconnecting={disconnecting}
+                  onSync={async () => {
+                    await handleSyncAll()
+                  }}
+                  onConnect={handleConnectGMB}
+                  onDisconnectComplete={async () => {
+                    setGmbConnected(false)
+                    const { data: { user } } = await supabase.auth.getUser()
+                    if (user) {
+                      const { data: accounts } = await supabase
+                        .from('gmb_accounts')
+                        .select('id, account_name, is_active, last_sync, settings')
+                        .eq('user_id', user.id)
+                      setGmbAccounts(accounts || [])
+                    }
+                    router.refresh()
+                  }}
+                  layout="vertical"
+                  showActions={gmbConnected ? ["reauthenticate", "disconnect"] : ["connect"]}
+                  showDisconnectOptions={true}
+                />
+                {!gmbConnected && (
+                  <p className="text-xs text-muted-foreground">
+                    Connect your Google My Business account to sync locations, reviews, and insights automatically
+                  </p>
                 )}
               </div>
             </CardContent>
@@ -781,102 +678,6 @@ export function GMBSettings() {
         </Button>
       </div>
 
-      {/* Disconnect Confirmation Dialog */}
-      <AlertDialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
-        <AlertDialogContent className="bg-zinc-900 border-zinc-800 max-w-xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-zinc-100">
-              <Unlink className="h-5 w-5 text-orange-500" />
-              Disconnect Google My Business?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-zinc-400">
-              Choose what happens to your data when you disconnect:
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <div className="py-4">
-            <RadioGroup 
-              value={disconnectOption} 
-              onValueChange={(value: string) => setDisconnectOption(value as DisconnectOption)}
-            >
-              <div className="space-y-3">
-                {/* Keep Option */}
-                <div className="flex items-start space-x-3 rounded-lg border border-zinc-700 bg-zinc-800/50 p-4 hover:bg-zinc-800 transition-colors">
-                  <RadioGroupItem value="keep" id="keep" className="mt-1" />
-                  <div className="flex-1 space-y-1">
-                    <Label htmlFor="keep" className="text-sm font-medium text-zinc-200 cursor-pointer">
-                      Keep historical data (recommended)
-                    </Label>
-                    <p className="text-xs text-zinc-500">
-                      Anonymize and archive your data for historical analysis. Personal information will be removed but statistics will be preserved.
-                    </p>
-                  </div>
-                  <Shield className="h-5 w-5 text-green-500 flex-shrink-0" />
-                </div>
-
-                {/* Export Option */}
-                <div className="flex items-start space-x-3 rounded-lg border border-zinc-700 bg-zinc-800/50 p-4 hover:bg-zinc-800 transition-colors">
-                  <RadioGroupItem value="export" id="export" className="mt-1" />
-                  <div className="flex-1 space-y-1">
-                    <Label htmlFor="export" className="text-sm font-medium text-zinc-200 cursor-pointer">
-                      Export data then keep archived
-                    </Label>
-                    <p className="text-xs text-zinc-500">
-                      Download all your data as JSON, then anonymize and archive it. You'll get a complete backup.
-                    </p>
-                  </div>
-                  <Download className="h-5 w-5 text-blue-500 flex-shrink-0" />
-                </div>
-
-                {/* Delete Option */}
-                <div className="flex items-start space-x-3 rounded-lg border border-red-500/30 bg-red-500/5 p-4 hover:bg-red-500/10 transition-colors">
-                  <RadioGroupItem value="delete" id="delete" className="mt-1" />
-                  <div className="flex-1 space-y-1">
-                    <Label htmlFor="delete" className="text-sm font-medium text-red-400 cursor-pointer">
-                      Delete all data immediately
-                    </Label>
-                    <p className="text-xs text-red-300/70">
-                      Permanently delete all locations, reviews, questions, and posts. This cannot be undone!
-                    </p>
-                  </div>
-                  <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
-                </div>
-              </div>
-            </RadioGroup>
-          </div>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel 
-              disabled={disconnecting || isExporting}
-              className="border-zinc-700"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDisconnectGMB}
-              disabled={disconnecting || isExporting}
-              className="bg-orange-600 hover:bg-orange-700"
-            >
-              {isExporting ? (
-                <>
-                  <Download className="h-4 w-4 mr-2 animate-bounce" />
-                  Exporting...
-                </>
-              ) : disconnecting ? (
-                <>
-                  <Clock className="h-4 w-4 mr-2 animate-spin" />
-                  Disconnecting...
-                </>
-              ) : (
-                <>
-                  <Unlink className="h-4 w-4 mr-2" />
-                  Disconnect
-                </>
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

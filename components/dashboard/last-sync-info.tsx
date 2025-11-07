@@ -1,11 +1,10 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { RefreshCw, Clock, CheckCircle2, AlertCircle, Unlink } from "lucide-react"
-import { motion } from "framer-motion"
+import { RefreshCw, Clock, CheckCircle2, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDistanceToNow } from "date-fns"
+import { GMBConnectionActions } from "@/components/gmb/gmb-connection-actions"
 
 interface LastSyncInfoProps {
   lastSyncTime: Date | null
@@ -100,35 +99,21 @@ export function LastSyncInfo({
           </div>
           
           <div className="flex items-center gap-3 flex-shrink-0">
-            {onSync && (
-              <Button
+            {(onSync || onDisconnect) && (
+              <GMBConnectionActions
+                isConnected={true}
+                isSyncing={isSyncing}
+                isDisconnecting={isDisconnecting}
+                onSync={onSync}
+                onDisconnectComplete={onDisconnect}
                 size="sm"
                 variant="outline"
-                onClick={onSync}
-                disabled={isSyncing || isDisconnecting}
-                className="flex-shrink-0 whitespace-nowrap"
-              >
-                <RefreshCw className={cn(
-                  "h-4 w-4 mr-2",
-                  isSyncing && "animate-spin"
-                )} />
-                {isSyncing ? "Syncing" : "Sync Now"}
-              </Button>
-            )}
-            {onDisconnect && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onDisconnect}
-                disabled={isSyncing || isDisconnecting}
-                className="flex-shrink-0 whitespace-nowrap bg-destructive/10 hover:bg-destructive/20 text-destructive border-destructive/30"
-              >
-                <Unlink className={cn(
-                  "h-4 w-4 mr-2",
-                  isDisconnecting && "animate-spin"
-                )} />
-                {isDisconnecting ? "Disconnecting..." : "Disconnect"}
-              </Button>
+                showActions={[
+                  ...(onSync ? ["sync"] as const : []),
+                  ...(onDisconnect ? ["disconnect"] as const : [])
+                ]}
+                showDisconnectOptions={false}
+              />
             )}
           </div>
         </div>

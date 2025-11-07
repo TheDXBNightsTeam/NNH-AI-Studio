@@ -1,37 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
-  MapPin, Star, BarChart3, CheckCircle2, Sparkles, TrendingUpIcon, Shield, Users, Plus
+  MapPin, Star, BarChart3, CheckCircle2, Sparkles, TrendingUpIcon, Shield, Plus
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/lib/navigation';
-import { toast } from 'sonner';
+import { GMBConnectionActions } from '@/components/gmb/gmb-connection-actions';
 
 // No GMB Account Banner Component
 export const GMBConnectionBanner = () => {
   const t = useTranslations('Locations');
   const router = useRouter();
-  const [isConnecting, setIsConnecting] = useState(false);
-
-  // Added loading state management for GMB connection API call
-  const handleConnectGMB = async () => {
-    setIsConnecting(true); // Start loading state
-    try {
-      const res = await fetch('/api/gmb/create-auth-url');
-      const data = await res.json();
-      if (data.authUrl) {
-        window.location.href = data.authUrl;
-      } else {
-        toast.error('Failed to create auth URL');
-      }
-    } catch (error) {
-      console.error('Error connecting to GMB:', error);
-      toast.error('Failed to connect to Google My Business');
-    } finally {
-      setIsConnecting(false); // End loading state
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -80,15 +60,13 @@ export const GMBConnectionBanner = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-              <Button 
-                size="lg" 
-                className="w-full sm:w-auto text-base px-8"
-                onClick={handleConnectGMB}
-                disabled={isConnecting}
-              >
-                <Users className="w-5 h-5 mr-2" />
-                {isConnecting ? 'Connecting...' : t('noAccount.connectButton')}
-              </Button>
+              <GMBConnectionActions
+                isConnected={false}
+                size="lg"
+                showActions={["connect"]}
+                layout="horizontal"
+                className="w-full sm:w-auto"
+              />
               <Button 
                 size="lg" 
                 variant="outline"

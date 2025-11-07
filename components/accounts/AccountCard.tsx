@@ -2,10 +2,10 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Building2, MapPin, Clock, RefreshCw, Trash2 } from "lucide-react";
+import { Building2, MapPin, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import type { GmbAccount } from '@/lib/types/database';
+import { GMBConnectionActions } from "@/components/gmb/gmb-connection-actions";
 
 interface AccountCardProps {
   account: GmbAccount;
@@ -109,28 +109,19 @@ export function AccountCard({
                 Account disconnected. Reconnect to enable syncing and updates.
               </p>
             )}
-            <div className="flex gap-2">
-              <Button
-                onClick={() => onSync(account.id)}
-                disabled={isSyncing || !isActive || isDeleting}
-                className="flex-1 transition-all duration-200 hover:scale-105"
-                variant="outline"
-                size="sm"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                {isSyncing ? 'Syncing...' : 'Sync Now'}
-              </Button>
-              <Button
-                onClick={() => onDisconnect(account.id)}
-                disabled={isDeleting || !isActive}
-                variant="destructive"
-                size="sm"
-                className="flex-shrink-0 transition-all duration-200 hover:scale-105"
-              >
-                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                {isDeleting ? '...' : 'Disconnect'}
-              </Button>
-            </div>
+            <GMBConnectionActions
+              isConnected={isActive}
+              accountId={account.id}
+              isSyncing={isSyncing}
+              isDisconnecting={isDeleting}
+              onSync={isActive ? () => onSync(account.id) : undefined}
+              onDisconnectComplete={isActive ? () => onDisconnect(account.id) : undefined}
+              size="sm"
+              variant="outline"
+              showActions={isActive ? ["sync", "disconnect"] : []}
+              showDisconnectOptions={false}
+              className="flex gap-2"
+            />
           </div>
         </CardContent>
       </Card>
