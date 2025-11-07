@@ -387,10 +387,78 @@ export default async function DashboardPage() {
         {/* TIME FILTER BUTTONS */}
         <TimeFilterButtons />
 
-        {/* MAIN GRID LAYOUT */}
+        {/* KEY METRICS ROW - أهم 5 مقاييس في الأعلى */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Health Score */}
+          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-zinc-400 text-sm">🏥 Health Score</span>
+              </div>
+              <div className="text-3xl font-bold text-zinc-100">{stats.healthScore}%</div>
+              <Progress value={stats.healthScore} className="h-1.5 bg-zinc-800 mt-3" />
+            </CardContent>
+          </Card>
+
+          {/* Total Locations */}
+          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-zinc-400 text-sm">📍 Locations</span>
+              </div>
+              <div className="text-3xl font-bold text-zinc-100">{stats.totalLocations}</div>
+              <p className="text-green-400 text-xs mt-2 flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" />
+                vs last period
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Average Rating */}
+          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-zinc-400 text-sm">⭐ Avg Rating</span>
+              </div>
+              <div className="text-3xl font-bold text-zinc-100">
+                {stats.avgRating}<span className="text-xl text-zinc-500">/5</span>
+              </div>
+              <p className="text-green-400 text-xs mt-2 flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" />
+                Excellent
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Total Reviews */}
+          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-zinc-400 text-sm">💬 Reviews</span>
+              </div>
+              <div className="text-3xl font-bold text-zinc-100">{stats.totalReviews}</div>
+              <p className="text-zinc-400 text-xs mt-2">{stats.pendingReviews} pending</p>
+            </CardContent>
+          </Card>
+
+          {/* Response Rate */}
+          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-zinc-400 text-sm">📈 Response</span>
+              </div>
+              <div className={`text-3xl font-bold ${parseFloat(stats.responseRate) < 50 ? 'text-red-400' : 'text-zinc-100'}`}>
+                {stats.responseRate}%
+              </div>
+              <Progress value={parseFloat(stats.responseRate)} className="h-1.5 bg-zinc-800 mt-3" />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* MAIN GRID LAYOUT - 3 Columns */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* LEFT COLUMN */}
-          <div className="lg:col-span-1 space-y-6">
+          {/* LEFT COLUMN - Location Management */}
+          <div className="space-y-4">
             {/* Active Location Card */}
             <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
               <CardHeader>
@@ -451,87 +519,116 @@ export default async function DashboardPage() {
             </Card>
           </div>
 
-          {/* CENTER COLUMN */}
-          <div className="lg:col-span-1 space-y-4">
-            {/* GMB Health Score Card */}
+          {/* CENTER COLUMN - Monitoring & Alerts */}
+          <div className="space-y-4">
+            {/* AI Risk & Opportunity Feed */}
             <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
               <CardHeader>
-                <CardTitle className="text-zinc-100 flex items-center gap-2 text-sm">
-                  🏥 GMB Health Score
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold text-zinc-100 mb-2">{stats.healthScore}%</div>
-                <p className="text-zinc-400 text-sm mb-3">Visibility and Compliance</p>
-                <Progress value={stats.healthScore} className="h-2 bg-zinc-800" />
-              </CardContent>
-            </Card>
-
-            {/* Total Locations Card */}
-            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
-              <CardHeader>
-                <CardTitle className="text-zinc-100 flex items-center gap-2 text-sm">
-                  📍 Total Locations
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold text-zinc-100 mb-2">{stats.totalLocations}</div>
-                <p className="text-green-400 text-sm flex items-center gap-1">
-                  <TrendingUp className="w-4 h-4" />
-                  ↑ vs last period
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Average Rating Card */}
-            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
-              <CardHeader>
-                <CardTitle className="text-zinc-100 flex items-center gap-2 text-sm">
-                  ⭐ Average Rating
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold text-zinc-100 mb-2">
-                  {stats.avgRating}<span className="text-2xl text-zinc-500">/5.0</span>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-zinc-100 flex items-center gap-2">
+                      🎯 AI Alerts
+                    </CardTitle>
+                    <p className="text-zinc-400 text-sm mt-1">
+                      Proactive recommendations
+                    </p>
+                  </div>
+                  {alerts.length > 0 && (
+                    <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+                      {alerts.length} items
+                    </Badge>
+                  )}
                 </div>
-                <p className="text-green-400 text-sm flex items-center gap-1">
-                  <TrendingUp className="w-4 h-4" />
-                  ↑ vs last period
+              </CardHeader>
+              <CardContent>
+                {alerts.length > 0 ? (
+                  <div className="space-y-2">
+                    {alerts.slice(0, 3).map((alert, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-3 rounded-lg border ${
+                          alert.priority === 'HIGH'
+                            ? 'bg-red-500/10 border-red-500/30'
+                            : 'bg-yellow-500/10 border-yellow-500/30'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <span className="text-lg">{alert.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <Badge 
+                              className={`mb-1 text-xs ${
+                                alert.priority === 'HIGH'
+                                  ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                                  : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                              }`}
+                            >
+                              {alert.priority}
+                            </Badge>
+                            <p className="text-sm text-zinc-200">{alert.message}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-zinc-500 py-8 text-sm">
+                    🎉 No urgent alerts!
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Performance Chart */}
+            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all">
+              <CardHeader>
+                <CardTitle className="text-zinc-100 flex items-center gap-2">
+                  📊 Performance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PerformanceChart />
+              </CardContent>
+            </Card>
+
+            {/* AI Insights */}
+            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all">
+              <CardHeader>
+                <CardTitle className="text-zinc-100 flex items-center gap-2">
+                  💡 AI Insights
+                </CardTitle>
+                <p className="text-zinc-400 text-sm mt-1">
+                  Smart recommendations based on your data
                 </p>
-              </CardContent>
-            </Card>
-
-            {/* Total Reviews Card */}
-            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
-              <CardHeader>
-                <CardTitle className="text-zinc-100 flex items-center gap-2 text-sm">
-                  💬 Total Reviews
-                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold text-zinc-100 mb-2">{stats.totalReviews}</div>
-                <p className="text-zinc-400 text-sm">vs last period</p>
-              </CardContent>
-            </Card>
-
-            {/* Response Rate Card */}
-            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
-              <CardHeader>
-                <CardTitle className="text-zinc-100 flex items-center gap-2 text-sm">
-                  📈 Response Rate
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={`text-4xl font-bold mb-2 ${parseFloat(stats.responseRate) < 50 ? 'text-red-400' : 'text-zinc-100'}`}>
-                  {stats.responseRate}%
-                </div>
-                <p className="text-zinc-400 text-sm mb-3">Target: 90%</p>
-                <Progress value={parseFloat(stats.responseRate)} className="h-2 bg-zinc-800" />
+                {insights.length > 0 ? (
+                  <div className="space-y-2">
+                    {insights.slice(0, 4).map((insight, idx) => {
+                      const bgColor = 
+                        insight.type === 'success' ? 'bg-green-500/10 border-green-500/30' :
+                        insight.type === 'warning' ? 'bg-yellow-500/10 border-yellow-500/30' :
+                        'bg-blue-500/10 border-blue-500/30';
+                      
+                      return (
+                        <div key={idx} className={`p-3 rounded-lg border ${bgColor}`}>
+                          <div className="flex items-start gap-2">
+                            <span className="text-lg">{insight.icon}</span>
+                            <p className="text-sm text-zinc-200 flex-1">{insight.message}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center text-zinc-500 py-6 text-sm">
+                    No insights yet
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* RIGHT COLUMN */}
+          {/* RIGHT COLUMN - Actions & Tasks */}
           <div className="lg:col-span-1 space-y-6">
             {/* Weekly Tasks Card */}
             <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
@@ -617,83 +714,8 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* BOTTOM FULL-WIDTH SECTIONS */}
+        {/* BOTTOM ANALYTICS SECTION */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* AI Risk & Opportunity Feed */}
-          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-zinc-100 flex items-center gap-2">
-                    🎯 AI Risk & Opportunity Feed
-                  </CardTitle>
-                  <p className="text-zinc-400 text-sm mt-1">
-                    Proactive alerts and recommended actions
-                  </p>
-                </div>
-                {alerts.length > 0 && (
-                  <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
-                    {alerts.length} alerts
-                  </Badge>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {alerts.length > 0 ? (
-                <ExpandableFeed alerts={alerts} />
-              ) : (
-                <div className="text-center text-zinc-500 py-8">
-                  🎉 No urgent alerts! Everything looks good.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Location Highlights */}
-          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
-            <CardHeader>
-              <CardTitle className="text-zinc-100 flex items-center gap-2">
-                📍 Location Highlights
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {topLocation ? (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-2xl">🏆</span>
-                    <h4 className="text-zinc-300 font-medium">Top Performer</h4>
-        </div>
-                  <Card className="bg-zinc-800/50 border-zinc-700/50">
-                    <CardContent className="p-4 space-y-3">
-                      <div>
-                        <p className="text-zinc-100 font-medium">{topLocation.location_name}</p>
-                      </div>
-                      <div className="flex items-center gap-1 text-sm">
-                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                        <span className="text-zinc-300">{topLocation.rating?.toFixed(1) || 'N/A'} / 5.0</span>
-                      </div>
-                      <p className="text-zinc-400 text-sm">{topLocation.review_count || 0} reviews</p>
-                      
-                      {pendingReviews > 0 && (
-                        <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 w-fit">
-                          {pendingReviews} pending reviews
-                        </Badge>
-                      )}
-                      
-                      {topLocation.id && (
-                        <ViewDetailsButton href={`/locations/${topLocation.id}`} />
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              ) : (
-                <div className="text-center text-zinc-500 py-8">
-                  No locations to display
-        </div>
-      )}
-            </CardContent>
-          </Card>
-
           {/* Performance Comparison */}
           <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
             <CardHeader>
@@ -720,8 +742,8 @@ export default async function DashboardPage() {
                   <p className="text-zinc-400 text-xs mb-1">Reviews</p>
                   <p className="text-zinc-100 text-xl font-bold">{stats.totalReviews}</p>
                   <p className="text-zinc-400 text-xs mt-1">Total</p>
-        </div>
-      </div>
+                </div>
+              </div>
 
               <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50">
                 <PerformanceChart reviews={reviews} />
@@ -731,11 +753,11 @@ export default async function DashboardPage() {
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 rounded-full bg-purple-500"></div>
                   <span className="text-zinc-400">Questions</span>
-        </div>
+                </div>
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
                   <span className="text-zinc-400">Rating</span>
-      </div>
+                </div>
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 rounded-full bg-blue-500"></div>
                   <span className="text-zinc-400">Reviews</span>
@@ -744,96 +766,36 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* AI Insights */}
+          {/* Achievements & Progress */}
           <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
             <CardHeader>
               <CardTitle className="text-zinc-100 flex items-center gap-2">
-                💡 AI Insights
+                🏆 Achievements & Progress
               </CardTitle>
-              <p className="text-zinc-400 text-sm mt-1">
-                Smart recommendations based on your data analysis
-              </p>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {insights.length > 0 ? (
-                insights.map((insight, index) => (
-                  <Link
-                    key={index}
-                    href={
-                      insight.title.includes('Rating') ? '/reviews'
-                      : insight.title.includes('Response Rate') ? '/reviews'
-                      : insight.title.includes('Questions') ? '/questions'
-                      : insight.title.includes('Health') ? '/locations'
-                      : '/dashboard'
-                    }
-                    className="block"
-                  >
-                    <div 
-                      className={`p-4 rounded-lg border transition-all hover:brightness-110 hover:scale-[1.01] cursor-pointer ${
-                        insight.color === 'green' 
-                          ? 'bg-green-950/30 border-green-500/30'
-                          : insight.color === 'red'
-                          ? 'bg-red-950/30 border-red-500/30'
-                          : 'bg-orange-950/30 border-orange-500/30'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <span className="text-xl">{insight.icon}</span>
-                        <div>
-                          <h3 className={`font-medium text-sm mb-2 ${
-                            insight.color === 'green' ? 'text-green-300' :
-                            insight.color === 'red' ? 'text-red-300' : 'text-orange-300'
-                          }`}>
-                            {insight.title}
-                          </h3>
-                          <p className="text-xs text-zinc-400">{insight.description}</p>
-                        </div>
-                      </div>
+            <CardContent className="space-y-4">
+              {achievements.map((achievement, index) => {
+                const percentage = (achievement.current / achievement.target) * 100;
+                return (
+                  <div key={index} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-zinc-300">{achievement.label}</span>
+                      <span className="text-zinc-400">
+                        {achievement.current.toFixed(1)} / {achievement.target}
+                      </span>
                     </div>
-                  </Link>
-                ))
-              ) : (
-                <div className="text-center text-zinc-500 py-4">
-                  No insights available
-                </div>
-              )}
-              <div className="flex items-center gap-2 text-xs text-zinc-500 pt-2 border-t border-zinc-700/50">
-                <Settings className="w-3 h-3" />
-                <span>⚙️ Auto-updated based on latest data</span>
-              </div>
+                    <div className="relative h-3 bg-zinc-800 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full bg-gradient-to-r ${achievement.gradient} transition-all duration-500`}
+                        style={{ width: `${Math.min(percentage, 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
         </div>
-
-        {/* ACHIEVEMENTS & PROGRESS */}
-        <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
-          <CardHeader>
-            <CardTitle className="text-zinc-100 flex items-center gap-2">
-              🏆 Achievements & Progress
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {achievements.map((achievement, index) => {
-              const percentage = (achievement.current / achievement.target) * 100;
-              return (
-                <div key={index} className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-zinc-300">{achievement.label}</span>
-                    <span className="text-zinc-400">
-                      {achievement.current.toFixed(1)} / {achievement.target}
-                    </span>
-        </div>
-                  <div className="relative h-3 bg-zinc-800 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full bg-gradient-to-r ${achievement.gradient} transition-all duration-500`}
-                      style={{ width: `${Math.min(percentage, 100)}%` }}
-                    ></div>
-      </div>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
