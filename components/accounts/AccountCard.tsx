@@ -2,7 +2,8 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, MapPin, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Building2, MapPin, Clock, RefreshCw, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { GmbAccount } from '@/lib/types/database';
 
@@ -131,6 +132,8 @@ export function AccountCard({
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
     </motion.div>
   );
 }
