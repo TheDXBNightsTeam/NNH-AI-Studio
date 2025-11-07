@@ -7,7 +7,6 @@ import {
   MessageSquare, 
   HelpCircle, 
   FileText, 
-  RefreshCw,
   ArrowRight,
   Zap
 } from 'lucide-react';
@@ -30,16 +29,12 @@ interface QuickAction {
 interface QuickActionsBarProps {
   pendingReviews: number;
   unansweredQuestions: number;
-  onSync?: () => void;
-  isSyncing?: boolean;
   locale?: string;
 }
 
 export function QuickActionsBar({ 
   pendingReviews, 
   unansweredQuestions,
-  onSync,
-  isSyncing = false,
   locale = 'en'
 }: QuickActionsBarProps) {
   const isArabic = locale === 'ar';
@@ -85,32 +80,16 @@ export function QuickActionsBar({
 
   return (
     <Card className="p-6 border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-background">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Zap className="w-5 h-5 text-primary" />
-            {isArabic ? 'إجراءات سريعة' : 'Quick Actions'}
-          </h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            {isArabic 
-              ? 'الإجراءات الأكثر شيوعاً في مكان واحد' 
-              : 'Most common actions in one place'}
-          </p>
-        </div>
-        
-        {onSync && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onSync}
-            disabled={isSyncing}
-            className="gap-2 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            aria-label={isSyncing ? (isArabic ? "جاري المزامنة..." : "Syncing...") : (isArabic ? "مزامنة جميع البيانات" : "Sync all data")}
-          >
-            <RefreshCw className={cn("w-4 h-4", isSyncing && "animate-spin")} aria-hidden="true" />
-            {isArabic ? 'مزامنة الكل' : 'Sync All'}
-          </Button>
-        )}
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <Zap className="w-5 h-5 text-primary" />
+          {isArabic ? 'إجراءات سريعة' : 'Quick Actions'}
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          {isArabic 
+            ? 'الإجراءات الأكثر شيوعاً في مكان واحد' 
+            : 'Most common actions in one place'}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
