@@ -130,7 +130,7 @@ export const GMBConnectionControls: React.FC<GMBConnectionControlsProps> = ({
             <Button
               variant="secondary"
               onClick={onSync}
-              disabled={isBusy || !onSync || status === 'disconnecting'}
+              disabled={isBusy || !onSync}
               aria-busy={status === 'syncing'}
               aria-label={status === 'syncing' ? L.syncing : L.syncNow}
             >
