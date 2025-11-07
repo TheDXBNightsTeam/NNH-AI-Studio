@@ -36,16 +36,13 @@ interface PerformanceComparisonChartProps {
     questions: number;
   };
   loading?: boolean;
-  locale?: string;
 }
 
 export function PerformanceComparisonChart({
   currentMonthData,
   previousMonthData,
-  loading = false,
-  locale = 'en'
+  loading = false
 }: PerformanceComparisonChartProps) {
-  const isArabic = locale === 'ar';
   const chartContainerRef = useRef<HTMLDivElement>(null);
   
   // ✅ FIX: Cleanup on unmount to prevent memory leaks
@@ -58,23 +55,23 @@ export function PerformanceComparisonChart({
     };
   }, []);
 
-  // تحضير البيانات للمخطط
+  // Prepare chart data
   const chartData: PerformanceData[] = [
     {
-      month: isArabic ? 'الفترة السابقة' : 'Previous Period',
+      month: 'Previous Period',
       reviews: previousMonthData.reviews,
-      rating: previousMonthData.rating * 20, // تحويل من 5 إلى 100 للتناسق
+      rating: previousMonthData.rating * 20, // normalize 5-star rating to 100-scale for consistency
       questions: previousMonthData.questions,
     },
     {
-      month: isArabic ? 'هذه الفترة' : 'This Period',
+      month: 'This Period',
       reviews: currentMonthData.reviews,
       rating: currentMonthData.rating * 20,
       questions: currentMonthData.questions,
     },
   ];
 
-  // حساب التغيرات النسبية
+  // Calculate relative changes
   const calculateChange = (current: number, previous: number) => {
     if (previous === 0) return current > 0 ? 100 : 0;
     return ((current - previous) / previous) * 100;
@@ -86,7 +83,7 @@ export function PerformanceComparisonChart({
 
   const metrics = [
     {
-      label: isArabic ? 'المراجعات' : 'Reviews',
+      label: 'Reviews',
       icon: MessageSquare,
       current: currentMonthData.reviews,
       change: reviewsChange,
@@ -94,7 +91,7 @@ export function PerformanceComparisonChart({
       bgColor: 'bg-info/10'
     },
     {
-      label: isArabic ? 'التقييم' : 'Rating',
+      label: 'Rating',
       icon: Star,
       current: currentMonthData.rating.toFixed(1),
       change: ratingChange,
@@ -102,7 +99,7 @@ export function PerformanceComparisonChart({
       bgColor: 'bg-warning/10'
     },
     {
-      label: isArabic ? 'الأسئلة' : 'Questions',
+      label: 'Questions',
       icon: HelpCircle,
       current: currentMonthData.questions,
       change: questionsChange,
@@ -115,7 +112,7 @@ export function PerformanceComparisonChart({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{isArabic ? 'مقارنة الأداء' : 'Performance Comparison'}</CardTitle>
+          <CardTitle>Performance Comparison</CardTitle>
         </CardHeader>
         <CardContent className="h-[300px] space-y-4">
           <div className="space-y-3">
@@ -138,17 +135,14 @@ export function PerformanceComparisonChart({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-primary" />
-          {isArabic ? 'مقارنة الأداء' : 'Performance Comparison'}
+          Performance Comparison
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-1">
-          {isArabic 
-            ? 'مقارنة البيانات بين الشهر الحالي والشهر السابق'
-            : 'Compare this month vs last month performance'
-          }
+          Compare this month vs last month performance
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* المقاييس السريعة */}
+        {/* Quick metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {metrics.map((metric, index) => {
             const Icon = metric.icon;
@@ -185,12 +179,12 @@ export function PerformanceComparisonChart({
           })}
         </div>
 
-        {/* المخطط البياني */}
+        {/* Chart visual */}
         <div 
           ref={chartContainerRef} 
           className="h-[250px]"
           role="img"
-          aria-label={isArabic ? 'مخطط مقارنة الأداء بين الفترات' : 'Performance comparison chart between periods'}
+          aria-label="Performance comparison chart between periods"
         >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
@@ -241,7 +235,7 @@ export function PerformanceComparisonChart({
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorReviews)"
-                name={isArabic ? 'المراجعات' : 'Reviews'}
+                name="Reviews"
               />
               <Area
                 type="monotone"
@@ -250,7 +244,7 @@ export function PerformanceComparisonChart({
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorRating)"
-                name={isArabic ? 'التقييم (من 100)' : 'Rating (out of 100)'}
+                name="Rating (out of 100)"
               />
               <Area
                 type="monotone"
@@ -259,7 +253,7 @@ export function PerformanceComparisonChart({
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorQuestions)"
-                name={isArabic ? 'الأسئلة' : 'Questions'}
+                name="Questions"
               />
             </AreaChart>
           </ResponsiveContainer>
