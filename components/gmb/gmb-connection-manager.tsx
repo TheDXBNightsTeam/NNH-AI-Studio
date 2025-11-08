@@ -110,6 +110,24 @@ export function GMBConnectionManager({
     }
   }, [refreshGmbStatus])
 
+  // Explicit refresh handler for refresh button
+  const handleRefresh = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault()
+    console.log('[GMB Refresh] Manually refreshing GMB status')
+    try {
+      await refreshGmbStatus()
+      router.refresh()
+      toast.success('Refreshed successfully', {
+        description: 'GMB connection status updated'
+      })
+    } catch (error: any) {
+      console.error('[GMB Refresh] Error:', error)
+      toast.error('Refresh failed', {
+        description: error.message || 'Unable to refresh status'
+      })
+    }
+  }
+
   // Close SSE when user hides panel
   useEffect(() => {
     if (!progressOpen) {
@@ -118,7 +136,8 @@ export function GMBConnectionManager({
   }, [progressOpen])
 
   // Start OAuth connection flow
-  const handleConnect = async () => {
+  const handleConnect = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault()
     setConnecting(true)
     console.log('[GMB Connect] Starting connection process')
     
@@ -199,7 +218,9 @@ export function GMBConnectionManager({
     } catch {}
   }
 
-  const handleSync = async () => {
+  const handleSync = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault()
+    
     if (!activeAccount) {
       toast.error('No active account', {
         description: 'Connect a Google My Business account first.'
@@ -262,7 +283,9 @@ export function GMBConnectionManager({
   }
 
   // Disconnect the active account
-  const handleDisconnect = async () => {
+  const handleDisconnect = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault()
+    
     if (!activeAccount) {
       toast.error('No connected account', {
         description: 'Nothing to disconnect.'
@@ -319,7 +342,7 @@ export function GMBConnectionManager({
         setShowDisconnectDialog(false)
         setDisconnectOption('keep') // Reset to default
         
-  await refreshGmbStatus()
+        await refreshGmbStatus()
         onSuccess?.()
         router.refresh()
         
@@ -430,6 +453,7 @@ export function GMBConnectionManager({
                       onClick={handleSync}
                       disabled={syncing || disconnecting}
                       className="whitespace-nowrap"
+                      title="Sync your Google My Business data"
                     >
                       <RefreshCw className={cn(
                         "h-4 w-4 mr-2",
@@ -443,6 +467,7 @@ export function GMBConnectionManager({
                       onClick={() => setShowDisconnectDialog(true)}
                       disabled={syncing || disconnecting}
                       className="whitespace-nowrap bg-destructive/10 hover:bg-destructive/20 text-destructive border-destructive/30"
+                      title="Disconnect from Google My Business"
                     >
                       <Unlink className={cn(
                         "h-4 w-4 mr-2",
@@ -464,6 +489,7 @@ export function GMBConnectionManager({
                       onClick={handleConnect}
                       disabled={connecting}
                       className="gradient-orange whitespace-nowrap"
+                      title="Connect to Google My Business"
                     >
                       {connecting ? (
                         <>
@@ -601,6 +627,7 @@ export function GMBConnectionManager({
                   disabled={syncing || disconnecting}
                   className="sm:w-auto w-full"
                   variant="outline"
+                  title="Sync your Google My Business data"
                 >
                   {syncing ? (
                     <>
@@ -617,6 +644,7 @@ export function GMBConnectionManager({
                   disabled={connecting || syncing || disconnecting}
                   className="sm:w-auto w-full"
                   variant="outline"
+                  title="Re-authenticate with Google My Business"
                 >
                   <Key className="h-4 w-4 mr-2" /> Re-authenticate
                 </Button>
@@ -625,6 +653,7 @@ export function GMBConnectionManager({
                   disabled={syncing || disconnecting}
                   className="sm:w-auto w-full"
                   variant="destructive"
+                  title="Disconnect from Google My Business"
                 >
                   <Unlink className="h-4 w-4 mr-2" /> Disconnect
                 </Button>
@@ -642,6 +671,7 @@ export function GMBConnectionManager({
                   className="w-full sm:w-auto bg-gradient-to-r from-primary to-accent text-white"
                   onClick={handleConnect}
                   disabled={connecting}
+                  title="Connect to Google My Business"
                 >
                   {connecting ? (
                     <>
