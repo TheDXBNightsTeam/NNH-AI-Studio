@@ -2,13 +2,38 @@ import createIntlMiddleware from 'next-intl/middleware';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Rate limiting configuration
-const RATE_LIMIT = 100; // requests per hour
-const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour in ms
+// Upstash Ratelimit configuration with fallback to in-memory
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
 
-// In-memory rate limit store (for development)
-// For production, use Redis/Upstash instead
-const requestCounts = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 100; // requests per hour
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour in milliseconds
+
+// Try to initialize Upstash Redis; fallback to in-memory if env vars missing
+let redis: Redis | null = null;
+let ratelimit: Ratelimit | null = null;
+let usingRedis = false;
+
+try {
+  redis = Redis.fromEnv();
+  ratelimit = new Ratelimit({
+    redis,
+    limiter: Ratelimit.fixedWindow(RATE_LIMIT, `${RATE_LIMIT_WINDOW_MS / 1000} s`),
+    prefix: 'nnh-rate-limit',
+  });
+  usingRedis = true;
+  console.log('[Middleware] Using Upstash Redis for rate limiting');
+} catch (error) {
+  console.warn('[Middleware] Upstash Redis not configured, using in-memory rate limiting fallback');
+  usingRedis = false;
+}
+
+// In-memory fallback for rate limiting
+const g: any = globalThis as any;
+if (!g.__rateLimitStore) {
+  g.__rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+}
+const rateLimitStore: Map<string, { count: number; resetAt: number }> = g.__rateLimitStore;
 
 // Create next-intl middleware
 const intlMiddleware = createIntlMiddleware({
@@ -24,54 +49,88 @@ export async function middleware(request: NextRequest) {
   }
 
   // Rate limit API routes only
-  const userId = request.cookies.get('user-id')?.value || 
-                 request.headers.get('x-forwarded-for')?.split(',')[0] || 
-                 request.ip ||
-                 'anonymous';
+  const userId = request.cookies.get('user-id')?.value ||
+    request.headers.get('x-forwarded-for')?.split(',')[0] ||
+    request.ip ||
+    'anonymous';
 
-  const now = Date.now();
-  const userLimit = requestCounts.get(userId);
+  let success = true;
+  let limit = RATE_LIMIT;
+  let remaining = RATE_LIMIT;
+  let reset = Date.now() + RATE_LIMIT_WINDOW_MS;
 
-  // Reset if window expired
-  if (userLimit && now > userLimit.resetAt) {
-    requestCounts.delete(userId);
+  if (usingRedis && ratelimit) {
+    // Use Upstash Redis rate limiting
+    try {
+      const result = await ratelimit.limit(userId);
+      success = result.success;
+      limit = result.limit;
+      remaining = result.remaining;
+      reset = result.reset;
+    } catch (error) {
+      console.error('[Middleware] Upstash rate limit check failed:', error);
+      // Continue with in-memory fallback on error
+      usingRedis = false;
+    }
   }
 
-  // Get or create rate limit entry
-  const current = requestCounts.get(userId) || {
-    count: 0,
-    resetAt: now + RATE_LIMIT_WINDOW,
-  };
+  if (!usingRedis) {
+    // In-memory fallback rate limiting
+    const now = Date.now();
+    const userLimit = rateLimitStore.get(userId);
 
-  // Check if over limit
-  if (current.count >= RATE_LIMIT) {
+    if (!userLimit || userLimit.resetAt < now) {
+      // New window or expired window
+      rateLimitStore.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+      remaining = RATE_LIMIT - 1;
+      reset = now + RATE_LIMIT_WINDOW_MS;
+    } else {
+      // Within current window
+      userLimit.count++;
+      rateLimitStore.set(userId, userLimit);
+      remaining = Math.max(0, RATE_LIMIT - userLimit.count);
+      reset = userLimit.resetAt;
+
+      if (userLimit.count > RATE_LIMIT) {
+        success = false;
+      }
+    }
+
+    // Cleanup old entries periodically (10% chance per request)
+    if (Math.random() < 0.1) {
+      for (const [key, value] of rateLimitStore.entries()) {
+        if (value.resetAt < now) {
+          rateLimitStore.delete(key);
+        }
+      }
+    }
+  }
+
+  if (!success) {
+    const retryAfter = Math.ceil((reset - Date.now()) / 1000);
     return NextResponse.json(
-      { 
+      {
         error: 'Rate limit exceeded',
-        retryAfter: Math.ceil((current.resetAt - now) / 1000),
-        message: `Too many requests. Please try again in ${Math.ceil((current.resetAt - now) / 1000)} seconds.`
+        retryAfter,
+        message: `Too many requests. Please try again in ${retryAfter} seconds.`
       },
-      { 
+      {
         status: 429,
         headers: {
-          'X-RateLimit-Limit': RATE_LIMIT.toString(),
+          'X-RateLimit-Limit': limit.toString(),
           'X-RateLimit-Remaining': '0',
-          'X-RateLimit-Reset': current.resetAt.toString(),
-          'Retry-After': Math.ceil((current.resetAt - now) / 1000).toString(),
+          'X-RateLimit-Reset': reset.toString(),
+          'Retry-After': retryAfter.toString(),
         }
       }
     );
   }
 
-  // Increment count
-  current.count++;
-  requestCounts.set(userId, current);
-
   // Add rate limit headers to response
   const response = NextResponse.next();
-  response.headers.set('X-RateLimit-Limit', RATE_LIMIT.toString());
-  response.headers.set('X-RateLimit-Remaining', (RATE_LIMIT - current.count).toString());
-  response.headers.set('X-RateLimit-Reset', current.resetAt.toString());
+  response.headers.set('X-RateLimit-Limit', limit.toString());
+  response.headers.set('X-RateLimit-Remaining', remaining.toString());
+  response.headers.set('X-RateLimit-Reset', reset.toString());
 
   return response;
 }

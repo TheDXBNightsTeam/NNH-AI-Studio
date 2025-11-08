@@ -31,6 +31,7 @@ import { ExpandableFeed } from '@/components/dashboard/ExpandableFeed';
 import Link from 'next/link';
 import { PerformanceChart } from './PerformanceChart';
 import { RefreshOnEvent } from './RefreshOnEvent';
+import { MetricsPanel } from '@/components/analytics/metrics-panel';
 
 // TypeScript Interfaces
 interface DashboardStats {
@@ -84,7 +85,8 @@ async function getDashboardData(startDate?: string, endDate?: string) {
       return {
         reviews: [] as Review[],
         locations: [] as Location[],
-        questions: [] as Question[]
+        questions: [] as Question[],
+        accountId: null as string | null,
       };
     }
     
@@ -156,16 +158,32 @@ async function getDashboardData(startDate?: string, endDate?: string) {
       // Silently handle error, return empty array
     }
     
+    // Fetch primary GMB account id (first active)
+    let accountId: string | null = null;
+    try {
+      const { data: accountRow } = await supabase
+        .from('gmb_accounts')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('last_sync', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      accountId = accountRow?.id || null;
+    } catch {}
+
     return {
       reviews: (reviews || []) as Review[],
       locations: (locations || []) as Location[],
-      questions: (questions || []) as Question[]
+      questions: (questions || []) as Question[],
+      accountId,
     };
   } catch (error) {
     return {
       reviews: [] as Review[],
       locations: [] as Location[],
-      questions: [] as Question[]
+      questions: [] as Question[],
+      accountId: null as string | null,
     };
   }
 }
@@ -319,7 +337,7 @@ export default async function DashboardPage({
   }
   
   // Fetch all data with optional time filter
-  const { reviews, locations, questions } = await getDashboardData(startDate, endDate);
+  const { reviews, locations, questions, accountId } = await getDashboardData(startDate, endDate);
 
   // Calculate stats
   const avgRating = calculateAverageRating(reviews);
@@ -811,6 +829,23 @@ export default async function DashboardPage({
             </CardContent>
           </Card>
         </div>
+
+        {/* SYNC METRICS PANEL */}
+        <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all">
+          <CardHeader>
+            <CardTitle className="text-zinc-100 flex items-center gap-2">
+              🔧 Sync Metrics
+            </CardTitle>
+            <p className="text-zinc-400 text-sm mt-1">Historic performance of each sync phase</p>
+          </CardHeader>
+          <CardContent>
+            {accountId ? (
+              <MetricsPanel accountId={accountId} />
+            ) : (
+              <div className="text-sm text-zinc-500">No active account detected.</div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { LocationsMapTab } from '@/components/locations/locations-map-tab-new';
@@ -11,6 +11,7 @@ import { MapPin, List, RefreshCw, Download, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LocationFormDialog } from '@/components/locations/location-form-dialog';
 import { GMBConnectionBanner } from '@/components/locations/gmb-connection-banner';
+import { useGmbStatus } from '@/hooks/use-gmb-status';
 
 export default function LocationsPage() {
   const t = useTranslations('Locations');
@@ -18,34 +19,8 @@ export default function LocationsPage() {
   const [syncing, setSyncing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [hasGmbAccount, setHasGmbAccount] = useState<boolean | null>(null);
-  const [gmbAccountId, setGmbAccountId] = useState<string | null>(null);
-
-  // Check GMB account on mount
-  useEffect(() => {
-    const checkGMBAccount = async () => {
-      try {
-        const res = await fetch('/api/gmb/accounts');
-        const data = await res.json();
-        if (data && data.length > 0) {
-          setHasGmbAccount(true);
-          // Get the first active account ID
-          const activeAccount = data.find((acc: any) => acc.is_active) || data[0];
-          if (activeAccount?.id) {
-            setGmbAccountId(activeAccount.id);
-          }
-        } else {
-          setHasGmbAccount(false);
-          setGmbAccountId(null);
-        }
-      } catch (error) {
-        console.error('Failed to check GMB account:', error);
-        setHasGmbAccount(false);
-        setGmbAccountId(null);
-      }
-    };
-    checkGMBAccount();
-  }, []);
+  const { connected, activeAccount } = useGmbStatus();
+  const gmbAccountId = activeAccount?.id || null;
 
   const handleSync = async () => {
     // Check if account ID is available
@@ -223,7 +198,7 @@ export default function LocationsPage() {
   };
 
   // Show GMB connection banner if no account
-  if (hasGmbAccount === false) {
+  if (connected === false) {
     return (
       <ErrorBoundary>
         <div className="space-y-6">
