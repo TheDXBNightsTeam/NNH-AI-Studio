@@ -70,9 +70,7 @@ function GridStatsCard({
 export default async function GridTrackingPage() {
   // In Phase 3, fetch from database
   // For now, placeholder
-  const gridData = null; // TODO: Replace with Supabase or API fetch
-  window.dispatchEvent(new Event('dashboard:refresh'));
-  console.log('[GridTrackingPage] Dashboard refresh triggered');
+  const gridData: GridData | null = null; // TODO: Replace with Supabase or API fetch
   
   return (
     <div className="min-h-screen bg-zinc-950 p-6">
@@ -191,7 +189,7 @@ export default async function GridTrackingPage() {
         {/* Bottom Row: Details + Trends */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {gridData ? <GridPointDetails gridData={gridData} /> : null}
-          <RankingTrends />
+          <RankingTrends trends={[]} />
         </div>
         
       </div>
