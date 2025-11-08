@@ -30,9 +30,7 @@ import { WeeklyTasksList } from '@/components/dashboard/WeeklyTasksList';
 import { ExpandableFeed } from '@/components/dashboard/ExpandableFeed';
 import Link from 'next/link';
 import { PerformanceChart } from './PerformanceChart';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { RefreshOnEvent } from './RefreshOnEvent';
 
 // TypeScript Interfaces
 interface DashboardStats {
@@ -323,14 +321,6 @@ export default async function DashboardPage({
   // Fetch all data with optional time filter
   const { reviews, locations, questions } = await getDashboardData(startDate, endDate);
 
-  // Setup router and effect for instant refresh on dashboard:refresh event
-  const router = useRouter();
-  useEffect(() => {
-    const refreshDashboard = () => router.refresh();
-    window.addEventListener('dashboard:refresh', refreshDashboard);
-    return () => window.removeEventListener('dashboard:refresh', refreshDashboard);
-  }, [router]);
-  
   // Calculate stats
   const avgRating = calculateAverageRating(reviews);
   const responseRate = calculateResponseRate(reviews);
