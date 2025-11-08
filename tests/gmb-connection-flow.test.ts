@@ -337,10 +337,9 @@ describe('GMB OAuth Connection Flow', () => {
 
   describe('5. Connection Status Verification', () => {
     it('should correctly identify connected status', async () => {
-      mockSupabase.from = vi.fn().mockReturnValue({
+      const queryBuilder = {
         select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        mockResolvedValue: {
+        eq: vi.fn().mockResolvedValue({
           data: [{
             id: 'account-123',
             is_active: true,
@@ -348,8 +347,9 @@ describe('GMB OAuth Connection Flow', () => {
             token_expires_at: new Date(Date.now() + 3600000).toISOString()
           }],
           error: null
-        })
-      });
+        }),
+      };
+      mockSupabase.from = vi.fn().mockReturnValue(queryBuilder);
 
       const response = await fetch('/api/gmb/connection-status');
       expect(response.ok).toBe(true);
@@ -360,18 +360,18 @@ describe('GMB OAuth Connection Flow', () => {
     });
 
     it('should handle multiple accounts correctly', async () => {
-      mockSupabase.from = vi.fn().mockReturnValue({
+      const queryBuilder = {
         select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        mockResolvedValue: {
+        eq: vi.fn().mockResolvedValue({
           data: [
             { id: 'account-1', is_active: true, account_name: 'Business 1' },
             { id: 'account-2', is_active: false, account_name: 'Business 2' },
             { id: 'account-3', is_active: true, account_name: 'Business 3' }
           ],
           error: null
-        })
-      });
+        }),
+      };
+      mockSupabase.from = vi.fn().mockReturnValue(queryBuilder);
 
       const response = await fetch('/api/gmb/connection-status');
       const data = await response.json();

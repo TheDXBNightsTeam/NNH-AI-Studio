@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { refreshAccessToken as refreshGoogleAccessToken } from '@/lib/gmb/helpers';
 import { revalidatePath } from 'next/cache';
 
 export async function disconnectLocation(locationId: string) {
@@ -84,13 +85,79 @@ export async function syncLocation(locationId: string) {
   const supabase = await createClient();
   
   try {
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
       return { success: false, error: 'Not authenticated' };
     }
 
-    // Import and call the actual sync function from reviews-management
+    const {
+      data: location,
+      error: locationError,
+    } = await supabase
+      .from('gmb_locations')
+      .select('*, gmb_accounts!inner(id, access_token, refresh_token, token_expires_at)')
+      .eq('id', locationId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (locationError || !location) {
+      return { success: false, error: 'Location not found' };
+    }
+
+    const account = (location as any)?.gmb_accounts;
+    if (!account) {
+      return { success: false, error: 'Linked Google account not found' };
+    }
+
+    const now = Date.now();
+    const expiresAt = account.token_expires_at ? new Date(account.token_expires_at).getTime() : 0;
+    const bufferMs = 5 * 60 * 1000;
+    let accessToken: string | null = account.access_token || null;
+
+    const needsRefresh = !accessToken || !expiresAt || expiresAt - bufferMs <= now;
+
+    if (needsRefresh) {
+      if (!account.refresh_token) {
+        return {
+          success: false,
+          error: 'Missing refresh token. Please reconnect your Google account.',
+        };
+      }
+
+      try {
+        const tokens = await refreshGoogleAccessToken(account.refresh_token);
+        accessToken = tokens.access_token;
+
+        const newExpiresAt = new Date();
+        newExpiresAt.setSeconds(newExpiresAt.getSeconds() + (tokens.expires_in || 3600));
+
+        const updatePayload: Record<string, any> = {
+          access_token: tokens.access_token,
+          token_expires_at: newExpiresAt.toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        if (tokens.refresh_token) {
+          updatePayload.refresh_token = tokens.refresh_token;
+        }
+
+        const { error: tokenUpdateError } = await supabase
+          .from('gmb_accounts')
+          .update(updatePayload)
+          .eq('id', account.id);
+
+        if (tokenUpdateError) {
+          console.error('[syncLocation] Failed to save refreshed token', tokenUpdateError);
+        }
+      } catch (tokenError) {
+        console.error('[syncLocation] Token refresh failed:', tokenError);
+        return { success: false, error: 'Failed to refresh Google access token' };
+      }
+    }
+
     const { syncReviewsFromGoogle } = await import('@/server/actions/reviews-management');
     const result = await syncReviewsFromGoogle(locationId);
     
@@ -102,17 +169,14 @@ export async function syncLocation(locationId: string) {
         success: true, 
         message: result.message || 'Location synced successfully' 
       };
-    } else {
-      return { 
-        success: false, 
-        error: result.error || 'Failed to sync location' 
-      };
     }
+
+    return { success: false, error: result.error || 'Failed to sync' };
   } catch (error) {
     console.error('[syncLocation] Error:', error);
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : 'Failed to sync location' 
+      error: error instanceof Error ? error.message : 'Sync failed' 
     };
   }
 }

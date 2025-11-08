@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   RefreshCw, 
   Clock, 
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 import {
   RefreshButton,
+  SyncAllButton,
   SyncButton,
   DisconnectButton,
   LocationCard,
@@ -360,6 +362,8 @@ export default async function DashboardPage({
     pendingReviews,
     pendingQuestions
   };
+  const avgRatingValue = Number.parseFloat(stats.avgRating) || 0;
+  const responseRateValue = Number.parseFloat(stats.responseRate) || 0;
   
   // Get active location and top performer
   const activeLocation = locations[0] || null;
@@ -459,73 +463,397 @@ export default async function DashboardPage({
         {/* TIME FILTER BUTTONS */}
         <TimeFilterButtons />
 
-        {/* KEY METRICS ROW - أهم 5 مقاييس في الأعلى */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {/* Health Score */}
-          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all">
+        {/* ========================================= */}
+        {/* CONNECTION & SYNC STATUS BANNER - START */}
+        {/* ========================================= */}
+        <div className="mb-8 space-y-4">
+          {/* Case 1: No GMB Account Connected */}
+          {!accountId && (
+            <Card className="bg-gradient-to-r from-red-500/10 via-orange-500/10 to-yellow-500/10 border-red-500/30 backdrop-blur-sm hover:border-red-500/50 transition-all">
+              <CardContent className="py-8">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+                  <div className="flex-shrink-0">
+                    <div className="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center">
+                      <svg className="w-10 h-10 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-zinc-100 mb-2">
+                      🔌 Connect Your Google My Business Account
+                    </h3>
+                    <p className="text-zinc-300 mb-4 leading-relaxed">
+                      Start managing your business by connecting your Google My Business account. 
+                      You'll be able to manage locations, respond to reviews with AI, track analytics, and more.
+                    </p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
+                        <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xl">✓</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-zinc-200">AI-Powered Replies</p>
+                          <p className="text-xs text-zinc-400">Smart review responses</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
+                        <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xl">📊</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-zinc-200">Real-time Analytics</p>
+                          <p className="text-xs text-zinc-400">Track performance</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
+                        <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xl">🗺️</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-zinc-200">Multi-Location</p>
+                          <p className="text-xs text-zinc-400">Manage everything</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <Link href="/settings?tab=connections">
+                      <Button className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white px-8 py-6 text-base font-semibold">
+                        🔗 Connect GMB Account Now
+                        <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Case 2: GMB Connected but No Locations */}
+          {accountId && (!locations || locations.length === 0) && (
+            <Card className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-orange-500/30 backdrop-blur-sm hover:border-orange-500/50 transition-all">
+              <CardContent className="py-8">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+                  <div className="flex-shrink-0">
+                    <div className="w-20 h-20 rounded-full bg-orange-500/20 flex items-center justify-center">
+                      <svg className="w-10 h-10 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-zinc-100 mb-2 flex items-center gap-2">
+                      🔄 Sync Your Locations
+                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                        Account Connected ✓
+                      </Badge>
+                    </h3>
+                    <p className="text-zinc-300 mb-4 leading-relaxed">
+                      Your Google My Business account is connected successfully! 
+                      Now sync your locations to start managing them from this dashboard.
+                    </p>
+                    
+                    <div className="flex items-center gap-3 p-4 rounded-lg bg-zinc-900/50 border border-zinc-800 mb-6">
+                      <div className="text-3xl">💡</div>
+                      <div>
+                        <p className="text-sm font-medium text-zinc-200">What happens when you sync?</p>
+                        <p className="text-xs text-zinc-400">
+                          We'll import all your business locations, recent reviews, questions, and performance data from Google.
+                          This usually takes 10-30 seconds depending on the number of locations.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-3">
+                      <SyncAllButton />
+                      <Link href="/settings?tab=connections">
+                        <Button variant="outline" className="border-zinc-700 hover:bg-zinc-800">
+                          ⚙️ Manage Connection
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Case 3: Everything Working - Success Status */}
+          {accountId && locations && locations.length > 0 && (
+            <Card className="bg-zinc-900/50 border-green-500/30 backdrop-blur-sm hover:border-green-500/50 transition-all">
+              <CardContent className="py-4">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  {/* Left: Status Info */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-7 h-7 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-base font-semibold text-zinc-100">
+                          GMB Account Connected
+                        </p>
+                        <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
+                          Active & Synced
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-zinc-400">
+                        {locations.length} location{locations.length !== 1 ? 's' : ''} • 
+                        {' '}{stats.totalReviews} review{stats.totalReviews !== 1 ? 's' : ''} • 
+                        {' '}{stats.pendingReviews} pending
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Right: Action Buttons */}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="text-xs text-zinc-500 flex items-center gap-2">
+                      <Clock className="w-3 h-3" />
+                      <LastUpdated updatedAt={lastUpdatedAt} />
+                    </div>
+                    <RefreshButton />
+                    <Link href="/settings?tab=connections">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="border-zinc-700 hover:bg-zinc-800"
+                      >
+                        ⚙️ Settings
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+        {/* CONNECTION & SYNC STATUS BANNER - END */}
+        {/* ======================================== */}
+
+        {/* ============================================ */}
+        {/* ENHANCED STATS CARDS WITH TOOLTIPS - START */}
+        {/* ============================================ */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+          <Card
+            className={`bg-zinc-900/50 border backdrop-blur-sm hover:shadow-lg transition-all ${
+              stats.healthScore >= 70
+                ? 'border-green-500/30 hover:border-green-500/50'
+                : stats.healthScore >= 40
+                ? 'border-yellow-500/30 hover:border-yellow-500/50'
+                : 'border-red-500/30 hover:border-red-500/50'
+            }`}
+          >
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-zinc-400 text-sm">🏥 Health Score</span>
+                <p className="text-sm font-medium text-zinc-400">Health Score</p>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button className="text-zinc-500 hover:text-zinc-300">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="text-xs">
+                        Overall health based on rating, response rate, and review count. Aim for 70%+.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
-              <div className="text-3xl font-bold text-zinc-100">{stats.healthScore}%</div>
-              <Progress value={stats.healthScore} className="h-1.5 bg-zinc-800 mt-3" />
+
+              <div className="flex items-baseline gap-2">
+                <p
+                  className={`text-3xl font-bold ${
+                    stats.healthScore >= 70
+                      ? 'text-green-400'
+                      : stats.healthScore >= 40
+                      ? 'text-yellow-400'
+                      : 'text-red-400'
+                  }`}
+                >
+                  {stats.healthScore}%
+                </p>
+                {stats.healthScore > 0 && (
+                  <span
+                    className={`text-xs ${
+                      stats.healthScore >= 70
+                        ? 'text-green-400'
+                        : stats.healthScore >= 40
+                        ? 'text-yellow-400'
+                        : 'text-red-400'
+                    }`}
+                  >
+                    {stats.healthScore >= 70 ? '✓ Great' : stats.healthScore >= 40 ? '⚠ Fair' : '✗ Poor'}
+                  </span>
+                )}
+              </div>
+
+              {stats.healthScore === 0 && (
+                <p className="text-xs text-zinc-500 mt-2">No data yet - sync to calculate</p>
+              )}
             </CardContent>
           </Card>
 
-          {/* Total Locations */}
-          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all">
+          <Card className="bg-zinc-900/50 border-primary/30 backdrop-blur-sm hover:border-primary/50 hover:shadow-lg transition-all">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-zinc-400 text-sm">📍 Locations</span>
+                <p className="text-sm font-medium text-zinc-400">Locations</p>
+                <MapPin className="w-4 h-4 text-primary" />
               </div>
-              <div className="text-3xl font-bold text-zinc-100">{stats.totalLocations}</div>
-              <p className="text-green-400 text-xs mt-2 flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" />
-                vs last period
+              <p className="text-3xl font-bold text-zinc-100">{stats.totalLocations}</p>
+              {stats.totalLocations === 0 ? (
+                <p className="text-xs text-zinc-500 mt-2">Connect GMB to add locations</p>
+              ) : (
+                <p className="text-xs text-zinc-500 mt-2">
+                  Active locations under management
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-zinc-900/50 border-orange-500/30 backdrop-blur-sm hover:border-orange-500/50 hover:shadow-lg transition-all">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-zinc-400">Average Rating</p>
+                <Star className="w-4 h-4 text-orange-400" />
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl font-bold text-zinc-100">
+                  {stats.avgRating}
+                </p>
+                <span className="text-sm text-zinc-500">/5</span>
+              </div>
+              {avgRatingValue === 0 ? (
+                <p className="text-xs text-zinc-500 mt-2">No reviews yet — encourage customers to leave feedback</p>
+              ) : (
+                <p className="text-xs text-zinc-500 mt-2">
+                  {avgRatingValue >= 4.5 ? 'Excellent reputation' : avgRatingValue >= 4 ? 'Good standing' : 'Needs improvement'}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-zinc-900/50 border-blue-500/30 backdrop-blur-sm hover:border-blue-500/50 hover:shadow-lg transition-all">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-zinc-400">Reviews</p>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button className="text-zinc-500 hover:text-zinc-300">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.325 8.325 0 01-3.247-.63c-.365.187-.858.39-1.453.554-.735.204-1.397.293-1.9.316a.75.75 0 01-.743-1.012c.148-.42.355-.97.522-1.518C2.824 13.347 2 11.767 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zm-9-2a1 1 0 100 2 1 1 0 000-2zm3 0a1 1 0 100 2 1 1 0 000-2zm-6 0a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="text-xs">
+                        Total reviews synced from Google. Pending shows how many need responses.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <p className="text-3xl font-bold text-zinc-100">{stats.totalReviews}</p>
+              <p className="text-xs text-zinc-500 mt-2">
+                {stats.pendingReviews} pending response
               </p>
             </CardContent>
           </Card>
 
-          {/* Average Rating */}
-          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all">
+          <Card className="bg-zinc-900/50 border-purple-500/30 backdrop-blur-sm hover:border-purple-500/50 hover:shadow-lg transition-all">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-zinc-400 text-sm">⭐ Avg Rating</span>
+                <p className="text-sm font-medium text-zinc-400">Response Rate</p>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button className="text-zinc-500 hover:text-zinc-300">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M2 5a3 3 0 013-3h10a3 3 0 013 3v6a3 3 0 01-3 3h-3l-4 4v-4H5a3 3 0 01-3-3V5zm6.293 2.293a1 1 0 011.414 0L11 8.586l1.293-1.293a1 1 0 011.414 1.414L12.414 10l1.293 1.293a1 1 0 01-1.414 1.414L11 11.414l-1.293 1.293a1 1 0 01-1.414-1.414L9.586 10 8.293 8.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="text-xs">
+                        Percentage of reviews with responses. Aim for 80%+ to boost visibility.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
-              <div className="text-3xl font-bold text-zinc-100">
-                {stats.avgRating}<span className="text-xl text-zinc-500">/5</span>
-              </div>
-              <p className="text-green-400 text-xs mt-2 flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" />
-                Excellent
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Total Reviews */}
-          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-zinc-400 text-sm">💬 Reviews</span>
-              </div>
-              <div className="text-3xl font-bold text-zinc-100">{stats.totalReviews}</div>
-              <p className="text-zinc-400 text-xs mt-2">{stats.pendingReviews} pending</p>
-            </CardContent>
-          </Card>
-
-          {/* Response Rate */}
-          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-zinc-400 text-sm">📈 Response</span>
-              </div>
-              <div className={`text-3xl font-bold ${parseFloat(stats.responseRate) < 50 ? 'text-red-400' : 'text-zinc-100'}`}>
+              <div
+                className={`text-3xl font-bold ${
+                  responseRateValue >= 80 ? 'text-green-400' : responseRateValue >= 50 ? 'text-yellow-400' : 'text-red-400'
+                }`}
+              >
                 {stats.responseRate}%
               </div>
-              <Progress value={parseFloat(stats.responseRate)} className="h-1.5 bg-zinc-800 mt-3" />
+              {responseRateValue === 0 ? (
+                <p className="text-xs text-zinc-500 mt-2">No responses yet — reply to reviews to build trust</p>
+              ) : (
+                <p className="text-xs text-zinc-500 mt-2">
+                  {responseRateValue >= 80 ? 'Great job staying responsive' : 'Respond promptly to improve visibility'}
+                </p>
+              )}
+              <Progress value={responseRateValue} className="h-1.5 bg-zinc-800 mt-3" />
             </CardContent>
           </Card>
         </div>
+        {/* ENHANCED STATS CARDS WITH TOOLTIPS - END */}
+        {/* =========================================== */}
+
+        {/* Empty State for Locations */}
+        {accountId && locations.length === 0 && (
+          <Card className="bg-zinc-900/30 border-zinc-800 p-12 text-center">
+            <div className="max-w-md mx-auto space-y-6">
+              <div className="w-20 h-20 mx-auto rounded-full bg-zinc-800 flex items-center justify-center">
+                <MapPin className="w-10 h-10 text-zinc-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-zinc-200 mb-3">No Locations Found</h3>
+                <p className="text-zinc-400">
+                  We couldn't find any locations in your GMB account. This could be because:
+                </p>
+              </div>
+              <ul className="text-left text-sm text-zinc-400 space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="text-orange-400">•</span>
+                  <span>You haven't added any locations to your Google My Business account yet.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-orange-400">•</span>
+                  <span>The sync hasn't been completed — try clicking "Sync All Locations".</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-orange-400">•</span>
+                  <span>There was an error during the last sync attempt.</span>
+                </li>
+              </ul>
+              <div className="flex flex-wrap justify-center gap-3">
+                <SyncAllButton />
+                <Link href="https://business.google.com" target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" className="border-zinc-700">
+                    Add Location on Google
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* MAIN GRID LAYOUT - 3 Columns */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
