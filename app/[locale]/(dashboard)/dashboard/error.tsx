@@ -1,5 +1,7 @@
 'use client';
 
+import { toast } from 'sonner';
+
 export default function DashboardError({
   error,
   reset,
@@ -7,6 +9,18 @@ export default function DashboardError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const handleRetry = () => {
+    try {
+      reset();
+      window.dispatchEvent(new Event('dashboard:refresh'));
+      toast.success('Dashboard reloaded successfully!');
+      console.log('[DashboardError] Try Again triggered');
+    } catch (err) {
+      console.error('[DashboardError] Retry failed:', err);
+      toast.error('Failed to reload dashboard. Please try again.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-8">
       <div className="max-w-md text-center">
@@ -18,11 +32,7 @@ export default function DashboardError({
           {error.message || 'Failed to load dashboard data'}
         </p>
         <button
-          onClick={() => {
-            reset();
-            window.dispatchEvent(new Event('dashboard:refresh'));
-            console.log('[DashboardError] Try Again triggered');
-          }}
+          onClick={handleRetry}
           className="px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-lg font-medium transition"
         >
           Try Again
@@ -31,4 +41,3 @@ export default function DashboardError({
     </div>
   );
 }
-

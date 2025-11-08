@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { toast } from 'sonner';
 
 function TimeFilterButtonsContent() {
   const router = useRouter();
@@ -14,8 +15,10 @@ function TimeFilterButtonsContent() {
     const params = new URLSearchParams(searchParams.toString());
     if (filter === 'reset') {
       params.delete('filter');
+      toast.info('Filter reset — showing all data');
     } else {
       params.set('filter', filter);
+      toast.success(`Filter applied: ${filter.toUpperCase()}`);
     }
     router.push(`?${params.toString()}`);
     router.refresh();

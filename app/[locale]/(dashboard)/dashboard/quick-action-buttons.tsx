@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 export function QuickActionButtons() {
   const router = useRouter();
@@ -10,9 +11,11 @@ export function QuickActionButtons() {
     try {
       window.dispatchEvent(new Event('dashboard:refresh'));
       router.refresh();
-      console.log('[QuickActionButtons] Sync All triggered');
+      toast.success('All data synced successfully!');
+      console.log('[QuickActionButtons] Sync All triggered, dashboard refreshed');
     } catch (error) {
       console.error('[QuickActionButtons] Error during Sync All:', error);
+      toast.error('Failed to sync data. Please try again.');
     }
   };
 
@@ -20,11 +23,10 @@ export function QuickActionButtons() {
     <Button 
       variant="ghost" 
       size="sm"
-      className="text-orange-400 hover:text-orange-300"
+      className="text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 transition-all duration-300 ease-in-out"
       onClick={handleSyncAll}
     >
-      Sync All
+      🔄 Sync All
     </Button>
   );
 }
-
