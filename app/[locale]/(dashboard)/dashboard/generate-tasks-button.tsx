@@ -1,9 +1,8 @@
-
-
 'use client';
 
 import { useState, useTransition } from 'react';
 import { generateWeeklyTasks } from './actions';
+import { toast } from 'sonner';
 
 export default function GenerateTasksButton({ accountId }: { accountId: string }) {
   const [isPending, startTransition] = useTransition();
@@ -14,11 +13,13 @@ export default function GenerateTasksButton({ accountId }: { accountId: string }
       try {
         await generateWeeklyTasks(accountId);
         setStatus('success');
+        toast.success('Weekly tasks generated successfully!');
         window.dispatchEvent(new Event('dashboard:refresh'));
         console.log('[GenerateTasksButton] Weekly tasks generated, dashboard refresh dispatched');
       } catch (error) {
         console.error('[GenerateTasksButton] Error generating tasks:', error);
         setStatus('error');
+        toast.error('Failed to generate weekly tasks. Please try again.');
       }
     });
   };
@@ -42,6 +43,11 @@ export default function GenerateTasksButton({ accountId }: { accountId: string }
         <>
           <span>✅</span>
           <span>Generated</span>
+        </>
+      ) : status === 'error' ? (
+        <>
+          <span>⚠️</span>
+          <span>Error</span>
         </>
       ) : (
         <>

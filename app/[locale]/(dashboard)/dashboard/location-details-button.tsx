@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface LocationDetailsButtonProps {
   locationId?: string;
@@ -11,14 +12,20 @@ export function LocationDetailsButton({ locationId }: LocationDetailsButtonProps
   const router = useRouter();
 
   const handleViewDetails = () => {
-    if (locationId) {
-      router.push(`/locations/${locationId}`);
+    try {
+      if (locationId) {
+        router.push(`/locations/${locationId}`);
+        toast.success('Navigated to location details successfully!');
+        console.log('[LocationDetailsButton] View Details triggered');
+      } else {
+        router.push('/locations');
+        toast.success('Navigated to Locations successfully!');
+        console.log('[LocationDetailsButton] View All Locations triggered');
+      }
       window.dispatchEvent(new Event('dashboard:refresh'));
-      console.log('[LocationDetailsButton] View Details triggered');
-    } else {
-      router.push('/locations');
-      window.dispatchEvent(new Event('dashboard:refresh'));
-      console.log('[LocationDetailsButton] View Details triggered');
+    } catch (error) {
+      console.error('[LocationDetailsButton] Navigation error:', error);
+      toast.error('Failed to navigate to the location. Please try again.');
     }
   };
 
@@ -26,7 +33,7 @@ export function LocationDetailsButton({ locationId }: LocationDetailsButtonProps
     <Button 
       size="sm" 
       variant="ghost"
-      className="w-full text-orange-400 hover:text-orange-300 hover:bg-orange-500/10"
+      className="w-full text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 transition-colors duration-200"
       onClick={handleViewDetails}
     >
       {locationId ? 'View Details →' : 'Go to Location →'}

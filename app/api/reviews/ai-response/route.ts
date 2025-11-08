@@ -50,15 +50,6 @@ export async function POST(request: NextRequest) {
 
     const finalLocationName = locationName || review.gmb_locations.location_name || 'our business';
 
-    // Generate AI response using existing endpoint
-    const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
-
-    if (!GEMINI_API_KEY) {
-      return NextResponse.json({ error: 'AI API key not configured' }, { status: 500 });
-    }
-
-    const AI_MODEL = 'gemini-2.5-flash';
-
     const systemInstruction = `
       You are an expert social media manager specializing in Google Business Profile review responses.
       Your goal is to generate a personalized, professional response.
@@ -72,65 +63,127 @@ export async function POST(request: NextRequest) {
       6. Make it sound natural and human.
     `;
 
-    const userPrompt = `
-      BUSINESS NAME: ${finalLocationName}
-      RATING: ${rating} / 5 Stars
-      CUSTOMER REVIEW: "${reviewText}"
-      
-      Generate a professional response to this review.
-    `;
-
-    const aiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${AI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-          config: {
-            systemInstruction: systemInstruction,
-            temperature: 0.7,
-          },
-        }),
-      }
-    );
-
-    const aiData = await aiResponse.json();
-
-    if (!aiResponse.ok || !aiData.candidates?.[0]?.content?.parts?.[0]?.text) {
-      console.error('Gemini API Error:', aiData);
-      return NextResponse.json(
-        { error: aiData.error?.message || 'AI service failed to generate content' },
-        { status: 500 }
-      );
+    // Generate AI response with failover models and sentiment analysis
+    const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+      return NextResponse.json({ error: 'AI API key not configured' }, { status: 500 });
     }
 
-    const generatedResponse = aiData.candidates[0].content.parts[0].text.trim();
+    const MODELS = ['gemini-2.5-flash', 'gemini-1.5-pro'];
+    let generatedResponse = '';
+    let usedModel = '';
+    let aiError = null;
 
-    // Save AI response to database
+    for (const model of MODELS) {
+      try {
+        const aiResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: `
+                BUSINESS NAME: ${finalLocationName}
+                RATING: ${rating} / 5 Stars
+                REVIEW: "${reviewText}"
+                Generate a natural, professional, short reply (max 500 chars). 
+                Tone: friendly and authentic.
+              ` }] }],
+              config: {
+                systemInstruction,
+                temperature: 0.7,
+              },
+            }),
+          }
+        );
+
+        const aiData = await aiResponse.json();
+        generatedResponse = aiData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+        usedModel = model;
+
+        if (generatedResponse) break;
+      } catch (err) {
+        aiError = err;
+        console.error(`[AI Response] Model ${model} failed:`, err);
+      }
+    }
+
+    if (!generatedResponse) {
+      console.error('[AI Response] All AI models failed', aiError);
+      return NextResponse.json({ error: 'AI service failed to generate content' }, { status: 500 });
+    }
+
+    // Quality check and sentiment analysis
+    const positiveWords = ['great', 'excellent', 'amazing', 'love', 'happy', 'perfect'];
+    const negativeWords = ['bad', 'terrible', 'disappointed', 'poor', 'awful', 'angry'];
+    const reviewLower = reviewText.toLowerCase();
+
+    const sentiment =
+      positiveWords.some(w => reviewLower.includes(w)) && rating >= 4
+        ? 'positive'
+        : negativeWords.some(w => reviewLower.includes(w)) || rating <= 2
+        ? 'negative'
+        : 'neutral';
+
+    const qualityScore =
+      Math.min(100, generatedResponse.length / 5 + (sentiment === 'positive' ? 10 : 0)) || 70;
+
+    // Save AI response to main reviews table
     const { error: updateError } = await supabase
       .from('gmb_reviews')
       .update({
         ai_generated_response: generatedResponse,
-        ai_suggested_reply: generatedResponse, // Keep for backwards compatibility
+        ai_suggested_reply: generatedResponse,
+        sentiment,
+        ai_model_used: usedModel,
+        quality_score: Math.round(qualityScore),
         status: 'in_progress',
       })
       .eq('id', reviewId);
 
-    if (updateError) {
-      console.error('Error saving AI response:', updateError);
-      // Continue anyway - response was generated
-    }
+    // Save analytics record
+    await supabase.from('ai_generated_replies').insert({
+      review_id: reviewId,
+      user_id: user.id,
+      location_name: finalLocationName,
+      review_text: reviewText,
+      rating,
+      ai_model: usedModel,
+      generated_response: generatedResponse,
+      sentiment,
+      confidence_score: Math.round(
+        Math.min(
+          95,
+          Math.max(
+            60,
+            70 +
+              (rating >= 4 ? 15 : rating <= 2 ? -10 : 0) +
+              (generatedResponse.length > 100 && generatedResponse.length < 400 ? 10 : 0)
+          )
+        )
+      ),
+      created_at: new Date().toISOString(),
+    });
 
-    // Calculate confidence score (simple heuristic based on response length and rating)
-    const confidence = Math.min(95, Math.max(60, 
-      70 + (rating >= 4 ? 15 : rating <= 2 ? -10 : 0) + 
-      (generatedResponse.length > 100 && generatedResponse.length < 400 ? 10 : 0)
-    ));
+    // Log all actions for audit trail
+    await supabase.from('ai_response_logs').insert({
+      user_id: user.id,
+      review_id: reviewId,
+      model_used: usedModel,
+      success: true,
+      sentiment,
+      quality_score: Math.round(qualityScore),
+      created_at: new Date().toISOString(),
+    });
+
+    console.log(`[AI Response] Generated and logged successfully (model: ${usedModel}, sentiment: ${sentiment})`);
 
     return NextResponse.json({
       response: generatedResponse,
-      confidence: Math.round(confidence)
+      model: usedModel,
+      sentiment,
+      qualityScore: Math.round(qualityScore),
+      logged: true,
     });
 
   } catch (error: any) {
@@ -141,4 +194,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

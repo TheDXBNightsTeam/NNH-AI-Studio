@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { disconnectLocation } from './actions';
+import { toast } from 'sonner';
 
 export default function DisconnectButton({ accountId }: { accountId: string }) {
   const [isPending, startTransition] = useTransition();
@@ -12,11 +13,13 @@ export default function DisconnectButton({ accountId }: { accountId: string }) {
       try {
         await disconnectLocation(accountId);
         setStatus('success');
+        toast.success('Account disconnected successfully!');
         window.dispatchEvent(new Event('dashboard:refresh'));
         console.log('[DisconnectButton] Account disconnected, dashboard refresh dispatched');
       } catch (error) {
         console.error('[DisconnectButton] Error during disconnect:', error);
         setStatus('error');
+        toast.error('Failed to disconnect account. Please try again.');
       }
     });
   };
@@ -40,6 +43,11 @@ export default function DisconnectButton({ accountId }: { accountId: string }) {
         <>
           <span>✅</span>
           <span>Disconnected</span>
+        </>
+      ) : status === 'error' ? (
+        <>
+          <span>⚠️</span>
+          <span>Error</span>
         </>
       ) : (
         <>

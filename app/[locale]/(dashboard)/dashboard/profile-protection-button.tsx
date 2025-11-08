@@ -2,22 +2,29 @@
 
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 export function ProfileProtectionButton() {
   const router = useRouter();
 
   const handleManage = () => {
-    router.push('/settings');
-    window.dispatchEvent(new Event('dashboard:refresh'));
-    console.log('[ProfileProtectionButton] Manage Protection triggered');
+    try {
+      router.push('/settings');
+      toast.success('Navigated to Settings successfully!');
+      window.dispatchEvent(new Event('dashboard:refresh'));
+      console.log('[ProfileProtectionButton] Manage Protection triggered, dashboard refresh dispatched');
+    } catch (error) {
+      console.error('[ProfileProtectionButton] Navigation error:', error);
+      toast.error('Failed to navigate to Settings. Please try again.');
+    }
   };
 
   return (
-    <Button 
-      className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+    <Button
+      className="w-full bg-orange-600 hover:bg-orange-700 text-white font-medium transition-all duration-300 ease-in-out transform hover:scale-[1.02]"
       onClick={handleManage}
     >
-      Manage Protection
+      🛡️ Manage Protection
     </Button>
   );
 }
