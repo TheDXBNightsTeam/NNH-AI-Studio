@@ -16,30 +16,100 @@ import { toast } from 'sonner';
 export function RefreshButton() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   
   const handleRefresh = async () => {
     setLoading(true);
+    setProgress(0);
+
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => Math.min(prev + 10, 90));
+    }, 100);
+    
     try {
       await refreshDashboard();
-      toast.success('Dashboard refreshed!');
+      setProgress(100);
+      toast.success('✅ Dashboard refreshed successfully!');
       window.dispatchEvent(new Event('dashboard:refresh'));
       router.refresh();
     } catch (error) {
       console.error('[handleRefresh] Error:', error);
-      toast.error('Error while refreshing dashboard');
+      toast.error('❌ Failed to refresh dashboard');
     } finally {
-      setLoading(false);
+      clearInterval(progressInterval);
+      setTimeout(() => {
+        setLoading(false);
+        setProgress(0);
+      }, 500);
     }
   };
   
   return (
+    <div className="relative">
+      <Button
+        onClick={handleRefresh}
+        disabled={loading}
+        size="sm"
+        className="bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 relative overflow-hidden"
+      >
+        <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+        {loading ? 'Refreshing...' : 'Refresh Now'}
+        {loading && (
+          <div
+            className="absolute bottom-0 left-0 h-1 bg-white/30 transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        )}
+      </Button>
+    </div>
+  );
+}
+
+export function SyncAllButton() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  const handleSyncAll = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/gmb/sync-all', {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(`✅ ${data.message || 'Locations synced successfully!'}`);
+        window.dispatchEvent(new Event('dashboard:refresh'));
+        router.refresh();
+      } else {
+        toast.error(`❌ ${data.error || 'Failed to sync locations'}`);
+      }
+    } catch (error) {
+      console.error('[SyncAllButton] Error:', error);
+      toast.error('❌ An error occurred while syncing');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
     <Button
-      onClick={handleRefresh}
+      onClick={handleSyncAll}
       disabled={loading}
-      className="bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50"
+      className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white px-6"
     >
-      <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-      {loading ? 'Refreshing...' : 'Refresh Now'}
+      {loading ? (
+        <>
+          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+          Syncing...
+        </>
+      ) : (
+        <>
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Sync All Locations
+        </>
+      )}
     </Button>
   );
 }
