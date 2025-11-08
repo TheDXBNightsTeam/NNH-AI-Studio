@@ -1,13 +1,21 @@
 /**
  * GMB OAuth Connection Flow Test Suite
  * Tests the complete connection, disconnection, and re-authentication flow
+/**
+ * GMB OAuth Connection Flow Test Suite
+ * Tests the complete connection, disconnection, and re-authentication flow
+/**
+ * GMB OAuth Connection Flow Test Suite
+ * Tests the complete connection, disconnection, and re-authentication flow
+/**
+ * GMB OAuth Connection Flow Test Suite
+ * Tests the complete connection, disconnection, and re-authentication flow
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createClient } from '@/lib/supabase/server';
 import { disconnectGMBAccount } from '@/server/actions/gmb-account';
 
-// Mock Supabase client
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => ({
     auth: {
