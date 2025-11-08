@@ -70,7 +70,7 @@ function GridStatsCard({
 export default async function GridTrackingPage() {
   // In Phase 3, fetch from database
   // For now, placeholder
-  const gridData: GridData | null = null; // TODO: Replace with Supabase or API fetch
+  const gridData = null as GridData | null; // TODO: Replace with Supabase or API fetch
   
   return (
     <div className="min-h-screen bg-zinc-950 p-6">
