@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
 import { 
   Link2, 
   Unlink, 
@@ -31,10 +32,10 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { createClient } from "@/lib/supabase/client"
 import { disconnectGMBAccount, type DisconnectOption } from "@/server/actions/gmb-account"
 import { cn } from "@/lib/utils"
 import { formatDistanceToNow } from "date-fns"
+import { useGmbStatus } from "@/hooks/use-gmb-status"
 
 interface GMBConnectionManagerProps {
   /** UI density - compact for dashboard widgets, full for settings page */
@@ -67,16 +68,15 @@ export function GMBConnectionManager({
   onSuccess
 }: GMBConnectionManagerProps) {
   const router = useRouter()
-  const supabase = createClient()
   const isMounted = useRef(true)
-  
-  // States
-  const [loading, setLoading] = useState(true)
-  const [gmbConnected, setGmbConnected] = useState(false)
-  const [gmbAccounts, setGmbAccounts] = useState<GMBAccount[]>([])
-  const [activeAccount, setActiveAccount] = useState<GMBAccount | null>(null)
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null)
-  const [syncSchedule, setSyncSchedule] = useState<string>('manual')
+  const { 
+    loading,
+    connected: gmbConnected,
+    activeAccount,
+    lastSync: lastSyncTime,
+    syncSchedule,
+    refresh: refreshGmbStatus
+  } = useGmbStatus()
   
   // Action states
   const [connecting, setConnecting] = useState(false)
@@ -88,71 +88,34 @@ export function GMBConnectionManager({
   const [showDisconnectDialog, setShowDisconnectDialog] = useState(false)
   const [disconnectOption, setDisconnectOption] = useState<DisconnectOption>('keep')
 
-  // Load current connection state
-  const loadConnectionStatus = useCallback(async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setGmbConnected(false)
-        setLoading(false)
-        return
-      }
+  // Progress & SSE state
+  const sseRef = useRef<EventSource | null>(null)
+  const [progressOpen, setProgressOpen] = useState(false)
+  const [phases, setPhases] = useState<Array<{phase:string,status:string,last_counts?:any,last_error?:string|null,last_started_at?:string|null,last_ended_at?:string|null,avg_duration_ms?:number|null}>>([])
+  const [estimateMs, setEstimateMs] = useState<number>(0)
 
-      const { data: accounts, error } = await supabase
-        .from('gmb_accounts')
-        .select('id, account_name, email, is_active, last_sync, settings')
-        .eq('user_id', user.id)
-
-      if (error) {
-        console.error('Error fetching GMB accounts:', error)
-        setGmbConnected(false)
-        setLoading(false)
-        return
-      }
-
-      const accountsArray = accounts || []
-      const active = accountsArray.find((acc: GMBAccount) => acc.is_active) || null
-      
-      setGmbAccounts(accountsArray)
-      setActiveAccount(active)
-      setGmbConnected(!!active)
-      
-      if (active) {
-        if (active.last_sync) {
-          setLastSyncTime(new Date(active.last_sync))
-        }
-        if (active.settings?.syncSchedule) {
-          setSyncSchedule(active.settings.syncSchedule)
-        }
-      }
-    } catch (error) {
-      console.error('Error loading connection status:', error)
-      setGmbConnected(false)
-    } finally {
-      setLoading(false)
-    }
-  }, [supabase])
-
+  // Map legacy window events to hook refresh (temporary until SSE/BroadcastChannel)
   useEffect(() => {
     isMounted.current = true
-    loadConnectionStatus()
-    
-    // Listen for GMB disconnection and reconnection events
-    const handleConnectionEvent = () => {
-      if (isMounted.current) {
-        loadConnectionStatus()
-      }
-    }
-    
+    const handleConnectionEvent = () => { if (isMounted.current) refreshGmbStatus() }
     window.addEventListener('gmb-disconnected', handleConnectionEvent)
     window.addEventListener('gmb-reconnected', handleConnectionEvent)
-    
+    window.addEventListener('gmb-sync-complete', handleConnectionEvent)
     return () => {
       isMounted.current = false
+      try { sseRef.current?.close() } catch {}
       window.removeEventListener('gmb-disconnected', handleConnectionEvent)
       window.removeEventListener('gmb-reconnected', handleConnectionEvent)
+      window.removeEventListener('gmb-sync-complete', handleConnectionEvent)
     }
-  }, [loadConnectionStatus])
+  }, [refreshGmbStatus])
+
+  // Close SSE when user hides panel
+  useEffect(() => {
+    if (!progressOpen) {
+      try { sseRef.current?.close() } catch {}
+    }
+  }, [progressOpen])
 
   // Start OAuth connection flow
   const handleConnect = async () => {
@@ -193,6 +156,49 @@ export function GMBConnectionManager({
   }
 
   // Sync account data
+
+  const computePercent = (items: typeof phases) => {
+    if (!items || items.length === 0) return 0
+    const weights = items.length
+    let score = 0
+    for (const p of items) {
+      if (p.status === 'completed' || p.status === 'skipped') score += 1
+      else if (p.status === 'started') score += 0.5
+    }
+    return Math.round((score / weights) * 100)
+  }
+
+  const startProgressStream = async (accountId: string) => {
+    // snapshot أولي
+    try {
+      const res = await fetch(`/api/gmb/sync/status?accountId=${accountId}`)
+      if (res.ok) {
+        const json = await res.json()
+        setPhases(json.phases || [])
+        setEstimateMs(json.estimate_remaining_ms || 0)
+      }
+    } catch {}
+
+    // افتح SSE
+    try {
+      const es = new EventSource(`/api/gmb/sync/events?accountId=${accountId}`)
+      sseRef.current = es
+      es.onmessage = (evt) => {
+        try {
+          const payload = JSON.parse(evt.data)
+          if (payload?.type === 'summary') {
+            setPhases(payload.phases || [])
+          } else if (payload?.type === 'done') {
+            es.close()
+          }
+        } catch {}
+      }
+      es.onerror = () => {
+        try { es.close() } catch {}
+      }
+    } catch {}
+  }
+
   const handleSync = async () => {
     if (!activeAccount) {
       toast.error('No active account', {
@@ -202,6 +208,11 @@ export function GMBConnectionManager({
     }
 
     setSyncing(true)
+    setProgressOpen(true)
+    setPhases([])
+    setEstimateMs(0)
+    startProgressStream(activeAccount.id)
+
     console.log('[GMB Sync] Starting sync for account:', activeAccount.id)
     
     try {
@@ -210,7 +221,7 @@ export function GMBConnectionManager({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           accountId: activeAccount.id, 
-          syncType: 'incremental' 
+          syncType: 'full' 
         })
       })
 
@@ -229,7 +240,7 @@ export function GMBConnectionManager({
             'Data updated successfully'
         })
         
-        await loadConnectionStatus()
+        await refreshGmbStatus()
         onSuccess?.()
         router.refresh()
         
@@ -245,6 +256,8 @@ export function GMBConnectionManager({
       })
     } finally {
       setSyncing(false)
+      // أغلق الـ SSE بعد مهلة قصيرة لإتاحة آخر تحديث
+      setTimeout(() => { try { sseRef.current?.close() } catch {} }, 1500)
     }
   }
 
@@ -306,7 +319,7 @@ export function GMBConnectionManager({
         setShowDisconnectDialog(false)
         setDisconnectOption('keep') // Reset to default
         
-        await loadConnectionStatus()
+  await refreshGmbStatus()
         onSuccess?.()
         router.refresh()
         
@@ -469,6 +482,28 @@ export function GMBConnectionManager({
               </AnimatePresence>
             </div>
           </div>
+        {/* Progress (compact) */}
+        {progressOpen && gmbConnected && (
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Sync</span>
+              <span className="text-xs text-muted-foreground">{computePercent(phases)}%</span>
+            </div>
+            <Progress value={computePercent(phases)} />
+            <div className="grid grid-cols-2 gap-2">
+              {phases.map(p => (
+                <div key={p.phase} className="rounded-md border border-primary/20 p-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs capitalize truncate">{p.phase}</span>
+                    {p.status === 'completed' && <CheckCircle className="h-3 w-3 text-green-500" />}
+                    {p.status === 'started' && <Clock className="h-3 w-3 animate-spin text-primary" />}
+                    {p.status === 'error' && <AlertTriangle className="h-3 w-3 text-red-500" />}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         </CardContent>
         
         {/* Disconnect Dialog */}
@@ -573,7 +608,7 @@ export function GMBConnectionManager({
                     </>
                   ) : (
                     <>
-                      <Shield className="h-4 w-4 mr-2" /> Sync now
+                      <Shield className="h-4 w-4 mr-2" /> Sync full
                     </>
                   )}
                 </Button>
@@ -622,6 +657,48 @@ export function GMBConnectionManager({
             )}
           </AnimatePresence>
         </div>
+
+        {/* Progress Panel */}
+        {progressOpen && gmbConnected && (
+          <div className="mt-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">Sync Progress</p>
+              <span className="text-xs text-muted-foreground">{computePercent(phases)}%</span>
+            </div>
+            <Progress value={computePercent(phases)} />
+            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+              {phases.map(p => (
+                <div key={p.phase} className={cn("rounded-md border p-2 text-xs", p.status === 'error' ? 'border-red-500/40 bg-red-500/10' : p.status === 'completed' ? 'border-green-500/40 bg-green-500/10' : 'border-primary/30 bg-primary/5')}> 
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold capitalize">{p.phase}</span>
+                    {p.status === 'completed' && <CheckCircle className="h-3 w-3 text-green-500" />}
+                    {p.status === 'started' && <Clock className="h-3 w-3 animate-spin text-primary" />}
+                    {p.status === 'error' && <AlertTriangle className="h-3 w-3 text-red-500" />}
+                    {p.status === 'skipped' && <RefreshCw className="h-3 w-3 text-muted-foreground" />}
+                  </div>
+                  <p className="text-muted-foreground truncate">{p.status}</p>
+                  {p.last_counts && Object.keys(p.last_counts).length > 0 && (
+                    <p className="mt-1">
+                      {Object.entries(p.last_counts).map(([k,v]) => `${k}:${v}`).join(' ')}
+                    </p>
+                  )}
+                  {p.last_error && (
+                    <p className="mt-1 text-red-500">{p.last_error}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+            {estimateMs > 0 && (
+              <p className="text-xs text-muted-foreground">Estimated remaining ~ {Math.round(estimateMs/1000)}s</p>
+            )}
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => setProgressOpen(false)}>Hide</Button>
+              {!syncing && (
+                <Button size="sm" variant="outline" onClick={() => { setPhases([]); setProgressOpen(false); }}>Clear</Button>
+              )}
+            </div>
+          </div>
+        )}
 
         {!gmbConnected && (
           <p className="text-xs text-muted-foreground mt-3">
