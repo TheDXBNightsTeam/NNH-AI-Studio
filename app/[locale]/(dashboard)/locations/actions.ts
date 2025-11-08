@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createServerClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { toast } from 'sonner';
 
 const MAX_RETRIES = 3;
@@ -26,7 +26,7 @@ async function withRetry(fn: () => Promise<any>, actionName: string) {
 }
 
 async function logAction(action: string, status: string, details?: any) {
-  const supabase = createServerClient();
+  const supabase = createClient();
   try {
     await supabase.from('location_action_logs').insert({
       action,
