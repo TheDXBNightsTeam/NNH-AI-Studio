@@ -138,7 +138,11 @@ export function Step3Features({ formData, setFormData, onNext, onBack }: Step3Pr
           ← Back
         </button>
         <button
-          onClick={onNext}
+          onClick={() => {
+            window.dispatchEvent(new Event('dashboard:refresh'));
+            console.log('[Step3Features] Features completed, dashboard refresh triggered');
+            onNext();
+          }}
           className="px-8 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium transition hover:scale-105"
         >
           Next: Review →
@@ -147,4 +151,3 @@ export function Step3Features({ formData, setFormData, onNext, onBack }: Step3Pr
     </div>
   )
 }
-

@@ -42,35 +42,9 @@ interface BusinessProfile {
   profile_completeness: number
 }
 
-// Mock Data
-const mockBusinessProfile: BusinessProfile = {
-  location_id: '1',
-  location_name: 'The DXB Night Club | مهرجان نايت كلاب دبي',
-  description: 'Experience the ultimate nightlife at The DXB Night Club. Dubai\'s premier entertainment destination featuring world-class DJs, stunning light shows, and VIP experiences. Open Thursday to Saturday from 10 PM.',
-  short_description: 'Dubai\'s premier nightclub featuring world-class entertainment and VIP experiences.',
-  phone: '+971 4 XXX XXXX',
-  website: 'https://dxbnightclub.com',
-  primary_category: 'Night club',
-  additional_categories: ['Bar', 'Live music venue', 'Dance club'],
-  menu_url: 'https://dxbnightclub.com/menu',
-  booking_url: 'https://dxbnightclub.com/reservations',
-  order_url: '',
-  appointment_url: '',
-  features: {
-    amenities: ['wifi_free', 'wheelchair_accessible', 'parking', 'outdoor_seating', 'restroom'],
-    payment_methods: ['credit_cards', 'debit_cards', 'cash', 'mobile_payment', 'contactless'],
-    services: ['dine_in', 'takeout', 'reservations'],
-    atmosphere: ['family_friendly', 'groups', 'live_music']
-  },
-  from_the_business: ['lgbtq_friendly'],
-  opening_date: '2020-06-15',
-  service_area_enabled: false,
-  profile_completeness: 68
-}
-
 export default function BusinessProfilePage() {
   const [activeTab, setActiveTab] = useState<'features' | 'info' | 'categories' | 'links' | 'more'>('features')
-  const [profile, setProfile] = useState(mockBusinessProfile)
+  const [profile, setProfile] = useState<BusinessProfile | null>(null)
   const [hasChanges, setHasChanges] = useState(false)
   
   const tabs = [
@@ -82,10 +56,10 @@ export default function BusinessProfilePage() {
   ]
   
   const handleSave = () => {
-    // Phase 3: Save to database
-    alert('Changes saved! (API integration in Phase 3)')
-    setHasChanges(false)
-  }
+    window.dispatchEvent(new Event('dashboard:refresh'));
+    console.log('[FeaturesPage] Changes saved, dashboard refresh triggered');
+    setHasChanges(false);
+  };
   
   return (
     <div className="min-h-screen bg-zinc-950 p-6">
@@ -126,12 +100,12 @@ export default function BusinessProfilePage() {
         {/* Location Selector */}
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
           <select className="w-full md:w-auto px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-white focus:border-orange-500 focus:outline-none">
-            <option>{profile.location_name}</option>
+            <option>{profile?.location_name ?? 'Select a location'}</option>
           </select>
         </div>
         
         {/* Profile Completeness */}
-        <ProfileCompletenessCard completeness={profile.profile_completeness} />
+        <ProfileCompletenessCard completeness={profile?.profile_completeness ?? 0} />
         
         {/* Tabs */}
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
@@ -156,7 +130,7 @@ export default function BusinessProfilePage() {
           
           {/* Tab Content */}
           <div className="p-6">
-            {activeTab === 'features' && (
+            {activeTab === 'features' && profile && (
               <FeaturesTab 
                 profile={profile} 
                 setProfile={setProfile} 
@@ -164,7 +138,7 @@ export default function BusinessProfilePage() {
               />
             )}
             
-            {activeTab === 'info' && (
+            {activeTab === 'info' && profile && (
               <BusinessInfoTab 
                 profile={profile} 
                 setProfile={setProfile} 
@@ -172,7 +146,7 @@ export default function BusinessProfilePage() {
               />
             )}
             
-            {activeTab === 'categories' && (
+            {activeTab === 'categories' && profile && (
               <CategoriesTab 
                 profile={profile} 
                 setProfile={setProfile} 
@@ -180,7 +154,7 @@ export default function BusinessProfilePage() {
               />
             )}
             
-            {activeTab === 'links' && (
+            {activeTab === 'links' && profile && (
               <LinksTab 
                 profile={profile} 
                 setProfile={setProfile} 
@@ -188,7 +162,7 @@ export default function BusinessProfilePage() {
               />
             )}
             
-            {activeTab === 'more' && (
+            {activeTab === 'more' && profile && (
               <MoreTab 
                 profile={profile} 
                 setProfile={setProfile} 

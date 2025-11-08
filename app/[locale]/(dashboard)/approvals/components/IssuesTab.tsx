@@ -129,7 +129,11 @@ export function IssuesTab({ locations, onRetry }: IssuesTabProps) {
             {/* Actions */}
             <div className="flex gap-2">
               <button 
-                onClick={() => onRetry(location.id)}
+                onClick={() => {
+                  onRetry(location.id);
+                  window.dispatchEvent(new Event('dashboard:refresh'));
+                  console.log('[IssuesTab] Retry clicked, dashboard refresh dispatched');
+                }}
                 className="flex-1 px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium transition flex items-center justify-center gap-2"
               >
                 <span>🔄</span>
@@ -190,4 +194,3 @@ export function IssuesTab({ locations, onRetry }: IssuesTabProps) {
     </div>
   )
 }
-

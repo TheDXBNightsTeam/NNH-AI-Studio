@@ -7,7 +7,13 @@ export function QuickActionButtons() {
   const router = useRouter();
 
   const handleSyncAll = () => {
-    router.refresh();
+    try {
+      window.dispatchEvent(new Event('dashboard:refresh'));
+      router.refresh();
+      console.log('[QuickActionButtons] Sync All triggered');
+    } catch (error) {
+      console.error('[QuickActionButtons] Error during Sync All:', error);
+    }
   };
 
   return (

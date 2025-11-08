@@ -123,6 +123,8 @@ export default function LocationsPage() {
         const data = await response.json();
         const tookSeconds = Math.round((data.took_ms || 0) / 1000);
         toast.success(`Locations synced successfully! (took ${tookSeconds}s)`);
+        window.dispatchEvent(new Event('dashboard:refresh'));
+        console.log('[LocationsPage] Locations synced, dashboard refresh triggered');
         
         // Refresh the page to update stats
         window.location.reload();
@@ -210,6 +212,8 @@ export default function LocationsPage() {
       window.URL.revokeObjectURL(url);
 
       toast.success('Locations exported successfully!');
+      window.dispatchEvent(new Event('dashboard:refresh'));
+      console.log('[LocationsPage] Locations exported, dashboard refresh triggered');
     } catch (error) {
       console.error('Export error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to export locations');
@@ -333,6 +337,8 @@ export default function LocationsPage() {
             setShowAddDialog(false);
             // Refresh the page to update stats
             window.location.reload();
+            window.dispatchEvent(new Event('dashboard:refresh'));
+            console.log('[LocationsPage] Location added, dashboard refresh triggered');
           }}
         />
       </div>

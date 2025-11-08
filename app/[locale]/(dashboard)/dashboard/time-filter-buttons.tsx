@@ -19,6 +19,8 @@ function TimeFilterButtonsContent() {
     }
     router.push(`?${params.toString()}`);
     router.refresh();
+    window.dispatchEvent(new Event('dashboard:refresh'));
+    console.log('[TimeFilterButtons] Filter changed to', filter);
   };
 
   return (
@@ -83,4 +85,3 @@ export function TimeFilterButtons() {
     </Suspense>
   );
 }
-

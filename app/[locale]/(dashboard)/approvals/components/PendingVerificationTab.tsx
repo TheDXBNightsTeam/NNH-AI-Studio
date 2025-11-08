@@ -34,6 +34,8 @@ export function PendingVerificationTab({ locations, onVerificationComplete }: Pe
   const handleVerify = (locationId: string) => {
     if (verificationCode.trim().length >= 5) {
       onVerificationComplete(locationId, verificationCode)
+      window.dispatchEvent(new Event('dashboard:refresh'));
+      console.log('[PendingVerificationTab] Verification completed, dashboard refresh dispatched');
       setVerificationCode('')
       setSelectedLocation(null)
     }

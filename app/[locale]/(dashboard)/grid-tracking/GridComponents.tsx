@@ -181,52 +181,57 @@ export function GridPointDetails({ gridData }: { gridData: any }) {
   );
 }
 
-export function RankingTrends() {
-  // Mock trend data
-  const trends = [
-    { date: 'Nov 1', avg: 6.5 },
-    { date: 'Nov 2', avg: 6.2 },
-    { date: 'Nov 3', avg: 5.8 },
-    { date: 'Nov 4', avg: 5.5 },
-    { date: 'Nov 5', avg: 5.3 },
-    { date: 'Nov 6', avg: 5.2 }
-  ];
-  
+'use client';
+
+import { useEffect } from 'react';
+
+export function RankingTrends({ trends }: { trends: { date: string; avg: number }[] }) {
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('dashboard:refresh'));
+      console.log('[RankingTrends] Trends component mounted, dashboard refresh dispatched');
+    }
+  }, []);
+
+  if (!trends || trends.length === 0) {
+    return (
+      <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 text-center text-zinc-500">
+        <div className="text-4xl mb-2">📈</div>
+        <p>No ranking trends data available</p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-      <h3 className="text-lg font-bold text-white mb-4">
-        📈 Ranking Trends
-      </h3>
-      
+      <h3 className="text-lg font-bold text-white mb-4">📈 Ranking Trends</h3>
       <div className="h-48 flex items-end gap-2">
         {trends.map((day, index) => {
           const height = ((10 - day.avg) / 10) * 100;
           return (
             <div key={index} className="flex-1 flex flex-col items-center gap-2">
-              <div className="text-xs text-white font-medium">
-                {day.avg}
-              </div>
-              <div 
+              <div className="text-xs text-white font-medium">{day.avg.toFixed(1)}</div>
+              <div
                 className="w-full bg-gradient-to-t from-orange-600 to-orange-400 rounded-t transition-all hover:opacity-80"
                 style={{ height: `${height}%` }}
               />
-              <div className="text-xs text-zinc-500 rotate-45 origin-left whitespace-nowrap">
-                {day.date}
-              </div>
+              <div className="text-xs text-zinc-500 rotate-45 origin-left whitespace-nowrap">{day.date}</div>
             </div>
           );
         })}
       </div>
-      
+
       <div className="mt-6 flex items-center justify-between text-sm flex-wrap gap-2">
         <div className="text-zinc-400">
           Trend: <span className="text-green-400">↗ Improving</span>
         </div>
         <div className="text-zinc-400">
-          Change: <span className="text-green-400">-1.3 avg rank</span>
+          Change:{' '}
+          <span className="text-green-400">
+            {Math.min(...trends.map((t) => t.avg)) - Math.max(...trends.map((t) => t.avg))} avg rank
+          </span>
         </div>
       </div>
     </div>
   );
 }
-

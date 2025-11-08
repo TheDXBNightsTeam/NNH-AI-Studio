@@ -14,7 +14,12 @@ export async function generateMetadata() {
 
 export default async function AICockpitPage() {
   const t = await getTranslations('AICockpit')
-  
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('dashboard:refresh'));
+    console.log('[AICockpitPage] AI Cockpit loaded, dashboard refresh triggered');
+  }
+
   return (
     <div className="space-y-6 p-6">
       <div>

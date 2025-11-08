@@ -171,7 +171,11 @@ export function Step1BasicInfo({ formData, setFormData, onNext }: Step1Props) {
       {/* Actions */}
       <div className="flex justify-end gap-3 pt-6 border-t border-zinc-800">
         <button
-          onClick={onNext}
+          onClick={() => {
+            window.dispatchEvent(new Event('dashboard:refresh'));
+            console.log('[Step1BasicInfo] Basic info completed, dashboard refresh triggered');
+            onNext();
+          }}
           disabled={!isValid}
           className={`
             px-8 py-3 rounded-lg font-medium transition-all flex items-center gap-2
@@ -187,4 +191,3 @@ export function Step1BasicInfo({ formData, setFormData, onNext }: Step1Props) {
     </div>
   )
 }
-

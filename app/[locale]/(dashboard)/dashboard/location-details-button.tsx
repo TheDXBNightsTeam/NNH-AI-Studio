@@ -13,8 +13,12 @@ export function LocationDetailsButton({ locationId }: LocationDetailsButtonProps
   const handleViewDetails = () => {
     if (locationId) {
       router.push(`/locations/${locationId}`);
+      window.dispatchEvent(new Event('dashboard:refresh'));
+      console.log('[LocationDetailsButton] View Details triggered');
     } else {
       router.push('/locations');
+      window.dispatchEvent(new Event('dashboard:refresh'));
+      console.log('[LocationDetailsButton] View Details triggered');
     }
   };
 
@@ -29,4 +33,3 @@ export function LocationDetailsButton({ locationId }: LocationDetailsButtonProps
     </Button>
   );
 }
-

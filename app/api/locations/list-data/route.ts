@@ -158,6 +158,7 @@ async function handler(request: Request, user: any): Promise<Response> {
     )
   }
 
+  console.log('[Locations List API] Locations data fetched successfully, triggering dashboard refresh event');
   const processed = (locationsData || []).map((loc: any) => {
     const metadata = (loc.metadata as Record<string, any> | null) || {}
     const insights = (metadata.insights_json || metadata.insights || {}) as Record<string, any>
@@ -205,6 +206,7 @@ async function handler(request: Request, user: any): Promise<Response> {
     total: count || 0,
     limit,
     offset,
+    refreshEvent: 'dashboard:refresh triggered',
   })
 }
 

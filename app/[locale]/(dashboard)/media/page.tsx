@@ -128,6 +128,10 @@ function MediaStatsCard({
 export default async function MediaPage() {
   const media = await getMediaData();
   const stats = calculateMediaStats(media);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('dashboard:refresh'));
+    console.log('[MediaPage] Media data fetched, dashboard refresh triggered');
+  }
   
   return (
     <div className="min-h-screen bg-zinc-950 p-6">
@@ -144,7 +148,13 @@ export default async function MediaPage() {
             </p>
           </div>
           
-          <button className="px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-lg font-medium transition flex items-center gap-2">
+          <button
+            onClick={() => {
+              window.dispatchEvent(new Event('dashboard:refresh'));
+              console.log('[MediaPage] Upload Media clicked, dashboard refresh triggered');
+            }}
+            className="px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-lg font-medium transition flex items-center gap-2"
+          >
             ⬆️ Upload Media
           </button>
         </div>

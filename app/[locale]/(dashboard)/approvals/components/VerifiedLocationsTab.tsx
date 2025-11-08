@@ -114,15 +114,37 @@ export function VerifiedLocationsTab({ locations }: VerifiedLocationsTabProps) {
             
             {/* Actions */}
             <div className="flex gap-2">
-              <button className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition flex items-center justify-center gap-2">
+              <button
+                onClick={() => {
+                  window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.business_name)}`, '_blank');
+                  window.dispatchEvent(new Event('dashboard:refresh'));
+                  console.log('[VerifiedLocationsTab] View on Google clicked, dashboard refresh dispatched');
+                }}
+                className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition flex items-center justify-center gap-2"
+              >
                 <span>👁️</span>
                 <span>View on Google</span>
               </button>
-              <button className="flex-1 px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium transition flex items-center justify-center gap-2">
+
+              <button
+                onClick={() => {
+                  console.log('[VerifiedLocationsTab] Edit Details clicked');
+                  window.dispatchEvent(new Event('dashboard:refresh'));
+                }}
+                className="flex-1 px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium transition flex items-center justify-center gap-2"
+              >
                 <span>✏️</span>
                 <span>Edit Details</span>
               </button>
-              <button className="px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium transition" title="More options">
+
+              <button
+                onClick={() => {
+                  console.log('[VerifiedLocationsTab] More options clicked');
+                  window.dispatchEvent(new Event('dashboard:refresh'));
+                }}
+                className="px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium transition"
+                title="More options"
+              >
                 ⚙️
               </button>
             </div>
@@ -164,4 +186,3 @@ export function VerifiedLocationsTab({ locations }: VerifiedLocationsTabProps) {
     </div>
   )
 }
-

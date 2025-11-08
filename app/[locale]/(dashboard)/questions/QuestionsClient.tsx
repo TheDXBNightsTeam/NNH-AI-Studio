@@ -248,7 +248,8 @@ export function QuestionCard({
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          // Reload page to show updated answer
+          window.dispatchEvent(new Event('dashboard:refresh'));
+          console.log('[QuestionsClient] Question answered, dashboard refresh triggered');
           window.location.reload();
         } else {
           alert(data.error || 'Failed to submit answer. Please try again.');

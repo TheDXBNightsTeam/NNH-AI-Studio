@@ -8,6 +8,8 @@ export function ProfileProtectionButton() {
 
   const handleManage = () => {
     router.push('/settings');
+    window.dispatchEvent(new Event('dashboard:refresh'));
+    console.log('[ProfileProtectionButton] Manage Protection triggered');
   };
 
   return (
@@ -19,4 +21,3 @@ export function ProfileProtectionButton() {
     </Button>
   );
 }
-

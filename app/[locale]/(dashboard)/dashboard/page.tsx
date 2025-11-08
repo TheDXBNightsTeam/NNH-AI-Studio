@@ -31,6 +31,9 @@ import { ExpandableFeed } from '@/components/dashboard/ExpandableFeed';
 import Link from 'next/link';
 import { PerformanceChart } from './PerformanceChart';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
 // TypeScript Interfaces
 interface DashboardStats {
   totalLocations: number;
@@ -126,7 +129,7 @@ async function getDashboardData(startDate?: string, endDate?: string) {
       .from('gmb_locations')
       .select('*')
       .eq('user_id', user.id)
-      .eq('is_active', true);
+      .in('is_active', [true, false]);
     
     if (locationsError) {
       // Silently handle error, return empty array
@@ -319,6 +322,14 @@ export default async function DashboardPage({
   
   // Fetch all data with optional time filter
   const { reviews, locations, questions } = await getDashboardData(startDate, endDate);
+
+  // Setup router and effect for instant refresh on dashboard:refresh event
+  const router = useRouter();
+  useEffect(() => {
+    const refreshDashboard = () => router.refresh();
+    window.addEventListener('dashboard:refresh', refreshDashboard);
+    return () => window.removeEventListener('dashboard:refresh', refreshDashboard);
+  }, [router]);
   
   // Calculate stats
   const avgRating = calculateAverageRating(reviews);
@@ -518,8 +529,8 @@ export default async function DashboardPage({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Badge className={activeLocation ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-orange-500/20 text-orange-400 border-orange-500/30"}>
-                    {activeLocation ? "Connected" : "Disconnected"}
+                  <Badge className={activeLocation?.is_active ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-orange-500/20 text-orange-400 border-orange-500/30"}>
+                    {activeLocation?.is_active ? "Connected" : "Disconnected"}
                   </Badge>
                 </div>
                 

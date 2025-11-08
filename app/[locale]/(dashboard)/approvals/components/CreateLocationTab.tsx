@@ -77,6 +77,8 @@ export function CreateLocationTab({ onLocationCreated }: CreateLocationTabProps)
     }
     
     onLocationCreated(newLocation)
+    window.dispatchEvent(new Event('dashboard:refresh'));
+    console.log('[CreateLocationTab] New location created, dashboard refresh triggered');
     
     // Reset form
     setStep(1)
