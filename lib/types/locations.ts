@@ -1,4 +1,3 @@
-/Users/nnh-ai-studio/Documents/NNH-AI-Studio/lib/types/locations.ts
 /**
  * @file locations.ts
  * Centralized TypeScript interfaces for all Location-related data structures.
