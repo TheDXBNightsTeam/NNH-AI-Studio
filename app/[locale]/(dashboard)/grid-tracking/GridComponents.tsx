@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export function GridHeatmap({ gridData }: { gridData: any }) {
   const [hoveredCell, setHoveredCell] = useState<any>(null);
@@ -180,8 +180,6 @@ export function GridPointDetails({ gridData }: { gridData: any }) {
     </div>
   );
 }
-
-import { useEffect } from 'react';
 
 export function RankingTrends({ trends }: { trends: { date: string; avg: number }[] }) {
   useEffect(() => {

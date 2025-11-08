@@ -3,28 +3,27 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { syncLocation, disconnectLocation } from './actions';
 
-export function ActiveLocationActions() {
+export function ActiveLocationActions({ locationId }: { locationId: string }) {
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
   const router = useRouter();
 
   const handleSync = async () => {
     setLoading(true);
     try {
-      const result = await syncLocation();
+      const result = await syncLocation(locationId);
       if (result.success) {
-        toast.success({ description: result.message || 'Location synced successfully!' });
+        toast.success(result.message || 'Location synced successfully!');
         window.dispatchEvent(new Event('dashboard:refresh'));
         router.refresh();
       } else {
-        toast.error({ description: result.error || 'Failed to sync location' });
+        toast.error(result.error || 'Failed to sync location');
       }
     } catch (error) {
       console.error('Sync failed:', error);
-      toast.error({ description: 'An unexpected error occurred while syncing' });
+      toast.error('An unexpected error occurred while syncing');
     } finally {
       setLoading(false);
     }
@@ -33,17 +32,17 @@ export function ActiveLocationActions() {
   const handleDisconnect = async () => {
     setLoading(true);
     try {
-      const result = await disconnectLocation();
+      const result = await disconnectLocation(locationId);
       if (result.success) {
-        toast.success({ description: result.message || 'Location disconnected successfully' });
+        toast.success(result.message || 'Location disconnected successfully');
         window.dispatchEvent(new Event('dashboard:refresh'));
         router.refresh();
       } else {
-        toast.error({ description: result.error || 'Failed to disconnect location' });
+        toast.error(result.error || 'Failed to disconnect location');
       }
     } catch (error) {
       console.error('Disconnect failed:', error);
-      toast.error({ description: 'An unexpected error occurred while disconnecting' });
+      toast.error('An unexpected error occurred while disconnecting');
     } finally {
       setLoading(false);
     }
