@@ -19,10 +19,17 @@ export function RefreshButton() {
   
   const handleRefresh = async () => {
     setLoading(true);
-    await refreshDashboard();
-    router.refresh();
-    setLoading(false);
-    toast.success('Dashboard refreshed!');
+    try {
+      await refreshDashboard();
+      toast.success('Dashboard refreshed!');
+      window.dispatchEvent(new Event('dashboard:refresh'));
+      router.refresh();
+    } catch (error) {
+      console.error('[handleRefresh] Error:', error);
+      toast.error('Error while refreshing dashboard');
+    } finally {
+      setLoading(false);
+    }
   };
   
   return (
@@ -47,11 +54,13 @@ export function SyncButton({ locationId }: { locationId: string }) {
       const result = await syncLocation(locationId);
       if (result.success) {
         toast.success(result.message || 'Location synced successfully!');
+        window.dispatchEvent(new Event('dashboard:refresh'));
         router.refresh();
       } else {
         toast.error(result.error || 'Failed to sync location');
       }
     } catch (error) {
+      console.error('[handleSync] Error:', error);
       toast.error('An unexpected error occurred while syncing');
     } finally {
       setLoading(false);
@@ -84,11 +93,13 @@ export function DisconnectButton({ locationId }: { locationId: string }) {
       if (result.success) {
         toast.success(result.message || 'Location disconnected successfully');
         setOpen(false);
+        window.dispatchEvent(new Event('dashboard:refresh'));
         router.refresh();
       } else {
         toast.error(result.error || 'Failed to disconnect location');
       }
     } catch (error) {
+      console.error('[handleDisconnect] Error:', error);
       toast.error('An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -121,6 +132,7 @@ export function DisconnectButton({ locationId }: { locationId: string }) {
 }
 
 export function GenerateTasksButton({ locationId }: { locationId: string | null }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   
   const handleGenerate = async () => {
@@ -128,17 +140,23 @@ export function GenerateTasksButton({ locationId }: { locationId: string | null 
       toast.error('No location selected!');
       return;
     }
-    
+
     setLoading(true);
-    const result = await generateWeeklyTasks(locationId);
-    
-    if (result.success) {
-      toast.success('Weekly tasks generated!');
-    } else {
-      toast.error('Failed to generate tasks');
+    try {
+      const result = await generateWeeklyTasks(locationId);
+      if (result.success) {
+        toast.success('Weekly tasks generated!');
+        window.dispatchEvent(new Event('dashboard:refresh'));
+        router.refresh();
+      } else {
+        toast.error('Failed to generate tasks');
+      }
+    } catch (error) {
+      console.error('[handleGenerate] Error:', error);
+      toast.error('An unexpected error occurred while generating tasks');
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
   
   return (

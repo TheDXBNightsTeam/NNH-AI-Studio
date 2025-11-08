@@ -39,6 +39,8 @@ export function AICockpitClient() {
 
     if (response) {
       setGeneratedResponse(response)
+      window.dispatchEvent(new Event('dashboard:refresh'));
+      console.log('[AICockpitClient] AI response generated, dashboard refresh triggered');
     }
   }
 
@@ -121,4 +123,3 @@ export function AICockpitClient() {
     </div>
   )
 }
-

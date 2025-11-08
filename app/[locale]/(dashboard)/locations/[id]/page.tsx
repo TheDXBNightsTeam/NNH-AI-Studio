@@ -42,7 +42,11 @@ export default function LocationDetailPage() {
       <div className="space-y-6">
         <Button
           variant="ghost"
-          onClick={() => router.push('/locations')}
+          onClick={() => {
+            router.push('/locations');
+            window.dispatchEvent(new Event('dashboard:refresh'));
+            console.log('[LocationDetailPage] Back to Locations triggered');
+          }}
           className="mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -57,7 +61,11 @@ export default function LocationDetailPage() {
                 <p className="text-sm text-muted-foreground mb-4">
                   {error?.message || 'The location you are looking for does not exist or you do not have access to it.'}
                 </p>
-                <Button onClick={() => router.push('/locations')}>
+                <Button onClick={() => {
+                  router.push('/locations');
+                  window.dispatchEvent(new Event('dashboard:refresh'));
+                  console.log('[LocationDetailPage] Back to Locations triggered');
+                }}>
                   Go Back to Locations
                 </Button>
               </div>
@@ -81,7 +89,11 @@ export default function LocationDetailPage() {
           location={locationData}
           locationId={locationId}
           metadata={metadata}
-          onRefresh={refetch}
+          onRefresh={() => {
+            refetch();
+            window.dispatchEvent(new Event('dashboard:refresh'));
+            console.log('[LocationDetailPage] Refetch triggered');
+          }}
           gmbAccountId={gmbAccountId}
         />
 

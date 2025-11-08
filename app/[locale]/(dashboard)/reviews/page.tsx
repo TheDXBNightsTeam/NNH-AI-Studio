@@ -54,6 +54,10 @@ export default async function ReviewsPage({
       .eq('is_active', true),
   ]);
 
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('dashboard:refresh'));
+    console.log('[ReviewsPage] Reviews data loaded, dashboard refresh triggered');
+  }
   return (
     <ReviewsClientPage
       initialReviews={reviewsResult.data || []}

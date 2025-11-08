@@ -184,7 +184,11 @@ export function Step2CategoryHours({ formData, setFormData, onNext, onBack }: St
           ← Back
         </button>
         <button
-          onClick={onNext}
+          onClick={() => {
+            window.dispatchEvent(new Event('dashboard:refresh'));
+            console.log('[Step2CategoryHours] Category & Hours completed, dashboard refresh triggered');
+            onNext();
+          }}
           className="px-8 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium transition hover:scale-105"
         >
           Next: Features →
@@ -193,4 +197,3 @@ export function Step2CategoryHours({ formData, setFormData, onNext, onBack }: St
     </div>
   )
 }
-

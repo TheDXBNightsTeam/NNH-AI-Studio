@@ -4,7 +4,12 @@ import { Button } from '@/components/ui/button';
 
 export function WeeklyTasksButton() {
   const handleGenerate = () => {
-    // Functionality implemented in DashboardClient.tsx GenerateTasksButton
+    try {
+      window.dispatchEvent(new Event('dashboard:refresh'));
+      console.log('[WeeklyTasksButton] Generate Weekly Tasks triggered');
+    } catch (error) {
+      console.error('[WeeklyTasksButton] Error during generation:', error);
+    }
   };
 
   return (
@@ -16,4 +21,3 @@ export function WeeklyTasksButton() {
     </Button>
   );
 }
-

@@ -8,7 +8,13 @@ export function RefreshButton() {
   const router = useRouter();
 
   const handleRefresh = () => {
-    router.refresh();
+    try {
+      window.dispatchEvent(new Event('dashboard:refresh'));
+      router.refresh();
+      console.log('[RefreshButton] Dashboard refresh triggered');
+    } catch (error) {
+      console.error('[RefreshButton] Error while refreshing dashboard:', error);
+    }
   };
 
   return (

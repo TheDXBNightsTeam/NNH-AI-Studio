@@ -37,6 +37,8 @@ export default function ApprovalsPage() {
   const handleLocationCreated = (newLocation: LocationCreationRequest) => {
     setLocations([...locations, newLocation])
     setActiveTab('pending')
+    window.dispatchEvent(new Event('dashboard:refresh'));
+    console.log('[ApprovalsPage] New location created, dashboard refresh triggered');
   }
   
   const handleVerificationComplete = (locationId: string, code: string) => {
@@ -54,6 +56,8 @@ export default function ApprovalsPage() {
           }
         : loc
     ))
+    window.dispatchEvent(new Event('dashboard:refresh'));
+    console.log('[ApprovalsPage] Verification completed, dashboard refresh triggered');
   }
   
   return (

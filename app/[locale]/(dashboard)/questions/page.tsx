@@ -56,6 +56,11 @@ export default async function QuestionsPage({
       .eq('is_active', true),
   ]);
 
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('dashboard:refresh'));
+    console.log('[QuestionsPage] Questions data loaded, dashboard refresh triggered');
+  }
+
   return (
     <QuestionsClientPage
       initialQuestions={questionsResult.data || []}

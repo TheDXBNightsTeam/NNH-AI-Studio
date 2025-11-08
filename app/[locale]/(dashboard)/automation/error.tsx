@@ -16,7 +16,11 @@ export default function AutomationError({
         </h2>
         <p className="text-zinc-400 mb-6">{error.message}</p>
         <button
-          onClick={reset}
+          onClick={() => {
+            reset();
+            window.dispatchEvent(new Event('dashboard:refresh'));
+            console.log('[AutomationError] Try Again triggered, dashboard refresh dispatched');
+          }}
           className="px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-lg font-medium transition text-white"
         >
           Try Again
@@ -25,4 +29,3 @@ export default function AutomationError({
     </div>
   )
 }
-

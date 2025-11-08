@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 export async function disconnectLocation(locationId: string) {
+  console.log('[disconnectLocation] started');
   const supabase = await createClient();
 
   try {
@@ -51,13 +52,19 @@ export async function disconnectLocation(locationId: string) {
     revalidatePath('/settings');
 
     // إرجاع استجابة واضحة للواجهة الأمامية لتحديث الحالة فورًا
-    return {
-      success: true,
-      disconnectedId: locationId,
-      message: `${location.location_name} disconnected successfully and associated data cleared.`,
-    };
+    console.log('[disconnectLocation] finished successfully for', locationId);
+
+    // إعادة تحديث الكاش العام بعد فصل الاتصال
+    await supabase
+      .from('gmb_locations')
+      .update({ is_active: false })
+      .eq('id', locationId);
+
+    revalidatePath('/'); // تحديث الكاش العام
+
+    return { success: true, message: `${location.location_name} disconnected successfully`, data: { disconnectedId: locationId } };
   } catch (error) {
-    console.error('Disconnect error:', error);
+    console.error('[disconnectLocation] Error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unexpected disconnect error occurred.',
@@ -66,11 +73,14 @@ export async function disconnectLocation(locationId: string) {
 }
 
 export async function refreshDashboard() {
+  console.log('[refreshDashboard] started');
   revalidatePath('/dashboard');
-  return { success: true, message: 'Dashboard refreshed!' };
+  console.log('[refreshDashboard] completed successfully');
+  return { success: true, message: 'Dashboard refreshed successfully' };
 }
 
 export async function syncLocation(locationId: string) {
+  console.log('[syncLocation] started for', locationId);
   const supabase = await createClient();
   
   try {
@@ -87,9 +97,10 @@ export async function syncLocation(locationId: string) {
     if (result.success) {
       revalidatePath('/dashboard');
       revalidatePath('/reviews');
+      console.log('[syncLocation] completed successfully');
       return { 
         success: true, 
-        message: result.message || 'Location synced successfully!' 
+        message: result.message || 'Location synced successfully' 
       };
     } else {
       return { 
@@ -98,6 +109,7 @@ export async function syncLocation(locationId: string) {
       };
     }
   } catch (error) {
+    console.error('[syncLocation] Error:', error);
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Failed to sync location' 
@@ -106,6 +118,7 @@ export async function syncLocation(locationId: string) {
 }
 
 export async function generateWeeklyTasks(locationId: string) {
+  console.log('[generateWeeklyTasks] started for', locationId);
   const supabase = await createClient();
   
   try {
@@ -209,11 +222,14 @@ export async function generateWeeklyTasks(locationId: string) {
       });
     }
     
+    console.log('[generateWeeklyTasks] completed successfully with', tasks.length, 'tasks');
     return {
       success: true,
-      tasks
+      message: 'Weekly tasks generated successfully',
+      data: { tasks }
     };
   } catch (error) {
+    console.error('[generateWeeklyTasks] Error:', error);
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Failed to generate tasks' 
@@ -225,13 +241,14 @@ export async function getDashboardDataWithFilter(
   startDate?: string,
   endDate?: string
 ) {
+  console.log('[getDashboardDataWithFilter] started');
   const supabase = await createClient();
   
   try {
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return { reviews: [], locations: [], questions: [] };
+      return { success: true, data: { reviews: [], locations: [], questions: [] } };
     }
 
     let reviewsQuery = supabase
@@ -260,13 +277,17 @@ export async function getDashboardDataWithFilter(
       .select('*')
       .eq('user_id', user.id);
     
+    console.log('[getDashboardDataWithFilter] completed successfully');
     return {
-      reviews: reviews || [],
-      locations: locations || [],
-      questions: questions || []
+      success: true,
+      data: {
+        reviews: reviews || [],
+        locations: locations || [],
+        questions: questions || []
+      }
     };
   } catch (error) {
-    return { reviews: [], locations: [], questions: [] };
+    console.error('[getDashboardDataWithFilter] Error:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to get dashboard data' };
   }
 }
-

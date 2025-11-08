@@ -80,6 +80,8 @@ export function FeaturesTab({ profile, setProfile, setHasChanges }: any) {
       return { ...prev, features }
     })
     setHasChanges(true)
+    window.dispatchEvent(new Event('dashboard:refresh'));
+    console.log('[FeaturesTab] Feature toggled, dashboard refresh triggered');
   }
   
   return (
@@ -203,6 +205,8 @@ export function BusinessInfoTab({ profile, setProfile, setHasChanges }: any) {
   const handleChange = (field: string, value: string) => {
     setProfile((prev: any) => ({ ...prev, [field]: value }))
     setHasChanges(true)
+    window.dispatchEvent(new Event('dashboard:refresh'));
+    console.log('[BusinessInfoTab] Business info updated, dashboard refresh triggered');
   }
   
   return (
@@ -328,6 +332,8 @@ export function CategoriesTab({ profile, setProfile, setHasChanges }: any) {
         additional_categories: [...prev.additional_categories, category]
       }))
       setHasChanges(true)
+      window.dispatchEvent(new Event('dashboard:refresh'));
+      console.log('[CategoriesTab] Category added, dashboard refresh triggered');
     }
   }
   
@@ -337,6 +343,8 @@ export function CategoriesTab({ profile, setProfile, setHasChanges }: any) {
       additional_categories: prev.additional_categories.filter((c: string) => c !== category)
     }))
     setHasChanges(true)
+    window.dispatchEvent(new Event('dashboard:refresh'));
+    console.log('[CategoriesTab] Category removed, dashboard refresh triggered');
   }
   
   const filteredCategories = commonCategories.filter(cat => 
@@ -454,6 +462,8 @@ export function LinksTab({ profile, setProfile, setHasChanges }: any) {
   const handleChange = (field: string, value: string) => {
     setProfile((prev: any) => ({ ...prev, [field]: value }))
     setHasChanges(true)
+    window.dispatchEvent(new Event('dashboard:refresh'));
+    console.log('[LinksTab] Link updated, dashboard refresh triggered');
   }
   
   const links = [
@@ -569,6 +579,8 @@ export function MoreTab({ profile, setProfile, setHasChanges }: any) {
       return { ...prev, from_the_business: attrs }
     })
     setHasChanges(true)
+    window.dispatchEvent(new Event('dashboard:refresh'));
+    console.log('[MoreTab] Attribute toggled, dashboard refresh triggered');
   }
   
   return (
@@ -629,6 +641,8 @@ export function MoreTab({ profile, setProfile, setHasChanges }: any) {
           onChange={(e) => {
             setProfile((prev: any) => ({ ...prev, opening_date: e.target.value }))
             setHasChanges(true)
+            window.dispatchEvent(new Event('dashboard:refresh'));
+            console.log('[MoreTab] Opening date updated, dashboard refresh triggered');
           }}
           className="w-full md:w-auto px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-white focus:border-orange-500 focus:outline-none"
         />
@@ -646,6 +660,8 @@ export function MoreTab({ profile, setProfile, setHasChanges }: any) {
             onChange={(e) => {
               setProfile((prev: any) => ({ ...prev, service_area_enabled: e.target.checked }))
               setHasChanges(true)
+              window.dispatchEvent(new Event('dashboard:refresh'));
+              console.log('[MoreTab] Service area toggled, dashboard refresh triggered');
             }}
             className="w-5 h-5 rounded border-zinc-600 bg-zinc-800 text-orange-600 focus:ring-orange-500"
           />

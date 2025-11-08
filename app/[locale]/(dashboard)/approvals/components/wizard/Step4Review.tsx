@@ -142,7 +142,11 @@ export function Step4Review({ formData, onSubmit, onBack }: Step4Props) {
           ← Back
         </button>
         <button
-          onClick={onSubmit}
+          onClick={() => {
+            window.dispatchEvent(new Event('dashboard:refresh'));
+            console.log('[Step4Review] Location submitted to Google, dashboard refresh triggered');
+            onSubmit();
+          }}
           className="px-8 py-3 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white rounded-lg font-medium transition hover:scale-105 flex items-center gap-2"
         >
           <span>🚀</span>

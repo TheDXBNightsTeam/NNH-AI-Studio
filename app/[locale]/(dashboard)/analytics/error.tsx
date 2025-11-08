@@ -18,7 +18,11 @@ export default function AnalyticsError({
         </h2>
         <p className="text-zinc-400 mb-6">{error.message || 'An unexpected error occurred'}</p>
         <Button
-          onClick={reset}
+          onClick={() => {
+            reset();
+            window.dispatchEvent(new Event('dashboard:refresh'));
+            console.log('[AnalyticsError] Try Again triggered, dashboard refresh dispatched');
+          }}
           className="bg-orange-600 hover:bg-orange-700"
         >
           Try Again
@@ -27,4 +31,3 @@ export default function AnalyticsError({
     </div>
   );
 }
-

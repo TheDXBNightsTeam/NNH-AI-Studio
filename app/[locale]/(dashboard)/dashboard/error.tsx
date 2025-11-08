@@ -18,7 +18,11 @@ export default function DashboardError({
           {error.message || 'Failed to load dashboard data'}
         </p>
         <button
-          onClick={reset}
+          onClick={() => {
+            reset();
+            window.dispatchEvent(new Event('dashboard:refresh'));
+            console.log('[DashboardError] Try Again triggered');
+          }}
           className="px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-lg font-medium transition"
         >
           Try Again

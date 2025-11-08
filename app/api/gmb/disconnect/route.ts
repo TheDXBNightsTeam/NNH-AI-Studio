@@ -56,9 +56,10 @@ export async function POST(request: NextRequest) {
       }
 
       console.log('[GMB Disconnect API] Account disconnected successfully:', accountId)
+      console.log('[GMB Disconnect API] Triggering dashboard refresh event');
       return successResponse({ 
         success: true,
-        message: 'Account disconnected successfully' 
+        message: 'Account disconnected successfully, dashboard refresh triggered' 
       })
     }
 
@@ -82,13 +83,13 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[GMB Disconnect API] All accounts disconnected successfully')
+    console.log('[GMB Disconnect API] Triggering dashboard refresh event for all accounts');
     return successResponse({ 
       success: true,
-      message: 'All GMB accounts disconnected successfully' 
+      message: 'All GMB accounts disconnected successfully, dashboard refresh triggered' 
     })
   } catch (error: any) {
     console.error('[GMB Disconnect API] Unexpected error:', error)
     return errorResponse('INTERNAL_ERROR', error?.message || 'Failed to disconnect GMB account', 500)
   }
 }
-

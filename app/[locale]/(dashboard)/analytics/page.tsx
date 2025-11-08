@@ -211,7 +211,7 @@ async function getAnalyticsData(): Promise<AnalyticsData> {
     const topKeywords = (keywords || []).map((k: any) => ({
       keyword: k.search_keyword || '',
       searches: Number(k.impressions_count) || 0,
-      trend: Math.random() > 0.5 ? 1 : -1
+      trend: 0 // TODO: Replace with calculated trend data
     }));
 
     // Calculate average rating for insights
@@ -240,8 +240,7 @@ async function getAnalyticsData(): Promise<AnalyticsData> {
         title: 'Profile Completeness',
         description: 'Complete your business profile with photos, hours, and categories to increase visibility.',
         priority: 'medium' as const,
-        category: 'Progress',
-        progress: 28
+        category: 'Progress'
       },
       {
         title: totalImpressions > 0 ? 'Performance Tracking Active' : 'Start Tracking Performance',
@@ -253,6 +252,9 @@ async function getAnalyticsData(): Promise<AnalyticsData> {
       }
     ];
 
+    window.dispatchEvent(new Event('dashboard:refresh'));
+    console.log('[AnalyticsPage] Analytics data fetched, dashboard refresh triggered');
+
     return {
       stats: {
         totalImpressions,
@@ -263,7 +265,7 @@ async function getAnalyticsData(): Promise<AnalyticsData> {
       },
       topLocations: (locations || []).map((l: any) => ({
         name: l.location_name,
-        impressions: Math.floor(Math.random() * 10000), // TODO: Calculate from actual metrics
+        impressions: 0, // TODO: Replace with real impressions data
         rating: Number(l.rating) || 0
       })),
       impressionsBreakdown,
