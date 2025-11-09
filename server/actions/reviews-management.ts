@@ -3,8 +3,13 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import {
+  buildLocationResourceName,
+  getValidAccessToken as ensureValidToken,
+  GMB_CONSTANTS,
+} from "@/lib/gmb/helpers"
 
-const GMB_API_BASE = "https://mybusiness.googleapis.com/v4"
+const GMB_API_BASE = GMB_CONSTANTS.GMB_V4_BASE
 
 // Validation schemas
 const ReplySchema = z.object({
@@ -23,60 +28,6 @@ const FilterSchema = z.object({
   limit: z.number().min(1).max(100).optional(),
   offset: z.number().min(0).optional(),
 })
-
-/**
- * Get valid access token with refresh logic
- */
-async function getValidAccessToken(
-  supabase: any,
-  accountId: string
-): Promise<string> {
-  const { data: account, error } = await supabase
-    .from("gmb_accounts")
-    .select("access_token, refresh_token, expires_at")
-    .eq("id", accountId)
-    .single()
-
-  if (error || !account) {
-    throw new Error("GMB account not found")
-  }
-
-  const now = Date.now()
-  const expiresAt = account.expires_at ? new Date(account.expires_at).getTime() : 0
-
-  if (expiresAt > now + 5 * 60 * 1000) {
-    return account.access_token
-  }
-
-  // Refresh token
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-      refresh_token: account.refresh_token,
-      grant_type: "refresh_token",
-    }),
-  })
-
-  if (!response.ok) {
-    throw new Error("Failed to refresh token. Please reconnect your Google account.")
-  }
-
-  const tokens = await response.json()
-  const newExpiresAt = new Date(Date.now() + tokens.expires_in * 1000)
-
-  await supabase
-    .from("gmb_accounts")
-    .update({
-      access_token: tokens.access_token,
-      expires_at: newExpiresAt.toISOString(),
-    })
-    .eq("id", accountId)
-
-  return tokens.access_token
-}
 
 /**
  * 1. GET REVIEWS WITH ADVANCED FILTERING
@@ -262,7 +213,7 @@ export async function replyToReview(reviewId: string, replyText: string) {
       }
     }
 
-    const accessToken = await getValidAccessToken(supabase, account.id)
+    const accessToken = await ensureValidToken(supabase, account.id)
 
     // Call Google My Business API
     const endpoint = `${GMB_API_BASE}/accounts/${account.account_id}/locations/${location.location_id}/reviews/${review.external_review_id}:reply`
@@ -420,7 +371,7 @@ export async function updateReply(reviewId: string, newReplyText: string) {
       }
     }
 
-    const accessToken = await getValidAccessToken(supabase, account.id)
+    const accessToken = await ensureValidToken(supabase, account.id)
 
     // Call Google API to update reply
     const endpoint = `${GMB_API_BASE}/accounts/${account.account_id}/locations/${location.location_id}/reviews/${review.external_review_id}/reply`
@@ -744,10 +695,15 @@ export async function syncReviewsFromGoogle(locationId: string) {
       }
     }
 
-    const accessToken = await getValidAccessToken(supabase, account.id)
+    const accessToken = await ensureValidToken(supabase, account.id)
+
+    const locationResource = buildLocationResourceName(
+      account.account_id,
+      location.location_id
+    )
 
     // Fetch reviews from Google
-    const endpoint = `${GMB_API_BASE}/accounts/${account.account_id}/locations/${location.location_id}/reviews`
+    const endpoint = `${GMB_API_BASE}/${locationResource}/reviews`
 
     const response = await fetch(endpoint, {
       headers: {
