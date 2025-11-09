@@ -1286,6 +1286,115 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
+        // Fetch reviews for this location using Google My Business v4 API
+        if (doReviews) {
+          const phaseReviewsStart = Date.now();
+          let reviewsNextPageToken: string | undefined = undefined;
+
+          do {
+            const { reviews, nextPageToken } = await fetchReviews(
+              accessToken,
+              fullLocationName,
+              account.account_id,
+              reviewsNextPageToken
+            );
+
+            if (reviews.length > 0) {
+              console.log(`[GMB Sync API] Processing ${reviews.length} reviews for location ${location.id}`);
+
+              const reviewRows = reviews
+                .map((review) => {
+                  const externalReviewId =
+                    review.reviewId ||
+                    review.name?.split('/').pop() ||
+                    review.reviewReply?.reviewId ||
+                    null;
+
+                  if (!externalReviewId) {
+                    console.warn('[GMB Sync API] Skipping review without identifiable reviewId', review);
+                    return null;
+                  }
+
+                  const rating = convertStarRatingToNumber(review.starRating);
+                  const reviewerName =
+                    review.reviewer?.displayName?.trim() || 'Anonymous';
+                  const reviewCreateTime =
+                    review.createTime || new Date().toISOString();
+                  const replyUpdateTime =
+                    review.reviewReply?.updateTime || null;
+
+                  return {
+                    gmb_account_id: accountId,
+                    location_id: location.id,
+                    user_id: userId,
+                    external_review_id: externalReviewId,
+                    rating,
+                    review_text: review.comment || null,
+                    review_date: reviewCreateTime,
+                    reviewer_name: reviewerName,
+                    reviewer_display_name: reviewerName,
+                    reviewer_profile_photo_url:
+                      review.reviewer?.profilePhotoUrl || null,
+                    response: review.reviewReply?.comment || null,
+                    reply_date: replyUpdateTime,
+                    responded_at: replyUpdateTime,
+                    has_reply: !!review.reviewReply,
+                    status: review.reviewReply ? 'replied' : 'pending',
+                    google_my_business_name: review.name || null,
+                    review_url: review.reviewUrl || null,
+                    synced_at: new Date().toISOString(),
+                    metadata: review,
+                  };
+                })
+                .filter((row): row is NonNullable<typeof row> => !!row);
+
+              console.log(
+                `[GMB Sync API] Prepared ${reviewRows.length} review rows from ${reviews.length} reviews`
+              );
+
+              let upsertedCount = 0;
+              for (const chunk of chunks(reviewRows)) {
+                const { data, error } = await supabase
+                  .from('gmb_reviews')
+                  .upsert(chunk, {
+                    onConflict: 'external_review_id',
+                    ignoreDuplicates: false,
+                  })
+                  .select();
+
+                if (error) {
+                  console.error('[GMB Sync API] Error upserting reviews:', error);
+                } else if (data) {
+                  upsertedCount += data.length;
+                } else {
+                  upsertedCount += chunk.length;
+                }
+              }
+
+              console.log(
+                `[GMB Sync API] Completed reviews sync: upserted ${upsertedCount} reviews`
+              );
+              counts.reviews += reviews.length;
+
+              const phaseReviewsDuration = Date.now() - phaseReviewsStart;
+              await upsertMetrics(
+                supabase,
+                accountId,
+                userId,
+                'reviews',
+                phaseReviewsDuration,
+                reviews.length
+              );
+            } else {
+              console.log(
+                `[GMB Sync API] No reviews returned for location ${location.id}`
+              );
+            }
+
+            reviewsNextPageToken = nextPageToken;
+          } while (reviewsNextPageToken && syncType === 'full');
+        }
+
         // Try to fetch media using Google My Business v4 API
         // Note: This API requires Google My Business API to be enabled in Google Cloud Console
   if (doMedia) {
@@ -1484,11 +1593,8 @@ export async function POST(request: NextRequest) {
       }
   }
   await finishPhaseLog(supabase, phaseReviewsId, 'completed', { reviews: counts.reviews });
-  if (doReviews) {
-    // Rough duration attribution for reviews: cannot isolate per-location easily without refactor
-    // For now, treat total reviews processing time as (Date.now()-started) fraction based on counts
-    // Placeholder: simply record counts with zero duration until per-phase timing is refactored
-    await upsertMetrics(supabase, accountId, userId, 'reviews', 0, counts.reviews);
+  if (doReviews && counts.reviews === 0) {
+    await upsertMetrics(supabase, accountId, userId, 'reviews', 0, 0);
   }
   await finishPhaseLog(supabase, phaseMediaId, 'completed', { media: counts.media });
   await finishPhaseLog(supabase, phaseQuestionsId, 'completed', { questions: counts.questions });
