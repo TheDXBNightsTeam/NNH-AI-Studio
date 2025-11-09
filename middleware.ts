@@ -6,7 +6,7 @@ import type { NextRequest } from 'next/server';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 
-const RATE_LIMIT = 100; // requests per hour
+const RATE_LIMIT = 1000; // requests per hour per user
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour in milliseconds
 
 // Try to initialize Upstash Redis; fallback to in-memory if env vars missing
@@ -42,6 +42,45 @@ const intlMiddleware = createIntlMiddleware({
   localePrefix: 'as-needed',
 });
 
+function extractUserId(request: NextRequest): string {
+  const jwt = request.cookies.get('sb-access-token')?.value;
+
+  if (jwt) {
+    const parts = jwt.split('.');
+    if (parts.length === 3) {
+      try {
+        const payloadSegment = parts[1]
+          .replace(/-/g, '+')
+          .replace(/_/g, '/')
+          .padEnd(parts[1].length + ((4 - (parts[1].length % 4)) % 4), '=');
+        let decodedPayload: string | null = null;
+        if (typeof globalThis.atob === 'function') {
+          decodedPayload = globalThis.atob(payloadSegment);
+        } else if (typeof Buffer !== 'undefined') {
+          decodedPayload = Buffer.from(payloadSegment, 'base64').toString('utf-8');
+        }
+        const payload = decodedPayload ? JSON.parse(decodedPayload) : null;
+        if (payload?.sub && typeof payload.sub === 'string' && payload.sub.trim() !== '') {
+          return payload.sub;
+        }
+      } catch (error) {
+        console.warn('[Middleware] Failed to decode sb-access-token payload:', error);
+      }
+    }
+  }
+
+  const forwardedFor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  if (forwardedFor && forwardedFor.length > 0) {
+    return `ip:${forwardedFor}`;
+  }
+
+  if (request.ip && request.ip.length > 0) {
+    return `ip:${request.ip}`;
+  }
+
+  return 'anonymous';
+}
+
 export async function middleware(request: NextRequest) {
   // Handle i18n routing for non-API routes
   if (!request.nextUrl.pathname.startsWith('/api/')) {
@@ -49,10 +88,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Rate limit API routes only
-  const userId = request.cookies.get('user-id')?.value ||
-    request.headers.get('x-forwarded-for')?.split(',')[0] ||
-    request.ip ||
-    'anonymous';
+  const userId = extractUserId(request);
 
   let success = true;
   let limit = RATE_LIMIT;
