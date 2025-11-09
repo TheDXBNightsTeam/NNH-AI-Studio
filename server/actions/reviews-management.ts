@@ -686,6 +686,8 @@ export async function flagReview(reviewId: string, reason: string) {
 
 /**
  * 7. SYNC REVIEWS FROM GOOGLE
+ * Fetches all reviews for a location from Google My Business API with pagination support.
+ * Handles multiple pages of results and performs batch upsert for optimal performance.
  */
 export async function syncReviewsFromGoogle(locationId: string) {
   try {
