@@ -819,7 +819,7 @@ export async function syncReviewsFromGoogle(locationId: string) {
       reply_date: googleReview.reviewReply?.updateTime || null,
       responded_at: googleReview.reviewReply?.updateTime || null,
       has_reply: !!googleReview.reviewReply,
-      status: googleReview.reviewReply ? "replied" : "pending",
+      status: googleReview.reviewReply ? 'responded' : 'new',
       google_my_business_name: googleReview.name,
       review_url: googleReview.reviewUrl || null,
       synced_at: new Date().toISOString(),
