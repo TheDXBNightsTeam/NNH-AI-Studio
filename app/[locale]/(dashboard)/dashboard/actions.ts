@@ -1,11 +1,94 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { refreshAccessToken as refreshGoogleAccessToken } from '@/lib/gmb/helpers';
 import { revalidatePath } from 'next/cache';
 
+type LocationWithAccount = {
+  id: string;
+  user_id: string | null;
+  account_id: string | null;
+  is_active?: boolean | null;
+  [key: string]: any;
+};
+
+async function fetchLocationForUser(
+  supabase: SupabaseClient,
+  adminClient: SupabaseClient,
+  locationId: string,
+  userId: string,
+) {
+  const { data: location, error } = await supabase
+    .from('gmb_locations')
+    .select('*, gmb_accounts!inner(id, user_id, access_token, refresh_token, token_expires_at)')
+    .eq('id', locationId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('[fetchLocationForUser] query error:', error);
+  }
+
+  if (location) {
+    return location as LocationWithAccount;
+  }
+
+  const { data: adminLocation, error: adminError } = await adminClient
+    .from('gmb_locations')
+    .select('*, gmb_accounts!inner(id, user_id, access_token, refresh_token, token_expires_at)')
+    .eq('id', locationId)
+    .maybeSingle();
+
+  if (adminError) {
+    console.error('[fetchLocationForUser] admin query error:', adminError);
+    return null;
+  }
+
+  if (!adminLocation) {
+    return null;
+  }
+
+  const ownerId =
+    (adminLocation as any).user_id ??
+    (adminLocation as any).gmb_accounts?.user_id ??
+    null;
+
+  if (ownerId && ownerId !== userId) {
+    console.warn('[fetchLocationForUser] owner mismatch', {
+      locationId,
+      ownerId,
+      userId,
+    });
+    return null;
+  }
+
+  if (!ownerId) {
+    const updatePayload = {
+      user_id: userId,
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error: attachError } = await adminClient
+      .from('gmb_locations')
+      .update(updatePayload)
+      .eq('id', locationId);
+
+    if (attachError) {
+      console.error('[fetchLocationForUser] attach error:', attachError);
+    } else {
+      (adminLocation as any).user_id = userId;
+      (adminLocation as any).is_active = true;
+    }
+  }
+
+  return adminLocation as LocationWithAccount;
+}
+
 export async function disconnectLocation(locationId: string) {
   const supabase = await createClient();
+  const adminClient = createAdminClient();
 
   try {
     // التحقق من هوية المستخدم
@@ -14,15 +97,8 @@ export async function disconnectLocation(locationId: string) {
       return { success: false, error: 'User not authenticated.' };
     }
 
-    // التحقق من أن الموقع فعلاً تابع للمستخدم
-    const { data: location, error: fetchError } = await supabase
-      .from('gmb_locations')
-      .select('id, location_name')
-      .eq('id', locationId)
-      .eq('user_id', user.id)
-      .single();
-
-    if (fetchError || !location) {
+    const location = await fetchLocationForUser(supabase, adminClient, locationId, user.id);
+    if (!location) {
       return { success: false, error: 'Location not found or unauthorized.' };
     }
 
@@ -76,6 +152,7 @@ export async function refreshDashboard() {
 
 export async function syncLocation(locationId: string) {
   const supabase = await createClient();
+  const adminClient = createAdminClient();
   
   try {
     const {
@@ -86,17 +163,8 @@ export async function syncLocation(locationId: string) {
       return { success: false, error: 'Not authenticated' };
     }
 
-    const {
-      data: location,
-      error: locationError,
-    } = await supabase
-      .from('gmb_locations')
-      .select('*, gmb_accounts!inner(id, access_token, refresh_token, token_expires_at)')
-      .eq('id', locationId)
-      .eq('user_id', user.id)
-      .single();
-
-    if (locationError || !location) {
+    const location = await fetchLocationForUser(supabase, adminClient, locationId, user.id);
+    if (!location) {
       return { success: false, error: 'Location not found' };
     }
 
@@ -175,6 +243,7 @@ export async function syncLocation(locationId: string) {
 
 export async function generateWeeklyTasks(locationId: string) {
   const supabase = await createClient();
+  const adminClient = createAdminClient();
   
   try {
     // Get current user
@@ -183,14 +252,7 @@ export async function generateWeeklyTasks(locationId: string) {
       return { success: false, error: 'Not authenticated' };
     }
 
-    // Fetch location and reviews data
-    const { data: location } = await supabase
-      .from('gmb_locations')
-      .select('*')
-      .eq('id', locationId)
-      .eq('user_id', user.id)
-      .single();
-    
+    const location = await fetchLocationForUser(supabase, adminClient, locationId, user.id);
     if (!location) {
       return { success: false, error: 'Location not found' };
     }
