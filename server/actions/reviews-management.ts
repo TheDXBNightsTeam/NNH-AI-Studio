@@ -686,6 +686,8 @@ export async function flagReview(reviewId: string, reason: string) {
 
 /**
  * 7. SYNC REVIEWS FROM GOOGLE
+ * Fetches all reviews for a location from Google My Business API with pagination support.
+ * Handles multiple pages of results and performs batch upsert for optimal performance.
  */
 export async function syncReviewsFromGoogle(locationId: string) {
   try {
@@ -737,27 +739,53 @@ export async function syncReviewsFromGoogle(locationId: string) {
       location.location_id
     )
 
-    // Fetch reviews from Google
-    const endpoint = `${GMB_API_BASE}/${locationResource}/reviews`
+    // Fetch all reviews from Google with pagination support
+    const allReviews: any[] = []
+    let nextPageToken: string | undefined = undefined
+    const pageSize = 50 // Google's recommended page size for reviews API
 
-    const response = await fetch(endpoint, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      console.error("[Reviews] Sync API error:", errorData)
-      return {
-        success: false,
-        error: "Failed to fetch reviews from Google",
+    do {
+      // Build endpoint with pagination parameters
+      const url = new URL(`${GMB_API_BASE}/${locationResource}/reviews`)
+      url.searchParams.set("pageSize", pageSize.toString())
+      if (nextPageToken) {
+        url.searchParams.set("pageToken", nextPageToken)
       }
-    }
 
-    const { reviews } = await response.json()
+      const response = await fetch(url.toString(), {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
 
-    if (!reviews || reviews.length === 0) {
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error("[Reviews] Sync API error:", errorData)
+        return {
+          success: false,
+          error: "Failed to fetch reviews from Google",
+        }
+      }
+
+      const responseData = await response.json()
+      const { reviews, nextPageToken: newNextPageToken } = responseData
+
+      // Add reviews from this page to our collection
+      if (reviews && reviews.length > 0) {
+        allReviews.push(...reviews)
+      }
+
+      // Update nextPageToken for the next iteration
+      nextPageToken = newNextPageToken
+    } while (nextPageToken)
+
+    if (allReviews.length === 0) {
+      // Update last sync time even if no reviews found
+      await supabase
+        .from("gmb_locations")
+        .update({ last_synced_at: new Date().toISOString() })
+        .eq("id", locationId)
+
       return {
         success: true,
         message: "No reviews found",
@@ -765,67 +793,79 @@ export async function syncReviewsFromGoogle(locationId: string) {
       }
     }
 
-    let synced = 0
+    // Prepare all review data for batch upsert
+    const reviewsToUpsert = allReviews.map((googleReview) => ({
+      location_id: locationId,
+      user_id: user.id,
+      external_review_id: googleReview.reviewId || googleReview.name?.split("/").pop(),
+      rating:
+        googleReview.starRating === "FIVE"
+          ? 5
+          : googleReview.starRating === "FOUR"
+          ? 4
+          : googleReview.starRating === "THREE"
+          ? 3
+          : googleReview.starRating === "TWO"
+          ? 2
+          : 1,
+      review_text: googleReview.comment || null,
+      review_date: googleReview.createTime || new Date().toISOString(),
+      reviewer_name: googleReview.reviewer?.displayName || "Anonymous",
+      reviewer_display_name: googleReview.reviewer?.displayName || null,
+      reviewer_profile_photo_url:
+        googleReview.reviewer?.profilePhotoUrl || null,
+      response: googleReview.reviewReply?.comment || null,
+      reply_date: googleReview.reviewReply?.updateTime || null,
+      responded_at: googleReview.reviewReply?.updateTime || null,
+      has_reply: !!googleReview.reviewReply,
+      status: googleReview.reviewReply ? "replied" : "pending",
+      google_my_business_name: googleReview.name,
+      review_url: googleReview.reviewUrl || null,
+      synced_at: new Date().toISOString(),
+    }))
 
-    // Upsert each review
-    for (const googleReview of reviews) {
-      const reviewData = {
-        location_id: locationId,
-        user_id: user.id,
-        external_review_id: googleReview.reviewId || googleReview.name?.split("/").pop(),
-        rating:
-          googleReview.starRating === "FIVE"
-            ? 5
-            : googleReview.starRating === "FOUR"
-            ? 4
-            : googleReview.starRating === "THREE"
-            ? 3
-            : googleReview.starRating === "TWO"
-            ? 2
-            : 1,
-        review_text: googleReview.comment || null,
-        review_date: googleReview.createTime || new Date().toISOString(),
-        reviewer_name: googleReview.reviewer?.displayName || "Anonymous",
-        reviewer_display_name: googleReview.reviewer?.displayName || null,
-        reviewer_profile_photo_url:
-          googleReview.reviewer?.profilePhotoUrl || null,
-        response: googleReview.reviewReply?.comment || null,
-        reply_date: googleReview.reviewReply?.updateTime || null,
-        responded_at: googleReview.reviewReply?.updateTime || null,
-        has_reply: !!googleReview.reviewReply,
-        status: googleReview.reviewReply ? "replied" : "pending",
-        google_my_business_name: googleReview.name,
-        review_url: googleReview.reviewUrl || null,
-        synced_at: new Date().toISOString(),
+    // Get existing review IDs to identify new reviews for auto-reply
+    const existingReviewIds = new Set<string>()
+    const { data: existingReviews } = await supabase
+      .from("gmb_reviews")
+      .select("external_review_id")
+      .in(
+        "external_review_id",
+        reviewsToUpsert.map((r) => r.external_review_id)
+      )
+
+    if (existingReviews) {
+      existingReviews.forEach((r) => existingReviewIds.add(r.external_review_id))
+    }
+
+    // Perform batch upsert
+    const { data: upsertedReviews, error: upsertError } = await supabase
+      .from("gmb_reviews")
+      .upsert(reviewsToUpsert, {
+        onConflict: "external_review_id",
+        ignoreDuplicates: false,
+      })
+      .select()
+
+    if (upsertError) {
+      console.error("[Reviews] Batch upsert error:", upsertError)
+      return {
+        success: false,
+        error: "Failed to save reviews to database",
       }
+    }
 
-      // Check if review already exists
-      const { data: existingReview } = await supabase
-        .from("gmb_reviews")
-        .select("id")
-        .eq("external_review_id", reviewData.external_review_id)
-        .single()
+    const synced = upsertedReviews?.length || 0
 
-      const isNewReview = !existingReview
-
-      const { error: upsertError, data: upsertedReview } = await supabase
-        .from("gmb_reviews")
-        .upsert(reviewData, {
-          onConflict: "external_review_id",
-          ignoreDuplicates: false,
-        })
-        .select()
-        .single()
-
-      if (!upsertError) {
-        synced++
-        
-        // Trigger auto-reply for new reviews (if enabled)
-        if (isNewReview && upsertedReview && !upsertedReview.has_reply) {
+    // Trigger auto-reply for new reviews (if enabled)
+    if (upsertedReviews) {
+      for (const review of upsertedReviews) {
+        const isNewReview = !existingReviewIds.has(review.external_review_id)
+        if (isNewReview && !review.has_reply) {
           try {
             const { processAutoReply } = await import("./auto-reply")
             // Process auto-reply in background (don't wait for it)
-            processAutoReply(upsertedReview.id).catch((error) => {
+            processAutoReply(review.id).catch((error) => {
               console.error("[Reviews] Auto-reply error:", error)
               // Don't fail the sync if auto-reply fails
             })
@@ -834,10 +874,14 @@ export async function syncReviewsFromGoogle(locationId: string) {
             // Don't fail the sync if auto-reply fails
           }
         }
-      } else {
-        console.error("[Reviews] Upsert error:", upsertError)
       }
     }
+
+    // Update last sync time
+    await supabase
+      .from("gmb_locations")
+      .update({ last_synced_at: new Date().toISOString() })
+      .eq("id", locationId)
 
     revalidatePath("/dashboard")
     revalidatePath("/reviews")
