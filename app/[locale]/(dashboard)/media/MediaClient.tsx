@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 interface MediaItem {
   id: string;
@@ -25,23 +27,119 @@ export function MediaContainer({ media, totalCount }: { media: MediaItem[]; tota
   const [activeTab, setActiveTab] = useState<'all' | 'photos' | 'videos'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('date');
+  const [uploading, setUploading] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    
+    try {
+      const formData = new FormData();
+      
+      // Add all files to formData
+      Array.from(files).forEach((file, index) => {
+        formData.append(`file${index}`, file);
+      });
+      
+      // Use first location or 'general' if no media exists
+      const locationId = media.length > 0 ? media[0].location_id : 'general';
+      formData.append('locationId', locationId);
+
+      const response = await fetch('/api/upload/bulk', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success(`${result.uploaded} file(s) uploaded successfully!`);
+        if (result.failed > 0) {
+          toast.warning(`${result.failed} file(s) failed to upload`);
+        }
+        router.refresh();
+      } else {
+        toast.error(result.error || 'Upload failed');
+      }
+    } catch (error: any) {
+      toast.error(error?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedItems.size === 0) {
+      toast.error('No items selected');
+      return;
+    }
+
+    if (!confirm(`Delete ${selectedItems.size} item(s)?`)) return;
+
+    try {
+      const response = await fetch('/api/media/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mediaIds: Array.from(selectedItems) })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success(`${result.deleted} item(s) deleted successfully!`);
+        setSelectedItems(new Set());
+        router.refresh();
+      } else {
+        toast.error(result.error || 'Deletion failed');
+      }
+    } catch (error: any) {
+      toast.error(error?.message || 'Deletion failed');
+    }
+  };
   
   return (
     <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*,video/*"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+      
       <MediaFilters
         totalCount={totalCount}
         activeTab={activeTab}
         searchQuery={searchQuery}
         sortBy={sortBy}
+        selectedCount={selectedItems.size}
+        uploading={uploading}
         setActiveTab={setActiveTab}
         setSearchQuery={setSearchQuery}
         setSortBy={setSortBy}
+        onUploadClick={handleUploadClick}
+        onBulkDelete={handleBulkDelete}
       />
       <MediaGrid
         media={media}
         activeTab={activeTab}
         searchQuery={searchQuery}
         sortBy={sortBy}
+        selectedItems={selectedItems}
+        setSelectedItems={setSelectedItems}
       />
     </>
   );
@@ -52,22 +150,46 @@ export function MediaFilters({
   activeTab,
   searchQuery,
   sortBy,
+  selectedCount,
+  uploading,
   setActiveTab,
   setSearchQuery,
-  setSortBy
+  setSortBy,
+  onUploadClick,
+  onBulkDelete
 }: {
   totalCount: number;
   activeTab: 'all' | 'photos' | 'videos';
   searchQuery: string;
   sortBy: string;
+  selectedCount: number;
+  uploading: boolean;
   setActiveTab: (tab: 'all' | 'photos' | 'videos') => void;
   setSearchQuery: (query: string) => void;
   setSortBy: (sort: string) => void;
+  onUploadClick: () => void;
+  onBulkDelete: () => void;
 }) {
   return (
     <div className="space-y-4 mb-6">
+      {/* Action Bar */}
+      {selectedCount > 0 && (
+        <div className="flex items-center justify-between bg-orange-600/10 border border-orange-600/30 rounded-lg p-3">
+          <span className="text-white text-sm">
+            {selectedCount} item{selectedCount > 1 ? 's' : ''} selected
+          </span>
+          <Button
+            onClick={onBulkDelete}
+            variant="destructive"
+            size="sm"
+          >
+            🗑️ Delete Selected
+          </Button>
+        </div>
+      )}
+      
       {/* Tabs */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap items-center">
         <Button
           onClick={() => setActiveTab('all')}
           variant={activeTab === 'all' ? 'default' : 'outline'}
@@ -92,6 +214,16 @@ export function MediaFilters({
         >
           🎥 Videos
         </Button>
+        
+        <div className="ml-auto">
+          <Button
+            onClick={onUploadClick}
+            disabled={uploading}
+            className="bg-orange-600 hover:bg-orange-700"
+          >
+            {uploading ? '⏳ Uploading...' : '⬆️ Upload Media'}
+          </Button>
+        </div>
       </div>
       
       {/* Search & Filters */}
@@ -115,14 +247,6 @@ export function MediaFilters({
           <option value="location">Sort by Location</option>
           <option value="type">Sort by Type</option>
         </select>
-        
-        <select className="px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-white focus:border-orange-500 focus:outline-none">
-          <option>All Locations</option>
-        </select>
-        
-        <Button variant="outline" size="sm">
-          🎯 Filters
-        </Button>
       </div>
     </div>
   );
@@ -132,12 +256,16 @@ export function MediaGrid({
   media,
   activeTab,
   searchQuery,
-  sortBy
+  sortBy,
+  selectedItems,
+  setSelectedItems
 }: {
   media: MediaItem[];
   activeTab: 'all' | 'photos' | 'videos';
   searchQuery: string;
   sortBy: string;
+  selectedItems: Set<string>;
+  setSelectedItems: (items: Set<string>) => void;
 }) {
   
   // Filter media
@@ -174,7 +302,7 @@ export function MediaGrid({
     }
     return 0;
   });
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   
