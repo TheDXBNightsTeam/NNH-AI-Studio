@@ -9,10 +9,7 @@ import { useNavigationShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { Button } from '@/components/ui/button';
 import { DateRangeControls, type DateRange } from '@/components/dashboard/date-range-controls';
 import { ExportShareBar } from '@/components/dashboard/export-share-bar';
-import { RefreshCw, Zap, ShieldCheck, Loader2, Star, MapPin, CheckCircle, AlertTriangle } from 'lucide-react';
-import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { Link } from '@/lib/navigation';
 
 // Import optimized components
 import { DashboardSection } from '@/components/dashboard/dashboard-error-boundary';
@@ -32,6 +29,11 @@ import { WeeklyTasksWidget } from '@/components/dashboard/weekly-tasks-widget';
 import { BottlenecksWidget } from '@/components/dashboard/bottlenecks-widget';
 import { QuickActionsBar } from '@/components/dashboard/quick-actions-bar';
 import { RealtimeUpdatesIndicator } from '@/components/dashboard/realtime-updates-indicator';
+
+// Import modular components
+import { DashboardHeader } from './components/DashboardHeader';
+import { GMBConnectionBanner } from './components/GMBConnectionBanner';
+import { HealthScoreCard } from './components/HealthScoreCard';
 
 interface DashboardStats {
   totalLocations: number;
@@ -76,159 +78,7 @@ interface DashboardStats {
   }>;
 }
 
-// GMB Connection Banner - مُحسَّن للموبايل
-const GMBConnectionBanner = () => {
-  const t = useTranslations('Dashboard.connectionBanner');
-  const { isMobile } = useResponsiveLayout();
-  const router = useRouter();
-  const [connecting, setConnecting] = useState(false);
-
-  const handleConnect = async () => {
-    setConnecting(true);
-    try {
-      // Call the existing GMB auth URL endpoint
-      const response = await fetch('/api/gmb/create-auth-url', {
-        method: 'POST',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to start GMB connection');
-      }
-      
-      const data = await response.json();
-      
-      if (data.url) {
-        // Redirect to Google OAuth
-        window.location.href = data.url;
-      } else {
-        throw new Error('No OAuth URL returned');
-      }
-    } catch (error) {
-      console.error('Connection error:', error);
-      toast.error('Failed to connect. Please try again or go to Settings.');
-      setConnecting(false);
-      // Fallback to settings page
-      router.push('/settings');
-    }
-  };
-  
-  return (
-    <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent overflow-hidden relative">
-      <div className="absolute top-0 right-0 w-32 h-32 md:w-64 md:h-64 bg-primary/5 rounded-full blur-3xl -z-10" />
-      <CardContent className={cn("p-4 md:p-8")}>
-        <div className={cn(
-          "flex gap-4 md:gap-6",
-          isMobile ? "flex-col items-start" : "flex-col lg:flex-row items-start lg:items-center"
-        )}>
-          {/* Icon and Title */}
-          <div className="flex items-start gap-3 md:gap-4 flex-1">
-            <div className={cn(
-              "rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center flex-shrink-0 border border-primary/20",
-              isMobile ? "w-12 h-12" : "w-16 h-16"
-            )}>
-              <MapPin className={cn("text-primary", isMobile ? "w-6 h-6" : "w-8 h-8")} />
-            </div>
-            <div className="space-y-2 flex-1">
-              <h2 className={cn("font-bold text-foreground", isMobile ? "text-xl" : "text-2xl")}>
-                {t('title')}
-              </h2>
-              <p className="text-muted-foreground text-sm md:text-base max-w-2xl">
-                {t('description')}
-              </p>
-              
-              {/* Benefits Grid - مُحسَّن للموبايل */}
-              <div className={cn(
-                "grid gap-2 md:gap-4 pt-3 md:pt-4",
-                isMobile ? "grid-cols-1" : "grid-cols-1 md:grid-cols-3"
-              )}>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500 flex-shrink-0" />
-                  <span className="text-xs md:text-sm text-foreground">{t('benefit1')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500 flex-shrink-0" />
-                  <span className="text-xs md:text-sm text-foreground">{t('benefit2')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500 flex-shrink-0" />
-                  <span className="text-xs md:text-sm text-foreground">{t('benefit3')}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* CTA Buttons - مُحسَّن للموبايل */}
-          <div className={cn(
-            "flex gap-2 md:gap-3 w-full lg:w-auto lg:flex-shrink-0",
-            isMobile ? "flex-col" : "flex-col sm:flex-row"
-          )}>
-            <Button 
-              size={isMobile ? "default" : "lg"} 
-              className="gap-2 gradient-orange"
-              onClick={handleConnect}
-              disabled={connecting}
-            >
-              {connecting ? (
-                <>
-                  <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4 md:w-5 md:h-5" />
-                  Connect Google My Business
-                </>
-              )}
-            </Button>
-            <Button asChild size={isMobile ? "default" : "lg"} variant="outline" className="gap-2">
-              <a 
-                href="https://business.google.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-              >
-                <Star className="w-4 h-4 md:w-5 md:h-5" />
-                {t('learnMore')}
-              </a>
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// Health Score Card محسن
-const HealthScoreCard = ({ loading, healthScore }: { loading: boolean; healthScore: number }) => {
-  const { isMobile } = useResponsiveLayout();
-  
-  return (
-    <Card className={cn("border-l-4", 
-      healthScore > 80 ? 'border-green-500' : 
-      healthScore > 60 ? 'border-yellow-500' : 'border-red-500'
-    )}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className={cn("font-medium", isMobile ? "text-xs" : "text-sm")}>
-          GMB Health Score
-        </CardTitle>
-        <ShieldCheck className={cn("text-primary", isMobile ? "w-3 h-3" : "w-4 h-4")} />
-      </CardHeader>
-      <CardContent>
-        <div className={cn("font-bold", isMobile ? "text-2xl" : "text-4xl")}>
-          {loading ? (
-            <Loader2 className="w-6 h-6 animate-spin" />
-          ) : (
-            `${healthScore}%`
-          )}
-        </div>
-        <p className={cn("text-muted-foreground mt-1", isMobile ? "text-xs" : "text-xs")}>
-          Score based on Quality, Visibility, and Compliance.
-        </p>
-      </CardContent>
-    </Card>
-  );
-};
-
-export default function OptimizedDashboardPage() {
+export default function DashboardPage() {
   useNavigationShortcuts();
   const router = useRouter();
   const { isMobile, isTablet } = useResponsiveLayout();
@@ -320,16 +170,7 @@ export default function OptimizedDashboardPage() {
   return (
     <div className="space-y-4 md:space-y-8 p-4 md:p-6" data-print-root>
       {/* Header - محسن للموبايل */}
-      <div className="flex flex-col gap-2 md:gap-0 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className={cn("font-bold tracking-tight", isMobile ? "text-2xl" : "text-3xl")}>
-            AI Command Center
-          </h1>
-          <p className="text-muted-foreground text-sm md:text-base mt-1 md:mt-2">
-            Proactive risk and growth orchestration dashboard
-          </p>
-        </div>
-      </div>
+      <DashboardHeader />
 
       {/* Real-time Updates Indicator */}
       {gmbConnected && (
