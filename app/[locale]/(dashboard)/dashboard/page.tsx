@@ -39,6 +39,7 @@ import { RealtimeUpdatesIndicator } from '@/components/dashboard/realtime-update
 import { DashboardHeader } from './components/DashboardHeader';
 import { GMBConnectionBanner } from './components/GMBConnectionBanner';
 import { HealthScoreCard } from './components/HealthScoreCard';
+import { DashboardBanner } from '@/components/dashboard/dashboard-banner';
 
 interface DashboardStats {
   totalLocations: number;
@@ -184,6 +185,9 @@ export default function DashboardPage() {
     <div className="space-y-4 md:space-y-8 p-4 md:p-6" data-print-root>
       {/* Header - محسن للموبايل */}
       <DashboardHeader onPreferencesChange={handlePreferencesChange} />
+
+      {/* Custom Branding Banner */}
+      <DashboardBanner />
 
       {/* Real-time Updates Indicator */}
       {gmbConnected && (
