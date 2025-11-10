@@ -129,6 +129,7 @@ export function useReviews(options: UseReviewsOptions = {}): UseReviewsReturn {
   // Initial load and when filters change
   useEffect(() => {
     fetchReviews(1, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]); // Only depend on filters
 
   const setFilters = useCallback((newFilters: ReviewFilters) => {
