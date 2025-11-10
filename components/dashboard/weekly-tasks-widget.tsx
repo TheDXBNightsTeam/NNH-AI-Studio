@@ -428,21 +428,6 @@ function TaskItem({
 }) {
   const isCompleted = task.status === 'completed';
 
-function TaskItem({
-  task,
-  onStatusChange,
-  getCategoryColor,
-  getPriorityIcon,
-  isDefault = false,
-}: {
-  task: Task;
-  onStatusChange: (id: string, status: string) => void;
-  getCategoryColor: (category: string) => string;
-  getPriorityIcon: (priority: string) => React.ReactNode;
-  isDefault?: boolean;
-}) {
-  const isCompleted = task.status === 'completed';
-
   return (
     <div
       className={cn(
@@ -456,11 +441,11 @@ function TaskItem({
           if (!isDefault) {
             onStatusChange(task.id, checked ? 'completed' : 'pending');
           } else {
-            onStatusChange(task.id, 'default'); // Placeholder to trigger toast
+            onStatusChange(task.id, 'default');
           }
         }}
         className="mt-1"
-        disabled={isDefault}
+        disabled={isDefault || isUpdating}
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-start gap-2 mb-1">
@@ -468,6 +453,11 @@ function TaskItem({
           <h5 className={cn('font-medium text-sm', isCompleted && 'line-through')}>
             {task.title}
           </h5>
+          {isUpdating && (
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+              Updating…
+            </span>
+          )}
         </div>
         <p className="text-xs text-muted-foreground mb-2">{task.description}</p>
         <div className="flex items-center gap-2 flex-wrap">
@@ -482,6 +472,5 @@ function TaskItem({
       </div>
     </div>
   );
-}
 }
 
