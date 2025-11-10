@@ -1,10 +1,12 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, MapPin, Star, MessageSquare, Target } from 'lucide-react';
+import { TrendingUp, TrendingDown, MapPin, Star, MessageSquare, Target, Info } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { memo, useMemo } from 'react';
+import { getComparisonPeriodLabel, type DateRange } from '@/lib/date-range-utils';
 
 interface StatsCardProps {
   title: string;
@@ -14,10 +16,22 @@ interface StatsCardProps {
   suffix?: string;
   loading?: boolean;
   target?: number;
+  comparisonLabel?: string;
+  comparisonDetails?: { current: string; previous: string };
 }
 
 // ✅ FIX: Memoize StatsCard to prevent unnecessary re-renders
-const StatsCard = memo(function StatsCard({ title, value, trend, icon, suffix, loading, target }: StatsCardProps) {
+const StatsCard = memo(function StatsCard({ 
+  title, 
+  value, 
+  trend, 
+  icon, 
+  suffix, 
+  loading, 
+  target,
+  comparisonLabel,
+  comparisonDetails,
+}: StatsCardProps) {
   // ✅ FIX: Memoize trend calculations
   const trendConfig = useMemo(() => {
     const trendColor = trend && trend > 0 ? 'text-success' : trend && trend < 0 ? 'text-destructive' : 'text-muted-foreground';
@@ -60,18 +74,38 @@ const StatsCard = memo(function StatsCard({ title, value, trend, icon, suffix, l
           </div>
           <div className="flex items-center gap-2 mt-2">
             {trend !== undefined && trend !== 0 && (
-              <div className={`flex items-center text-xs font-medium ${trendColor}`}>
-                <TrendIcon className="h-3 w-3 mr-1" />
-                {Math.abs(trend).toFixed(1)}%
-              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className={`flex items-center text-xs font-medium ${trendColor} cursor-help`}>
+                      <TrendIcon className="h-3 w-3 mr-1" />
+                      {Math.abs(trend).toFixed(1)}%
+                      <Info className="h-3 w-3 ml-1 opacity-50" />
+                    </div>
+                  </TooltipTrigger>
+                  {comparisonDetails && (
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      <div className="space-y-1">
+                        <p className="font-semibold text-xs">Comparison Period</p>
+                        <p className="text-xs">
+                          <span className="text-muted-foreground">Current:</span> {comparisonDetails.current}
+                        </p>
+                        <p className="text-xs">
+                          <span className="text-muted-foreground">Previous:</span> {comparisonDetails.previous}
+                        </p>
+                      </div>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
             )}
             {target !== undefined && (
               <div className="text-xs text-muted-foreground">
                 Target: {target}%
               </div>
             )}
-            {!trend && !target && (
-              <div className="text-xs text-muted-foreground">vs last period</div>
+            {comparisonLabel && (
+              <div className="text-xs text-muted-foreground">{comparisonLabel}</div>
             )}
           </div>
         </CardContent>
@@ -92,10 +126,17 @@ interface StatsCardsProps {
     responseRate: number;
     responseTarget: number;
   };
+  dateRange?: DateRange;
+  comparisonDetails?: { current: string; previous: string };
 }
 
 // ✅ FIX: Memoize StatsCards component to prevent unnecessary re-renders
-export const StatsCards = memo(function StatsCards({ loading, data }: StatsCardsProps) {
+export const StatsCards = memo(function StatsCards({ 
+  loading, 
+  data, 
+  dateRange, 
+  comparisonDetails 
+}: StatsCardsProps) {
   // ✅ FIX: Memoize stats calculation to prevent recalculation on every render
   const stats = useMemo(() => data || {
     totalLocations: 0,
@@ -108,6 +149,11 @@ export const StatsCards = memo(function StatsCards({ loading, data }: StatsCards
     responseTarget: 100,
   }, [data]);
 
+  const comparisonLabel = useMemo(() => {
+    if (!dateRange) return 'vs last period';
+    return getComparisonPeriodLabel(dateRange);
+  }, [dateRange]);
+
   // ✅ FIX: Memoize card props to prevent re-renders
   const cardProps = useMemo(() => [
     {
@@ -116,6 +162,8 @@ export const StatsCards = memo(function StatsCards({ loading, data }: StatsCards
       trend: stats.locationsTrend,
       icon: <MapPin className="h-4 w-4" />,
       loading,
+      comparisonLabel,
+      comparisonDetails,
     },
     {
       title: "Average Rating",
@@ -124,6 +172,8 @@ export const StatsCards = memo(function StatsCards({ loading, data }: StatsCards
       icon: <Star className="h-4 w-4" />,
       suffix: "/ 5.0",
       loading,
+      comparisonLabel,
+      comparisonDetails,
     },
     {
       title: "Total Reviews",
@@ -131,6 +181,8 @@ export const StatsCards = memo(function StatsCards({ loading, data }: StatsCards
       trend: stats.reviewsTrend,
       icon: <MessageSquare className="h-4 w-4" />,
       loading,
+      comparisonLabel,
+      comparisonDetails,
     },
     {
       title: "Response Rate",
@@ -139,7 +191,7 @@ export const StatsCards = memo(function StatsCards({ loading, data }: StatsCards
       target: stats.responseTarget,
       loading,
     },
-  ], [stats, loading]);
+  ], [stats, loading, comparisonLabel, comparisonDetails]);
 
   return (
     <>
