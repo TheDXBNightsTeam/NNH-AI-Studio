@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
     console.log('[OAuth Callback] State:', state);
     
     const supabase = await createClient();
+    const adminClient = createAdminClient();
     
     // Verify state and get user ID
     const { data: stateRecord, error: stateError } = await supabase
@@ -150,6 +151,51 @@ export async function GET(request: NextRequest) {
     
     const userInfo = await userInfoResponse.json();
     console.log('[OAuth Callback] User info:', { email: userInfo.email, id: userInfo.id });
+
+    if (!userInfo.email) {
+      console.error('[OAuth Callback] Google user info did not include an email address');
+      return NextResponse.redirect(
+        `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent('Unable to determine Google account email')}`
+      );
+    }
+
+    const { data: existingProfile, error: profileLookupError } = await adminClient
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (profileLookupError) {
+      console.error('[OAuth Callback] Failed to verify profile record:', profileLookupError);
+      return NextResponse.redirect(
+        `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent('Failed to verify user record')}`
+      );
+    }
+
+    if (!existingProfile) {
+      const displayName =
+        userInfo.name ||
+        [userInfo.given_name, userInfo.family_name].filter(Boolean).join(' ') ||
+        userInfo.email.split('@')[0] ||
+        'Google User';
+
+      console.log('[OAuth Callback] Creating profile record for new user', { userId, email: userInfo.email });
+
+      const { error: createProfileError } = await adminClient.from('profiles').upsert({
+        id: userId,
+        email: userInfo.email,
+        full_name: displayName,
+        avatar_url: userInfo.picture ?? null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' });
+
+      if (createProfileError) {
+        console.error('[OAuth Callback] Failed to create profile record:', createProfileError);
+        return NextResponse.redirect(
+          `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent('Failed to initialize user record')}`
+        );
+      }
+    }
     
     // Calculate token expiry
     const tokenExpiresAt = new Date();

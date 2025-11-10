@@ -1,503 +1,730 @@
 {
   "HomePage": {
-    "rating": "4.9 من 5",
-    "trustedBy": "موثوق من قبل أكثر من 1,000 شركة",
+    "rating": "4.9 out of 5",
+    "trustedBy": "Trusted by 1,000+ Businesses",
     "hero": {
-      "title": "إدارة حسابات جوجل للأعمال ويوتيوب كالمحترفين",
-      "subtitle": "المنصة الأقوى المدعومة بالذكاء الاصطناعي لإدارة مواقع جوجل للأعمال، قنوات يوتيوب، الرد على التقييمات بالذكاء الاصطناعي، إنشاء المحتوى، وتنمية وجودك الرقمي من لوحة تحكم واحدة.",
-      "getStarted": "ابدأ مجاناً",
-      "signIn": "تسجيل الدخول"
+      "title": "Manage Your Google My Business & YouTube Channels Like a Pro",
+      "subtitle": "The ultimate AI-powered platform for managing multiple GMB locations, YouTube channels, responding to reviews with AI, creating content, and growing your online presence all from one dashboard.",
+      "getStarted": "Get Started Free",
+      "signIn": "Sign In"
     },
     "nav": {
-      "features": "المميزات",
-      "howItWorks": "كيف يعمل",
-      "pricing": "الأسعار",
-      "contact": "اتصل بنا",
-      "signIn": "تسجيل الدخول"
+      "features": "Features",
+      "howItWorks": "How It Works",
+      "pricing": "Pricing",
+      "contact": "Contact",
+      "signIn": "Sign In"
     },
     "features": {
       "multiLocation": {
-        "title": "إدارة المواقع المتعددة",
-        "description": "إدارة جميع مواقع جوجل للأعمال من لوحة تحكم واحدة قوية"
+        "title": "Multi-Location Management",
+        "description": "Manage all your GMB locations from one powerful dashboard"
       },
       "youtubeManagement": {
-        "title": "إدارة يوتيوب",
-        "description": "إدارة قناة يوتيوب والفيديوهات والتعليقات والإحصائيات من مكان واحد"
+        "title": "YouTube Management",
+        "description": "Manage your YouTube channel, videos, comments, and analytics from one place"
       },
       "aiReviews": {
-        "title": "تقييمات بالذكاء الاصطناعي",
-        "description": "إنشاء ردود ذكية على التقييمات باستخدام الذكاء الاصطناعي المتقدم"
+        "title": "AI-Powered Reviews",
+        "description": "Generate intelligent responses to reviews with advanced AI"
       },
       "analytics": {
-        "title": "تحليلات متقدمة",
-        "description": "تتبع الأداء بتقارير ورؤى تفصيلية لكل من جوجل للأعمال ويوتيوب"
+        "title": "Advanced Analytics",
+        "description": "Track performance with detailed insights and reports for both GMB and YouTube"
       },
       "videoAnalytics": {
-        "title": "تحليلات الفيديو",
-        "description": "تحليل أداء الفيديو ومعدلات التفاعل ورؤى الجمهور"
+        "title": "Video Analytics",
+        "description": "Analyze video performance, engagement rates, and audience insights"
       },
       "monitoring": {
-        "title": "مراقبة فورية",
-        "description": "مراقبة التعليقات والتقييمات والتفاعل عبر جميع المنصات بشكل فوري"
+        "title": "Real-time Monitoring",
+        "description": "Monitor comments, reviews, and engagement across all platforms in real-time"
       },
       "aiStudio": {
-        "title": "استوديو المحتوى بالذكاء الاصطناعي",
-        "description": "إنشاء منشورات وفيديوهات ومحتوى جذاب بمساعدة الذكاء الاصطناعي"
+        "title": "AI Content Studio",
+        "description": "Create engaging posts, videos, and content with AI assistance"
       },
       "commentManagement": {
-        "title": "إدارة التعليقات",
-        "description": "إدارة والرد على تعليقات يوتيوب بكفاءة باستخدام أدوات الذكاء الاصطناعي"
+        "title": "Comment Management",
+        "description": "Manage and respond to YouTube comments efficiently with AI-powered tools"
       }
     },
     "trustIndicators": {
-      "moneyBack": "ضمان استرداد الأموال",
-      "worldwide": "يعمل في كل دولة",
-      "noCommitment": "بدون التزام طويل الأمد",
-      "trusted": "موثوق من قبل أكثر من 1,000 شركة",
-      "support": "دعم على مدار الساعة"
+      "moneyBack": "Money back guarantee",
+      "worldwide": "Works in every country",
+      "noCommitment": "No long-term commitment",
+      "trusted": "Trusted by 1,000+ Businesses",
+      "support": "24/7 Support"
     },
     "stats": {
-      "title": "وعدنا لك",
-      "subtitle": "ارتقِ بتحسين محركات البحث المحلية",
+      "title": "OUR PROMISE",
+      "subtitle": "Level up your Local SEO",
       "storefrontVisits": {
         "value": "2X",
-        "label": "المزيد من زيارات المتجر"
+        "label": "More Storefront Visits"
       },
       "impressions": {
         "value": "+300%",
-        "label": "الظهور المحلي"
+        "label": "Local Impressions"
       },
       "phoneCalls": {
         "value": "+60%",
-        "label": "المزيد من المكالمات الهاتفية"
+        "label": "More Phone Calls"
       },
       "reviews": {
         "value": "+150%",
-        "label": "نمو التقييمات"
+        "label": "Reviews Growth"
       }
     },
     "howItWorks": {
-      "title": "كيف يعمل",
-      "subtitle": "ابدأ في دقائق وحوّل إدارة جوجل للأعمال ويوتيوب الخاصة بك",
+      "title": "How It Works",
+      "subtitle": "Get started in minutes and transform your Google My Business and YouTube management",
       "step1": {
-        "title": "ربط حساباتك",
-        "description": "اربط حسابات جوجل للأعمال وقنوات يوتيوب، واستورد جميع مواقعك وفيديوهاتك في ثوانٍ"
+        "title": "Connect Your Accounts",
+        "description": "Link your Google My Business accounts and YouTube channels, import all your locations and videos in seconds"
       },
       "step2": {
-        "title": "الإدارة والرد",
-        "description": "راقب التقييمات والتعليقات، رد بمساعدة الذكاء الاصطناعي، أدر جميع المواقع ومحتوى يوتيوب من لوحة تحكم واحدة"
+        "title": "Manage & Respond",
+        "description": "Monitor reviews and comments, respond with AI assistance, manage all locations and YouTube content from one dashboard"
       },
       "step3": {
-        "title": "نمِّ نشاطك التجاري",
-        "description": "تتبع الإحصائيات، حسّن الأداء، وشاهد وجودك الرقمي ينمو"
+        "title": "Grow Your Business",
+        "description": "Track analytics, optimize performance, and watch your online presence grow"
       }
     },
     "testimonials": {
-      "title": "حب العملاء",
-      "heading": "عملاؤنا يحققون النتائج",
-      "subtitle": "اطلع على ما يقوله عملاؤنا عنا",
+      "title": "CUSTOMER LOVE",
+      "heading": "Our Customers Get Results",
+      "subtitle": "See What Our Customers Have To Say About Us",
       "testimonial1": {
-        "quote": "ساعدنا NNH AI Studio على زيادة ظهورنا بشكل كبير عبر قوائم البحث والخرائط. مع زيادة 900% في الظهور وارتفاع هائل في نقرات الموقع، لم يكن تحسين محركات البحث المحلية لدينا أقوى من أي وقت مضى.",
-        "name": "جون سميث",
-        "role": "الرئيس التنفيذي، شركة الأعمال المحلية",
-        "stat1Label": "نمو الظهور",
-        "stat2Label": "نقرات الموقع"
+        "quote": "NNH AI Studio helped us drastically scale our visibility across search and map listings. With a 900% boost in impressions and a massive rise in website clicks, our local SEO has never been stronger.",
+        "name": "John Smith",
+        "role": "CEO, Local Business Co.",
+        "stat1Label": "Impressions Growth",
+        "stat2Label": "Website Clicks"
       },
       "testimonial2": {
-        "quote": "مع NNH AI Studio، عززنا قابلية اكتشافنا للباحثين عن الصحة. يعكس الارتفاع في نقرات المكالمات والظهور مباشرة كفاءة المنصة في الوصول إلى المستخدمين المهتمين.",
-        "name": "سارة جونسون",
-        "role": "مديرة التسويق، حلول الصحة",
-        "stat1Label": "ظهور البحث",
-        "stat2Label": "نقرات المكالمات"
+        "quote": "With NNH AI Studio, we enhanced our discoverability for health seekers. The rise in call clicks and impressions directly reflects the platform's efficiency in reaching intent-driven users.",
+        "name": "Sarah Johnson",
+        "role": "Marketing Director, Health Solutions",
+        "stat1Label": "Search Impressions",
+        "stat2Label": "Call Clicks"
       }
     },
     "dashboard": {
-      "title": "لوحة تحكم قوية",
-      "subtitle": "كل ما تحتاجه لإدارة مواقع جوجل للأعمال وقنوات يوتيوب في واجهة جميلة واحدة",
-      "realTimeAnalytics": "تحليلات فورية"
+      "title": "Powerful Dashboard",
+      "subtitle": "Everything you need to manage your Google My Business locations and YouTube channels in one beautiful interface",
+      "realTimeAnalytics": "Real-time Analytics"
     },
     "freeTools": {
-      "title": "ميزة الأدوات المجانية",
-      "heading": "أدوات تحسين جوجل للأعمال المجانية",
-      "subtitle": "استفد من قوة الذكاء الاصطناعي التوليدي لتحسين تحسين محركات البحث المحلية لملف جوجل للأعمال مجاناً",
+      "title": "Free Tool Feature",
+      "heading": "Free Google My Business Optimization Tools",
+      "subtitle": "Harness the power of Generative AI to Improve Local SEO of your Google My Business Profile for Free",
       "profileStrength": {
-        "title": "حاسبة قوة الملف الشخصي",
-        "description": "تحليل قوة ملف جوجل للأعمال والحصول على توصيات قابلة للتنفيذ"
+        "title": "Profile Strength Calculator",
+        "description": "Analyze your GMB profile strength and get actionable recommendations"
       },
       "reviewResponder": {
-        "title": "الرد على التقييمات بالذكاء الاصطناعي",
-        "description": "إنشاء ردود احترافية على تقييمات العملاء فوراً"
+        "title": "AI Review Responder",
+        "description": "Generate professional responses to customer reviews instantly"
       },
       "postGenerator": {
-        "title": "منشئ محتوى المنشورات",
-        "description": "إنشاء منشورات جذابة لملف جوجل للأعمال بالذكاء الاصطناعي"
+        "title": "Post Content Generator",
+        "description": "Create engaging posts for your Google Business Profile with AI"
       },
       "keywordTracker": {
-        "title": "متتبع ترتيب الكلمات المفتاحية",
-        "description": "تتبع تصنيفات البحث المحلية للكلمات المفتاحية المهمة"
+        "title": "Keyword Rank Tracker",
+        "description": "Track your local search rankings for important keywords"
       }
     },
     "pricing": {
-      "title": "الخطط والأسعار",
-      "heading": "اختر خطتك المثالية",
-      "subtitle": "أسعار شفافة للشركات من جميع الأحجام",
+      "title": "PLANS & PRICING",
+      "heading": "Choose Your Perfect Plan",
+      "subtitle": "Transparent pricing for businesses of all sizes",
       "starter": {
-        "name": "المبتدئ",
+        "name": "Starter",
         "price": "$19",
-        "period": "/شهرياً",
+        "period": "/month",
         "features": {
-          "locations": "حتى 3 مواقع",
-          "analytics": "تحليلات أساسية",
-          "reviews": "مراقبة التقييمات",
-          "support": "دعم عبر البريد الإلكتروني"
+          "locations": "Up to 3 locations",
+          "analytics": "Basic analytics",
+          "reviews": "Review monitoring",
+          "support": "Email support"
         },
-        "cta": "ابدأ الآن"
+        "cta": "Get Started"
       },
       "pro": {
-        "name": "المحترف",
+        "name": "Pro",
         "price": "$49",
-        "period": "/شهرياً",
-        "badge": "الأكثر شعبية",
+        "period": "/month",
+        "badge": "Most Popular",
         "features": {
-          "locations": "حتى 25 موقع",
-          "analytics": "تحليلات متقدمة",
-          "ai": "ردود بالذكاء الاصطناعي",
-          "support": "دعم ذو أولوية",
-          "reports": "تقارير مخصصة"
+          "locations": "Up to 25 locations",
+          "analytics": "Advanced analytics",
+          "ai": "AI-powered responses",
+          "support": "Priority support",
+          "reports": "Custom reports"
         },
-        "cta": "ابدأ الآن"
+        "cta": "Get Started"
       },
       "agency": {
-        "name": "الوكالة",
+        "name": "Agency",
         "price": "$149",
-        "period": "/شهرياً",
+        "period": "/month",
         "features": {
-          "locations": "مواقع غير محدودة",
-          "whiteLabel": "حل بعلامة بيضاء",
-          "team": "تعاون الفريق",
-          "manager": "مدير حساب مخصص",
-          "api": "الوصول إلى API"
+          "locations": "Unlimited locations",
+          "whiteLabel": "White-label solution",
+          "team": "Team collaboration",
+          "manager": "Dedicated account manager",
+          "api": "API access"
         },
-        "cta": "اتصل بالمبيعات"
+        "cta": "Contact Sales"
       }
     },
     "solutions": {
-      "title": "مصنوع للجميع",
-      "heading": "ميزات مصممة لفرق من كل نوع وحجم",
-      "subtitle": "صُمم NNH AI Studio لكل نوع من الفرق واحتياجاتها.",
+      "title": "MADE FOR ALL",
+      "heading": "Features Designed for teams of every type & size",
+      "subtitle": "NNH AI Studio is designed for every type of team and their needs.",
       "solo": {
-        "title": "المتاجر الفردية",
+        "title": "Solo Storefronts",
         "features": {
-          "audit": "إدارة ملفات الأعمال والحصول على تدقيق كامل",
-          "reviews": "فحص التقييمات وتحليل المشاعر وتعيين ردود الذكاء الاصطناعي",
-          "rank": "تتبع الترتيب على الكلمات المفتاحية المحلية والتحقق من ترتيب الشبكة الجغرافية",
-          "competitors": "تحليل المنافسين المحليين والتحقق من أفضل ممارساتهم"
+          "audit": "Manage Business Profiles & get Complete Audit",
+          "reviews": "Check Reviews, Sentiment Analysis & set AI Replies",
+          "rank": "Track Rank on Local Keywords & Check Geo Grid Rank",
+          "competitors": "Analyze Local Competitors & check their best practices"
         },
-        "cta": "استكشف الآن ←"
+        "cta": "Explore Now →"
       },
       "agencies": {
-        "title": "الوكالات",
-        "badge": "الأكثر شعبية",
+        "title": "Agencies",
+        "badge": "Most Popular",
         "features": {
-          "multiple": "ربط وإدارة مواقع متعددة على لوحة تحكم واحدة",
-          "whiteLabel": "لوحة تحكم بعلامة بيضاء حسب احتياجاتك",
-          "analytics": "الحصول على تحليلات بيانات متقدمة وتقارير مخصصة",
-          "scale": "إدارة المواقع على نطاق واسع ونشر المحتوى بمساعدة الذكاء الاصطناعي"
+          "multiple": "Connect & manage Multiple Locations on a single dashboard",
+          "whiteLabel": "White-label dashboard as per your needs",
+          "analytics": "Get Advanced Data Analytics & Custom Reporting",
+          "scale": "Manage Locations at scale & publish content with help of AI"
         },
-        "cta": "استكشف الآن ←"
+        "cta": "Explore Now →"
       },
       "multiLocation": {
-        "title": "العلامات التجارية متعددة المواقع",
+        "title": "Multi-Location Brands",
         "features": {
-          "verification": "المساعدة في التحقق الجماعي من ملف جوجل للأعمال",
-          "team": "دعوة أعضاء الفريق بناءً على الأدوار ومشاركة الوصول داخل الفريق",
-          "content": "الاستفادة من مكتبة المحتوى لحفظ المحتوى الدائم والقابل لإعادة الاستخدام",
-          "support": "الحصول على دعم على مدار الساعة وخطط أسعار مخصصة"
+          "verification": "Assistance for Google Business Profile Bulk Verification",
+          "team": "Invite Team Members based on roles & share access within the team",
+          "content": "Leverage content library to save evergreen and reusable content",
+          "support": "Get 24 X 7 Support & Custom Pricing Plans"
         },
-        "cta": "اتصل بالمبيعات ←"
+        "cta": "Contact Sales →"
       }
     },
     "integrations": {
-      "title": "التكاملات",
-      "heading": "تكامل مباشر مع الأدلة",
-      "subtitle": "اربط ملفات أعمالك مع أدلة ومنصات CRM وغيرها",
-      "more": "+ المزيد"
+      "title": "Integrations",
+      "heading": "Direct Integration With Directories",
+      "subtitle": "Link your Business Profiles with Multiple Directories, CRMs & more",
+      "more": "+ More"
     },
     "faq": {
-      "title": "الأسئلة الشائعة",
-      "heading": "الأسئلة المتكررة",
+      "title": "FAQs",
+      "heading": "Frequently Asked Questions",
       "questions": {
         "q1": {
-          "question": "هل يمكن لـ NNH AI Studio مساعدتي في إنشاء والتحقق من موقع نشاطي التجاري؟",
-          "answer": "نعم! يوفر NNH AI Studio مساعدة شاملة لإنشاء والتحقق وإدارة مواقع ملف جوجل للأعمال. ترشدك منصتنا خلال العملية بأكملها وتساعدك في تأمين قوائمك."
+          "question": "Can NNH AI Studio help me create & verify my Business Location?",
+          "answer": "Yes! NNH AI Studio provides comprehensive assistance for creating, verifying, and managing your Google Business Profile locations. Our platform guides you through the entire process and helps you secure your listings."
         },
         "q2": {
-          "question": "ما هي الأدلة المتزامنة مع NNH AI Studio؟",
-          "answer": "يتكامل NNH AI Studio مع الأدلة الرئيسية بما في ذلك جوجل للأعمال ويوتيوب وبينج وخرائط آبل وChatGPT وإنستغرام وفيسبوك والعديد غيرها. نضيف باستمرار تكاملات جديدة لضمان أقصى قدر من الظهور."
+          "question": "Which Directories are synced with NNH AI Studio?",
+          "answer": "NNH AI Studio integrates with major directories including Google My Business, YouTube, Bing, Apple Maps, ChatGPT, Instagram, Facebook, and many more. We continuously add new integrations to ensure maximum visibility."
         },
         "q3": {
-          "question": "كيف يمكن لـ NNH AI Studio مساعدة نشاطي التجاري في الحصول على ترتيب أفضل في البحث المحلي؟",
-          "answer": "يساعد NNH AI Studio في تحسين تصنيفات البحث المحلية من خلال تحسين المحتوى المدعوم بالذكاء الاصطناعي، وإدارة التقييمات، وتتبع الكلمات المفتاحية، وتحسين الملف الشخصي، والتحليلات الفورية. توفر منصتنا مهام وتوصيات مخصصة لتعزيز ظهورك."
+          "question": "How can NNH AI Studio help my Business Rank better on Local Search?",
+          "answer": "NNH AI Studio helps improve your local search rankings through AI-powered content optimization, review management, keyword tracking, profile enhancement, and real-time analytics. Our platform provides personalized tasks and recommendations to boost your visibility."
         },
         "q4": {
-          "question": "هل يساعد NNH AI Studio في التقييمات وإدارة السمعة؟",
-          "answer": "بالتأكيد! يقدم NNH AI Studio إنشاء ردود على التقييمات بالذكاء الاصطناعي، وتحليل المشاعر، ومراقبة التقييمات، واقتراحات الرد التلقائية. أدر جميع تقييماتك وحافظ على سمعة إيجابية عبر الإنترنت من لوحة تحكم واحدة."
+          "question": "Does NNH AI Studio help with Reviews & Reputation Management?",
+          "answer": "Absolutely! NNH AI Studio offers AI-powered review response generation, sentiment analysis, review monitoring, and automated reply suggestions. Manage all your reviews and maintain a positive online reputation from one dashboard."
         },
         "q5": {
-          "question": "هل لديكم حلول للعلامات التجارية والوكالات ذات المواقع المتعددة؟",
-          "answer": "نعم! يقدم NNH AI Studio حلولاً متخصصة للوكالات والعلامات التجارية متعددة المواقع، بما في ذلك لوحات تحكم بعلامة بيضاء، ومساعدة في التحقق الجماعي، وأدوات تعاون الفريق، وتحليلات متقدمة، وخطط أسعار مخصصة مصممة لتلبية احتياجاتك."
+          "question": "Do you have solutions for Brands & Agencies with Multiple Locations?",
+          "answer": "Yes! NNH AI Studio offers specialized solutions for agencies and multi-location brands, including white-label dashboards, bulk verification assistance, team collaboration tools, advanced analytics, and custom pricing plans tailored to your needs."
         }
       }
     },
     "cta": {
-      "title": "جرب NNH AI Studio مجاناً اليوم",
-      "subtitle": "اكتشف ما إذا كان NNH AI Studio يساعد نشاطك التجاري المحلي على النمو مع",
-      "trial": "تجربة مجانية لمدة 7 أيام. لا حاجة لبطاقة ائتمان.",
-      "startTrial": "ابدأ التجربة المجانية",
-      "scheduleDemo": "جدولة عرض توضيحي",
-      "coach": "مدرب أعمال مخصص",
-      "features": "الوصول إلى جميع الميزات",
-      "support": "دعم فوري على مدار الساعة"
+      "title": "Try NNH AI Studio for Free today",
+      "subtitle": "Find out if NNH AI Studio helps your Local Business Grow with",
+      "trial": "7 Days Free Trial. No Credit Card Required.",
+      "startTrial": "Start Free Trial",
+      "scheduleDemo": "Schedule Demo",
+      "coach": "Dedicated Business Coach",
+      "features": "Access All Features",
+      "support": "24/7 Real Time Support"
     },
     "footer": {
-      "description": "المنصة الأقوى المدعومة بالذكاء الاصطناعي لإدارة مواقع جوجل للأعمال وقنوات يوتيوب. أتمت التقييمات، أنشئ المحتوى، ونمِّ وجودك الرقمي.",
-      "product": "المنتج",
-      "pricing": "الأسعار",
-      "about": "من نحن",
-      "features": "المميزات",
-      "howItWorks": "كيف يعمل",
-      "resources": "الموارد",
-      "contact": "اتصل بنا",
-      "faqs": "الأسئلة الشائعة",
-      "demo": "احجز عرضاً توضيحياً",
-      "freeTrial": "تجربة مجانية",
-      "legal": "قانوني",
-      "privacy": "سياسة الخصوصية",
-      "terms": "شروط الخدمة",
-      "copyright": "NNH AI Studio. جميع الحقوق محفوظة.",
-      "googlePolicy": "سيلتزم استخدام NNH AI Studio ونقل أي معلومات يتم تلقيها من واجهات برمجة التطبيقات من Google إلى أي تطبيق آخر بسياسة بيانات مستخدم خدمات Google API، بما في ذلك متطلبات الاستخدام المحدود."
+      "description": "The ultimate AI-powered platform for managing Google My Business locations and YouTube channels. Automate reviews, create content, and grow your online presence.",
+      "product": "Product",
+      "pricing": "Pricing",
+      "about": "About Us",
+      "features": "Features",
+      "howItWorks": "How It Works",
+      "resources": "Resources",
+      "contact": "Contact",
+      "faqs": "FAQs",
+      "demo": "Book a Demo",
+      "freeTrial": "Free Trial",
+      "legal": "Legal",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "copyright": "NNH AI Studio. All rights reserved.",
+      "googlePolicy": "NNH AI Studio's use and transfer to any other app of information received from Google APIs will adhere to Google API Services User Data Policy, including the Limited Use requirements."
     }
   },
   "Dashboard": {
-    "title": "لوحة تحكم GMB",
-    "subtitle": "إدارة نشاطك التجاري",
+    "title": "GMB Dashboard",
+    "subtitle": "Manage your business",
     "connectionBanner": {
-      "title": "ربط حساب Google My Business",
-      "description": "اربط حساب GMB الخاص بك لفتح ميزات قوية: إدارة المواقع، الرد على التقييمات بالذكاء الاصطناعي، تتبع الإحصائيات، وتحسين السيو المحلي—كل ذلك من لوحة تحكم واحدة.",
-      "benefit1": "ردود تلقائية بالذكاء الاصطناعي",
-      "benefit2": "إحصائيات فورية",
-      "benefit3": "إدارة مواقع متعددة",
-      "connectButton": "ربط حساب GMB",
-      "learnMore": "معرفة المزيد"
+      "title": "Connect Your Google My Business Account",
+      "description": "Link your GMB account to unlock powerful features: manage locations, respond to reviews with AI, track analytics, and boost your local SEO—all from one dashboard.",
+      "benefit1": "AI-Powered Review Replies",
+      "benefit2": "Real-time Analytics",
+      "benefit3": "Multi-Location Management",
+      "connectButton": "Connect GMB Account",
+      "learnMore": "Learn More"
     },
     "nav": {
-      "dashboard": "لوحة التحكم",
-      "locations": "المواقع",
-      "reviews": "التقييمات",
-      "questions": "الأسئلة",
-      "gmbPosts": "منشورات GMB",
-      "calendar": "التقويم",
-      "media": "الوسائط",
-      "analytics": "الإحصائيات",
-      "gridTracking": "تتبع الشبكة",
-      "features": "المميزات",
-      "automation": "الأتمتة",
-      "approvals": "الموافقات",
-      "webhooks": "الخطافات",
-      "team": "الفريق",
-      "youtubePosts": "منشورات يوتيوب",
-      "settings": "الإعدادات"
+      "dashboard": "Dashboard",
+      "locations": "Locations",
+      "reviews": "Reviews",
+      "questions": "Questions",
+      "gmbPosts": "GMB Posts",
+      "calendar": "Calendar",
+      "media": "Media",
+      "analytics": "Analytics",
+      "gridTracking": "Grid Tracking",
+      "features": "Features",
+      "automation": "Automation",
+      "approvals": "Approvals",
+      "webhooks": "Webhooks",
+      "team": "Team",
+      "youtubePosts": "YouTube Posts",
+      "settings": "Settings"
     },
     "stats": {
-      "locations": "المواقع",
-      "rating": "متوسط التقييم",
-      "reviews": "إجمالي التقييمات",
-      "responseRate": "معدل الرد",
-      "healthScore": "نسبة الصحة"
+      "locations": "Locations",
+      "rating": "Average Rating",
+      "reviews": "Total Reviews",
+      "responseRate": "Response Rate",
+      "healthScore": "Health Score"
     },
-    "welcome": "مرحباً بعودتك",
-    "lastSync": "آخر مزامنة",
-    "syncNow": "مزامنة الآن",
-    "disconnect": "قطع الاتصال",
-    "connectGMB": "ربط حساب GMB",
-    "noAccount": "لم يتم ربط حساب GMB بعد"
+    "welcome": "Welcome Back",
+    "lastSync": "Last Sync",
+    "syncNow": "Sync Now",
+    "disconnect": "Disconnect",
+    "connectGMB": "Connect GMB Account",
+    "noAccount": "No GMB account connected yet"
   },
   "Reviews": {
-    "title": "إدارة التقييمات",
+    "title": "Reviews Management",
     "filters": {
-      "all": "كل التقييمات",
-      "pending": "قيد الانتظار",
-      "responded": "تم الرد",
-      "highPriority": "أولوية عالية"
+      "all": "All Reviews",
+      "pending": "Pending",
+      "responded": "Responded",
+      "highPriority": "High Priority"
     },
     "actions": {
-      "reply": "رد",
-      "aiGenerate": "إنشاء بالذكاء الاصطناعي",
-      "save": "حفظ",
-      "cancel": "إلغاء"
+      "reply": "Reply",
+      "aiGenerate": "Generate with AI",
+      "save": "Save",
+      "cancel": "Cancel"
     },
-    "empty": "لا توجد تقييمات",
-    "aiCopilot": "مساعد الذكاء الاصطناعي"
+    "empty": "No reviews found",
+    "aiCopilot": "AI Copilot"
+  },
+  "AICockpit": {
+    "title": "AI Review Cockpit",
+    "description": "Manage, analyze, and generate AI responses for customer reviews",
+    "sentimentAnalysis": "Sentiment Analysis",
+    "customerEmotionBreakdown": "Customer emotion breakdown",
+    "positive": "Positive",
+    "neutral": "Neutral",
+    "negative": "Negative",
+    "hotTopics": "Hot Topics:",
+    "pendingResponses": "Pending Responses",
+    "prioritizeReviews": "Prioritize and resolve reviews by impact and sentiment",
+    "aiCopilot": "AI Copilot",
+    "ready": "Ready",
+    "pending": "Pending",
+    "responseRate": "Response Rate",
+    "avgTime": "Avg. Time",
+    "reviewStream": "Review Stream",
+    "prioritySorted": "Priority Sorted",
+    "selectReview": "Select a Review to Begin",
+    "selectReviewDescription": "Choose a review from the stream to generate AI-powered responses in seconds",
+    "daysAgo": "{{count}} days ago",
+    "generateResponse": "Generate Response"
   },
   "Common": {
-    "loading": "جاري التحميل...",
-    "error": "خطأ",
-    "success": "نجاح",
-    "save": "حفظ",
-    "cancel": "إلغاء",
-    "delete": "حذف",
-    "edit": "تعديل",
-    "close": "إغلاق",
-    "search": "بحث",
-    "filter": "فلترة",
-    "sort": "ترتيب",
-    "actions": "إجراءات"
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "actions": "Actions"
   },
   "Locations": {
-    "title": "إدارة المواقع",
-    "subtitle": "إدارة ومراقبة جميع مواقع نشاطك التجاري",
+    "title": "Location Management",
+    "subtitle": "Manage and monitor all your business locations",
     "actions": {
-      "syncAll": "مزامنة الكل",
-      "syncing": "جاري المزامنة...",
-      "mapView": "عرض الخريطة",
-      "addLocation": "إضافة موقع",
-      "retry": "إعادة المحاولة",
-      "reviews": "المراجعات",
-      "insights": "الإحصائيات",
-      "edit": "تعديل"
+      "syncAll": "Sync All",
+      "syncing": "Syncing...",
+      "mapView": "Map View",
+      "addLocation": "Add Location",
+      "retry": "Retry",
+      "reviews": "Reviews",
+      "insights": "Insights",
+      "edit": "Edit"
     },
     "errors": {
-      "loadFailed": "فشل تحميل المواقع"
+      "loadFailed": "Failed to load locations"
     },
     "stats": {
-      "totalLocations": "إجمالي المواقع",
-      "totalViews": "إجمالي المشاهدات",
-      "avgRating": "متوسط التقييم",
-      "avgHealthScore": "متوسط نسبة الصحة",
-      "acrossPlatforms": "عبر جميع المنصات",
-      "last30Days": "آخر 30 يوم",
-      "acrossLocations": "عبر جميع المواقع",
-      "optimizationScore": "درجة التحسين"
+      "totalLocations": "Total Locations",
+      "totalViews": "Total Views",
+      "avgRating": "Avg Rating",
+      "avgHealthScore": "Avg Health Score",
+      "acrossPlatforms": "Across all platforms",
+      "last30Days": "Last 30 days",
+      "acrossLocations": "Across all locations",
+      "optimizationScore": "Optimization score"
     },
     "filters": {
-      "searchPlaceholder": "ابحث عن المواقع...",
-      "status": "الحالة",
-      "allStatus": "كل الحالات",
-      "verified": "موثق",
-      "pending": "قيد الانتظار",
-      "suspended": "معلق",
-      "category": "الفئة",
-      "allCategories": "كل الفئات"
+      "searchPlaceholder": "Search locations...",
+      "status": "Status",
+      "allStatus": "All Status",
+      "verified": "Verified",
+      "pending": "Pending",
+      "suspended": "Suspended",
+      "category": "Category",
+      "allCategories": "All Categories"
     },
     "empty": {
-      "title": "لا توجد مواقع",
-      "filteredMessage": "جرّب تعديل المرشحات أو عبارة البحث",
-      "defaultMessage": "ابدأ بإضافة أول موقع لنشاطك التجاري",
-      "addFirst": "أضف أول موقع لك"
+      "title": "No locations found",
+      "filteredMessage": "Try adjusting your filters or search term",
+      "defaultMessage": "Get started by adding your first business location",
+      "addFirst": "Add Your First Location"
     },
     "noAccount": {
-      "title": "اربط حساب نشاطي التجاري على Google",
-      "subtitle": "ابدأ بإدارة مواقع نشاطك التجاري من خلال ربط حسابك على Google My Business",
+      "title": "Connect Your Google My Business Account",
+      "subtitle": "Start managing your business locations by connecting your GMB account",
       "benefits": {
-        "title": "ماذا يمكنك أن تفعل:",
-        "manage": "إدارة جميع مواقع نشاطك التجاري من مكان واحد",
-        "respond": "الرد على تقييمات العملاء بمساعدة الذكاء الاصطناعي",
-        "track": "تتبع الأداء والإحصائيات عبر جميع المواقع",
-        "optimize": "تحسين ملفات نشاطك التجاري لرؤية أفضل"
+        "title": "What you can do:",
+        "manage": "Manage all your business locations in one place",
+        "respond": "Respond to customer reviews with AI assistance",
+        "track": "Track performance and insights across locations",
+        "optimize": "Optimize your business profiles for better visibility"
       },
-      "connectButton": "ربط نشاطي التجاري على Google",
-      "learnMore": "اعرف المزيد"
+      "connectButton": "Connect Google My Business",
+      "learnMore": "Learn More"
     },
     "labels": {
-      "views": "المشاهدات",
-      "clicks": "النقرات",
-      "calls": "المكالمات",
-      "directions": "الاتجاهات",
-      "healthScore": "نسبة الصحة",
-      "reviews": "التقييمات",
-      "attributesMore": "+{count} المزيد",
-      "lastSync": "آخر مزامنة"
+      "views": "Views",
+      "clicks": "Clicks",
+      "calls": "Calls",
+      "directions": "Directions",
+      "healthScore": "Health Score",
+      "reviews": "Reviews",
+      "attributesMore": "+{count} more",
+      "lastSync": "Last sync"
     },
     "card": {
-      "reviews": "التقييمات",
-      "insights": "الإحصائيات",
-      "viewInsights": "عرض الإحصائيات",
-      "editLocation": "تعديل الموقع",
-      "healthScore": "نقاط الصحة",
-      "views": "المشاهدات",
-      "calls": "المكالمات",
-      "verified": "موثق",
-      "notVerified": "غير موثق"
+      "reviews": "Reviews",
+      "insights": "Insights",
+      "viewInsights": "View Insights",
+      "editLocation": "Edit Location",
+      "healthScore": "Health Score",
+      "views": "Views",
+      "calls": "Calls",
+      "verified": "Verified",
+      "notVerified": "Not Verified"
     },
     "healthScore": {
-      "title": "اكتمال الملف التجاري",
-      "complete": "مكتمل",
-      "incomplete": "غير مكتمل",
-      "viewDetails": "عرض التفاصيل",
-      "improve": "تحسين النسبة",
-      "outOf": "{current} من {total} قسم مكتمل",
-      "improveText": "أكمل العناصر الناقصة بالأعلى لتحسين ظهور ملفك التجاري وجذب المزيد من العملاء.",
+      "title": "Profile Completeness",
+      "complete": "Complete",
+      "incomplete": "Incomplete",
+      "viewDetails": "View Details",
+      "improve": "Improve Score",
+      "outOf": "{current} out of {total} sections complete",
+      "improveText": "Complete the missing items above to improve your profile visibility and attract more customers.",
       "items": {
-        "phoneNumber": "رقم الهاتف",
-        "websiteLink": "رابط الموقع",
-        "categories": "فئات إضافية",
-        "menuLink": "رابط القائمة",
-        "menuItems": "عناصر القائمة",
-        "openingDate": "تاريخ الافتتاح",
-        "hours": "ساعات العمل",
-        "attributes": "السمات",
-        "photos": "الصور ({count} متوسط)",
-        "videos": "الفيديوهات ({count} متوسط)",
-        "businessLogo": "شعار النشاط",
-        "menuPhotos": "صور القائمة ({count} متوسط)",
-        "description": "الوصف",
-        "reviews": "التقييمات ({count}/10+)",
-        "posts": "المنشورات ({count} متوسط)",
-        "responses": "الرد على التقييمات",
-        "qna": "الأسئلة والأجوبة",
-        "autoReply": "الرد التلقائي",
-        "profileProtection": "حماية الملف"
+        "phoneNumber": "Phone Number",
+        "websiteLink": "Website Link",
+        "categories": "Additional Categories",
+        "menuLink": "Menu Link",
+        "menuItems": "Menu Items",
+        "openingDate": "Opening Date",
+        "hours": "Opening Hours",
+        "attributes": "Attributes",
+        "photos": "Photos ({count} Avg)",
+        "videos": "Videos ({count} Avg)",
+        "businessLogo": "Business Logo",
+        "menuPhotos": "Menu Photos ({count} Avg)",
+        "description": "Description",
+        "reviews": "Reviews ({count}/10+)",
+        "posts": "Posts ({count} Avg)",
+        "responses": "Review Responses",
+        "qna": "Q&A",
+        "autoReply": "Auto Reply",
+        "profileProtection": "Profile Protection"
       },
       "tips": {
-        "phoneNumber": "أضف رقم هاتف ليتمكن العملاء من التواصل معك بسهولة",
-        "websiteLink": "أضف رابط موقعك الإلكتروني لزيادة الزيارات",
-        "categories": "أضف فئات إضافية لتحسين إمكانية العثور على نشاطك",
-        "menuLink": "أضف رابط قائمة الطعام للمطاعم والمقاهي",
-        "menuItems": "أضف عناصر القائمة لعرض منتجاتك",
-        "openingDate": "حدد تاريخ بدء نشاطك التجاري",
-        "hours": "أضف ساعات عمل نشاطك لمساعدة العملاء معرفة متى تكون مفتوحاً",
-        "attributes": "أضف سمات مثل WiFi، موقف سيارات، إلخ لإبراز المميزات",
-        "photos": "ارفع 5 صور عالية الجودة على الأقل لنشاطك التجاري",
-        "videos": "أضف فيديوهات لعرض نشاطك بشكل ديناميكي",
-        "businessLogo": "ارفع شعار نشاطك التجاري للتعريف بعلامتك",
-        "menuPhotos": "أضف صور لعناصر قائمتك لجذب العملاء",
-        "description": "اكتب وصفاً جذاباً لنشاطك التجاري",
-        "reviews": "شجع العملاء على ترك تقييمات",
-        "posts": "انشر تحديثات بانتظام للتفاعل مع العملاء",
-        "responses": "رد على تقييمات العملاء لبناء الثقة",
-        "qna": "فعّل وأجب على أسئلة العملاء",
-        "autoReply": "قم بإعداد ردود تلقائية للاستفسارات الشائعة",
-        "profileProtection": "فعّل حماية الملف لمنع التغييرات غير المصرح بها"
+        "phoneNumber": "Add a phone number so customers can easily contact you",
+        "websiteLink": "Add your website link to drive more traffic",
+        "categories": "Add additional categories to improve discoverability",
+        "menuLink": "Add a link to your menu for food businesses",
+        "menuItems": "Add menu items to showcase your offerings",
+        "openingDate": "Specify when your business started operating",
+        "hours": "Add your business hours to help customers know when you're open",
+        "attributes": "Add attributes like WiFi, Parking, etc. to highlight features",
+        "photos": "Upload at least 5 high-quality photos of your business",
+        "videos": "Add videos to showcase your business dynamically",
+        "businessLogo": "Upload your business logo for brand recognition",
+        "menuPhotos": "Add photos of your menu items to attract customers",
+        "description": "Write a compelling description of your business",
+        "reviews": "Encourage customers to leave reviews",
+        "posts": "Post updates regularly to engage with customers",
+        "responses": "Respond to customer reviews to build trust",
+        "qna": "Enable and answer customer questions",
+        "autoReply": "Set up automatic replies for common inquiries",
+        "profileProtection": "Enable profile protection to prevent unauthorized changes"
       },
       "actions": {
-        "addPhone": "إضافة هاتف",
-        "addWebsite": "إضافة موقع",
-        "addCategories": "إضافة فئات",
-        "addMenu": "إضافة قائمة",
-        "addItems": "إضافة عناصر",
-        "setDate": "تحديد التاريخ",
-        "addHours": "إضافة ساعات",
-        "addAttributes": "إضافة سمات",
-        "uploadPhotos": "رفع صور",
-        "uploadVideos": "رفع فيديوهات",
-        "uploadLogo": "رفع الشعار",
-        "uploadMenuPhotos": "رفع صور القائمة",
-        "addDescription": "إضافة وصف",
-        "viewReviews": "عرض التقييمات",
-        "createPost": "إنشاء منشور",
-        "enableQA": "تفعيل الأسئلة",
-        "setupAutoReply": "إعداد الرد التلقائي",
-        "enableProtection": "تفعيل الحماية"
+        "addPhone": "Add Phone",
+        "addWebsite": "Add Website",
+        "addCategories": "Add Categories",
+        "addMenu": "Add Menu",
+        "addItems": "Add Items",
+        "setDate": "Set Date",
+        "addHours": "Add Hours",
+        "addAttributes": "Add Attributes",
+        "uploadPhotos": "Upload Photos",
+        "uploadVideos": "Upload Videos",
+        "uploadLogo": "Upload Logo",
+        "uploadMenuPhotos": "Upload Menu Photos",
+        "addDescription": "Add Description",
+        "viewReviews": "View Reviews",
+        "createPost": "Create Post",
+        "enableQA": "Enable Q&A",
+        "setupAutoReply": "Setup Auto Reply",
+        "enableProtection": "Enable Protection"
+      }
+    }
+  },
+  "Approvals": {
+    "title": "Approvals & Location Management",
+    "subtitle": "Create new Google Business locations and manage verification process",
+    "createButton": "Create New Location",
+    "tabs": {
+      "create": "Create Location",
+      "pending": "Pending Verification",
+      "verified": "Verified",
+      "issues": "Issues"
+    },
+    "stats": {
+      "total": "Total Locations",
+      "totalSubtitle": "All locations",
+      "pending": "Pending Verification",
+      "pendingSubtitle": "Awaiting codes",
+      "verified": "Verified",
+      "verifiedSubtitle": "Live on Google",
+      "issues": "Issues",
+      "issuesSubtitle": "Need attention"
+    },
+    "wizard": {
+      "stepOf": "Step {{step}} of {{total}}",
+      "step1": {
+        "title": "Basic Information",
+        "subtitle": "Enter your business details as they should appear on Google",
+        "businessName": "Business Name",
+        "businessNamePlaceholder": "The DXB Night Club - Downtown Branch",
+        "businessNameTip": "Use your official business name as registered",
+        "streetAddress": "Street Address",
+        "streetAddressPlaceholder": "123 Sheikh Zayed Road",
+        "streetAddressTip": "Make sure this address can receive postal mail",
+        "city": "City",
+        "cityPlaceholder": "Dubai",
+        "state": "State/Province",
+        "statePlaceholder": "Dubai",
+        "postalCode": "Postal Code",
+        "postalCodePlaceholder": "00000",
+        "country": "Country",
+        "phone": "Phone Number",
+        "phonePlaceholder": "+971 4 XXX XXXX",
+        "phoneTip": "Include country code",
+        "website": "Website (optional)",
+        "websitePlaceholder": "https://yourwebsite.com",
+        "infoTitle": "Important Information",
+        "infoText": "Make sure your address can receive postal mail. Google will send a verification postcard with a code to this address. The verification process typically takes 5-14 business days.",
+        "nextButton": "Next: Category & Hours"
+      },
+      "step2": {
+        "title": "Category & Hours",
+        "subtitle": "Help customers find your business with the right category",
+        "primaryCategory": "Primary Category",
+        "primaryCategoryTip": "Choose the category that best describes your business",
+        "additionalCategories": "Additional Categories (optional)",
+        "addCategory": "+ Add another category",
+        "businessHours": "Business Hours",
+        "closed": "Closed",
+        "to": "to",
+        "hoursTip": "For businesses open past midnight, use times after 24:00 (e.g., 26:00 for 2 AM)",
+        "backButton": "Back",
+        "nextButton": "Next: Features"
+      },
+      "step3": {
+        "title": "Features & Amenities",
+        "subtitle": "Tell customers what makes your business special",
+        "features": "Business Features (optional)",
+        "featuresTip": "Select all features that apply to your business",
+        "selected": "Selected",
+        "paymentMethods": "Payment Methods (optional)",
+        "paymentMethodsTip": "Let customers know which payment methods you accept",
+        "accepted": "Accepted",
+        "infoTitle": "Optional but Recommended",
+        "infoText": "Adding features and amenities helps customers find your business when searching for specific services. For example, 'Night clubs with parking' or 'Bars with Wi-Fi'.",
+        "backButton": "Back",
+        "nextButton": "Next: Review"
+      },
+      "step4": {
+        "title": "Review Your Location",
+        "subtitle": "Please review all details before submitting to Google",
+        "basicInfo": "Basic Information",
+        "businessName": "Business Name",
+        "address": "Address",
+        "phone": "Phone",
+        "website": "Website",
+        "categoryHours": "Category & Hours",
+        "primaryCategory": "Primary Category",
+        "additionalCategories": "Additional Categories",
+        "businessHours": "Business Hours",
+        "featuresTitle": "Features & Amenities",
+        "features": "Features",
+        "paymentMethods": "Payment Methods",
+        "warningTitle": "Before You Submit",
+        "warningItems": [
+          "Make sure all information is accurate and up-to-date",
+          "Google will send a verification postcard to the address provided",
+          "Verification typically takes 5-14 business days",
+          "You'll be notified when the postcard arrives"
+        ],
+        "backButton": "Back",
+        "submitButton": "Submit to Google"
+      }
+    },
+    "pending": {
+      "title": "Locations Awaiting Verification",
+      "subtitle": "Enter the verification code when you receive it from Google",
+      "empty": {
+        "title": "No Pending Verifications",
+        "message": "Create a new location to start the verification process"
+      },
+      "verificationVia": "Verification via {{method}}",
+      "estimatedTime": "Est. Time: {{time}}",
+      "expected": "Expected: {{date}}",
+      "enterCode": "Enter Verification Code",
+      "codePlaceholder": "Enter 5-6 digit code",
+      "verifyButton": "Verify Location",
+      "cancelButton": "Cancel",
+      "enterCodeButton": "Enter Verification Code",
+      "resendButton": "Resend",
+      "helpText": "Haven't received your code? It can take up to {{time}} to arrive.",
+      "infoTitle": "Verification Process",
+      "infoItems": [
+        "Postcard: Check your mailbox daily. The code expires after 30 days.",
+        "Phone: Answer the call and note down the 6-digit code.",
+        "Email: Check your inbox and spam folder.",
+        "If you don't receive the code within the expected time, you can request a new verification."
+      ]
+    },
+    "verified": {
+      "title": "Successfully Verified Locations",
+      "subtitle": "These locations are now live on Google Business Profile",
+      "empty": {
+        "title": "No Verified Locations Yet",
+        "message": "Complete the verification process to see your locations here"
+      },
+      "verified": "Verified",
+      "verifiedOn": "Verified {{date}}",
+      "successTitle": "Location Successfully Verified",
+      "successText": "Verified via {{method}} on {{date}}",
+      "viewOnGoogle": "View on Google",
+      "editDetails": "Edit Details",
+      "viewAnalytics": "View Analytics",
+      "manageReviews": "Manage Reviews",
+      "created": "Created {{date}}",
+      "congratsTitle": "Congratulations!",
+      "congratsText": "Your verified locations are now live on Google Maps and Search. Customers can find you, see your business hours, leave reviews, and get directions. Monitor your performance in the Analytics section."
+    },
+    "issues": {
+      "title": "Locations With Issues",
+      "subtitle": "These locations need your attention to complete verification",
+      "empty": {
+        "title": "No Issues Found",
+        "message": "All your locations are proceeding smoothly"
+      },
+      "rejected": "Rejected",
+      "rejectedDate": "Rejected {{date}}",
+      "verificationFailed": "Verification Failed",
+      "commonReasons": "Common reasons:",
+      "reasons": [
+        "Address doesn't match official records",
+        "Business name is inconsistent",
+        "Phone number is invalid or unreachable",
+        "Location already claimed by another user",
+        "Business category is incorrect"
+      ],
+      "suggestedActions": "Suggested Actions",
+      "actions": [
+        "Verify your address matches official records (government registration, utility bills)",
+        "Ensure business name is exactly as registered",
+        "Check if the location is already claimed on Google Maps",
+        "Contact Google Business Profile support for manual review"
+      ],
+      "retryButton": "Edit & Retry Verification",
+      "contactSupport": "Contact Support",
+      "viewGuidelines": "View Guidelines",
+      "troubleshooting": "Troubleshooting Guide",
+      "originallyCreated": "Originally created {{date}}",
+      "helpTitle": "Need Help?",
+      "helpText": "If you're having trouble resolving these issues, our support team can help you through the process.",
+      "chatSupport": "Chat with Support",
+      "emailSupport": "Email Support",
+      "helpCenter": "Help Center"
+    },
+    "verificationMethods": {
+      "postcard": {
+        "name": "Postcard",
+        "description": "Google will mail a postcard with a 5-digit code to your business address",
+        "time": "5-14 days"
+      },
+      "phone": {
+        "name": "Phone Call",
+        "description": "Get an automated phone call with a verification code",
+        "time": "Immediate"
+      },
+      "email": {
+        "name": "Email",
+        "description": "Receive verification code via email",
+        "time": "Few minutes"
+      },
+      "instant": {
+        "name": "Instant Verification",
+        "description": "Verify instantly if you have access to existing listing",
+        "time": "Immediate"
       }
     }
   }

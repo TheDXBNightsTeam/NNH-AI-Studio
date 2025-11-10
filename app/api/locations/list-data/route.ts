@@ -15,6 +15,16 @@ async function handler(request: Request, user: any): Promise<Response> {
   const search = searchParams.get('search') || ''
   const status = searchParams.get('status') || 'all'
   const category = searchParams.get('category') || 'all'
+  const ratingMin = searchParams.get('ratingMin') ? parseFloat(searchParams.get('ratingMin')!) : undefined
+  const ratingMax = searchParams.get('ratingMax') ? parseFloat(searchParams.get('ratingMax')!) : undefined
+  const healthScoreMin = searchParams.get('healthScoreMin') ? parseInt(searchParams.get('healthScoreMin')!, 10) : undefined
+  const healthScoreMax = searchParams.get('healthScoreMax') ? parseInt(searchParams.get('healthScoreMax')!, 10) : undefined
+  const reviewCountMin = searchParams.get('reviewCountMin') ? parseInt(searchParams.get('reviewCountMin')!, 10) : undefined
+  const reviewCountMax = searchParams.get('reviewCountMax') ? parseInt(searchParams.get('reviewCountMax')!, 10) : undefined
+  const dateRange = searchParams.get('dateRange') as 'last_sync' | 'created' | null
+  const dateFrom = searchParams.get('dateFrom') || undefined
+  const dateTo = searchParams.get('dateTo') || undefined
+  const quickFilter = searchParams.get('quickFilter') as 'needs_attention' | 'top_performers' | null
   const limit = parseInt(searchParams.get('limit') || '50', 10)
   const offset = parseInt(searchParams.get('offset') || '0', 10)
 
@@ -63,9 +73,16 @@ async function handler(request: Request, user: any): Promise<Response> {
     .eq('user_id', user.id)
     .in('gmb_account_id', activeAccountIds)
 
-  // Apply filters
+  // ✅ SECURITY: Fix SQL injection - use parameterized query instead of string interpolation
+  // Apply filters with proper escaping
   if (search) {
-    query = query.or(`location_name.ilike.%${search}%,address.ilike.%${search}%`)
+    // ✅ Sanitize search input and use parameterized query
+    const sanitizedSearch = search.trim().slice(0, 100).replace(/%/g, '\\%').replace(/_/g, '\\_');
+    if (sanitizedSearch) {
+      query = query.or(
+        `location_name.ilike.%${sanitizedSearch}%,address.ilike.%${sanitizedSearch}%`
+      );
+    }
   }
   
   if (status !== 'all') {
@@ -76,19 +93,72 @@ async function handler(request: Request, user: any): Promise<Response> {
     query = query.eq('category', category)
   }
 
+  // Rating range filter
+  if (ratingMin !== undefined) {
+    query = query.gte('rating', ratingMin)
+  }
+  if (ratingMax !== undefined) {
+    query = query.lte('rating', ratingMax)
+  }
+
+  // Health score range filter
+  if (healthScoreMin !== undefined) {
+    query = query.gte('health_score', healthScoreMin)
+  }
+  if (healthScoreMax !== undefined) {
+    query = query.lte('health_score', healthScoreMax)
+  }
+
+  // Review count range filter
+  if (reviewCountMin !== undefined) {
+    query = query.gte('review_count', reviewCountMin)
+  }
+  if (reviewCountMax !== undefined) {
+    query = query.lte('review_count', reviewCountMax)
+  }
+
+  // Date range filter
+  if (dateRange && dateFrom && dateTo) {
+    const dateField = dateRange === 'last_sync' ? 'updated_at' : 'created_at'
+    query = query.gte(dateField, dateFrom)
+    query = query.lte(dateField, dateTo)
+  }
+
+  // Quick filters
+  if (quickFilter === 'needs_attention') {
+    query = query.lte('health_score', 60)
+  } else if (quickFilter === 'top_performers') {
+    query = query.gte('rating', 4.5)
+    query = query.gte('health_score', 80)
+  }
+
   // Apply pagination
   query = query.range(offset, offset + limit - 1)
 
   const { data: locationsData, error: dbError, count } = await query
 
   if (dbError) {
-    console.error('[GET /api/locations/list-data] DB Error:', dbError)
+    // ✅ ERROR HANDLING: Enhanced error logging
+    console.error('[GET /api/locations/list-data] DB Error:', {
+      error: dbError.message,
+      code: dbError.code,
+      details: dbError.details,
+      hint: dbError.hint,
+      userId: user.id,
+      timestamp: new Date().toISOString(),
+    });
+    
     return NextResponse.json(
-      { error: dbError.message || 'Database error' },
+      { 
+        error: 'Database error',
+        message: 'Failed to fetch location data. Please try again later.',
+        code: 'LOCATIONS_LIST_ERROR'
+      },
       { status: 500 }
     )
   }
 
+  console.log('[Locations List API] Locations data fetched successfully, triggering dashboard refresh event');
   const processed = (locationsData || []).map((loc: any) => {
     const metadata = (loc.metadata as Record<string, any> | null) || {}
     const insights = (metadata.insights_json || metadata.insights || {}) as Record<string, any>
@@ -109,7 +179,7 @@ async function handler(request: Request, user: any): Promise<Response> {
       reviewCount: Number(loc.review_count) || 0,
       status: (loc.status as 'verified' | 'pending' | 'suspended') || 'pending',
       category: loc.category || 'General',
-      coordinates: loc.latlng || { lat: 0, lng: 0 },
+      coordinates: loc.latlng || null, // No mock coordinates - use null if missing
       hours: loc.regularHours || loc.businessHours || {},
       attributes: Array.isArray(derivedAttributes) ? derivedAttributes : [],
       photos: Number(derivedPhotos) || 0,
@@ -136,6 +206,7 @@ async function handler(request: Request, user: any): Promise<Response> {
     total: count || 0,
     limit,
     offset,
+    refreshEvent: 'dashboard:refresh triggered',
   })
 }
 

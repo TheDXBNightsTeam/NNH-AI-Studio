@@ -13,11 +13,9 @@ interface GamificationWidgetProps {
     totalReviews: number;
     pendingReviews: number;
   };
-  locale?: string;
 }
 
-export function GamificationWidget({ stats, locale = 'en' }: GamificationWidgetProps) {
-  const isArabic = locale === 'ar';
+export function GamificationWidget({ stats }: GamificationWidgetProps) {
 
   const responseGoal = 90;
   const ratingGoal = 5;
@@ -25,25 +23,25 @@ export function GamificationWidget({ stats, locale = 'en' }: GamificationWidgetP
   const reviewsProgress = Math.min(100, (stats.totalReviews / nextReviewsMilestone) * 100);
 
   const badges: { icon: React.ReactNode; label: string }[] = [];
-  if (stats.averageRating >= 4.7) badges.push({ icon: <Star className="w-4 h-4 text-warning fill-warning" />, label: isArabic ? 'تقييم ذهبي' : 'Golden Rating' });
-  if (stats.responseRate >= 90) badges.push({ icon: <Flame className="w-4 h-4 text-primary" />, label: isArabic ? 'سلسلة الردود' : 'Reply Streak' });
-  if (stats.healthScore >= 85) badges.push({ icon: <Trophy className="w-4 h-4 text-success" />, label: isArabic ? 'صحة ممتازة' : 'Excellent Health' });
+  if (stats.averageRating >= 4.7) badges.push({ icon: <Star className="w-4 h-4 text-warning fill-warning" />, label: 'Golden Rating' });
+  if (stats.responseRate >= 90) badges.push({ icon: <Flame className="w-4 h-4 text-primary" />, label: 'Reply Streak' });
+  if (stats.healthScore >= 85) badges.push({ icon: <Trophy className="w-4 h-4 text-success" />, label: 'Excellent Health' });
 
   return (
     <Card className="border-2 border-primary/20">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Trophy className="w-5 h-5 text-primary" />
-          {isArabic ? 'الإنجازات والتقدّم' : 'Achievements & Progress'}
+          Achievements & Progress
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="p-6 space-y-4">
         {/* Response Rate Goal */}
         <div>
           <div className="flex items-center justify-between text-sm mb-1">
             <div className="flex items-center gap-2">
-              <Flame className="w-4 h-4 text-orange-500" />
-              {isArabic ? 'معدل الرد' : 'Response Rate'}
+              <Flame className="w-4 h-4 text-primary" />
+              Response Rate
             </div>
             <span className="text-muted-foreground">{stats.responseRate.toFixed(0)}% / {responseGoal}%</span>
           </div>
@@ -54,8 +52,8 @@ export function GamificationWidget({ stats, locale = 'en' }: GamificationWidgetP
         <div>
           <div className="flex items-center justify-between text-sm mb-1">
             <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-green-600" />
-              {isArabic ? 'درجة الصحة' : 'Health Score'}
+              <Target className="w-4 h-4 text-success" />
+              Health Score
             </div>
             <span className="text-muted-foreground">{stats.healthScore}% / 100%</span>
           </div>
@@ -67,7 +65,7 @@ export function GamificationWidget({ stats, locale = 'en' }: GamificationWidgetP
           <div className="flex items-center justify-between text-sm mb-1">
             <div className="flex items-center gap-2">
               <Star className="w-4 h-4 text-warning" />
-              {isArabic ? 'عدد المراجعات' : 'Reviews Count'}
+              Reviews Count
             </div>
             <span className="text-muted-foreground">{stats.totalReviews} / {nextReviewsMilestone}</span>
           </div>

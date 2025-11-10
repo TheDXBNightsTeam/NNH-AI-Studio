@@ -18,20 +18,18 @@ interface DateRangeControlsProps {
   value: DateRange;
   onChange: (next: DateRange) => void;
   onApply?: () => void;
-  locale?: string;
 }
 
-export function DateRangeControls({ value, onChange, onApply, locale = 'en' }: DateRangeControlsProps) {
-  const isArabic = locale === 'ar';
+export function DateRangeControls({ value, onChange, onApply }: DateRangeControlsProps) {
   const [customStart, setCustomStart] = useState<string>(value.start ? value.start.toISOString().slice(0,10) : '');
   const [customEnd, setCustomEnd] = useState<string>(value.end ? value.end.toISOString().slice(0,10) : '');
 
   const presets: { key: DatePreset; label: string }[] = useMemo(() => ([
-    { key: '7d', label: isArabic ? 'آخر 7 أيام' : 'Last 7 Days' },
-    { key: '30d', label: isArabic ? 'آخر 30 يوم' : 'Last 30 Days' },
-    { key: '90d', label: isArabic ? 'آخر 90 يوم' : 'Last 90 Days' },
-    { key: 'custom', label: isArabic ? 'مخصص' : 'Custom' },
-  ]), [isArabic]);
+    { key: '7d', label: 'Last 7 Days' },
+    { key: '30d', label: 'Last 30 Days' },
+    { key: '90d', label: 'Last 90 Days' },
+    { key: 'custom', label: 'Custom' },
+  ]), []);
 
   const applyPreset = (preset: DatePreset) => {
     const now = new Date();
@@ -89,21 +87,21 @@ export function DateRangeControls({ value, onChange, onApply, locale = 'en' }: D
               onChange={(e) => setCustomStart(e.target.value)}
               className="px-2 py-1 border rounded bg-background text-sm"
             />
-            <span className="text-muted-foreground">{isArabic ? 'إلى' : 'to'}</span>
+            <span className="text-muted-foreground">to</span>
             <input
               type="date"
               value={customEnd}
               onChange={(e) => setCustomEnd(e.target.value)}
               className="px-2 py-1 border rounded bg-background text-sm"
             />
-            <Button size="sm" onClick={applyCustom}>{isArabic ? 'تطبيق' : 'Apply'}</Button>
+            <Button size="sm" onClick={applyCustom}>Apply</Button>
           </div>
         )}
 
         <div className="ml-auto flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={reset}>
             <RotateCcw className="w-4 h-4 mr-1" />
-            {isArabic ? 'إعادة تعيين' : 'Reset'}
+            Reset
           </Button>
         </div>
       </div>

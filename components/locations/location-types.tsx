@@ -105,8 +105,8 @@ export const getTrendColor = (trend: number) => {
 // Calculate Health Score Breakdown (17 sections)
 export const getHealthScoreBreakdown = (location: Location) => {
   // Check each section
-  const hasPhone = location.phone && location.phone.length > 0;
-  const hasWebsite = location.website && location.website.length > 0;
+  const hasPhone = location?.phone && location.phone.length > 0;
+  const hasWebsite = location?.website && location.website.length > 0;
   const hasCategories = location.additionalCategories && location.additionalCategories.length > 0;
   const hasMenuLink = location.menuLink && location.menuLink.length > 0;
   const hasMenuItems = (location.menuItems || 0) > 0;
@@ -328,7 +328,7 @@ export const HealthScoreDetails = ({ location }: { location: Location }) => {
       },
       posts: {
         label: t('actions.createPost'),
-        onClick: () => router.push(`/gmb-posts?location=${location.id}`),
+        onClick: () => router.push(`/posts?location=${location.id}`),
       },
       responses: {
         label: t('actions.viewReviews'),

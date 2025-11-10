@@ -76,23 +76,28 @@ export interface GMBReview {
   user_id: string
   gmb_account_id?: string
   external_review_id?: string
-  review_id: string
+  review_id?: string
   reviewer_name: string
   rating: number
-  comment?: string
   review_text?: string
-  review_reply?: string
-  reply_text?: string
   review_date?: string
-  replied_at?: string
+  reply_text?: string
   reply_date?: string
+  review_reply?: string
+  replied_at?: string
   has_reply?: boolean
-  ai_suggested_reply?: string
-  ai_generated_response?: string
+  has_response?: boolean
+  response_text?: string
+  responded_at?: string
   ai_sentiment?: "positive" | "neutral" | "negative"
-  status: "new" | "in_progress" | "responded"
+  ai_generated_response?: string
+  ai_suggested_reply?: string
+  status?: "new" | "in_progress" | "responded"
   created_at: string
   updated_at: string
+  // Join fields
+  location_name?: string
+  location_address?: string
 }
 
 export interface Profile {
@@ -126,4 +131,63 @@ export interface ContentGeneration {
   generated_content: string
   metadata: Record<string, any>
   created_at: string
+}
+
+export interface GMBQuestion {
+  id: string
+  location_id: string
+  user_id: string
+  gmb_account_id?: string
+  question_id?: string
+  external_question_id?: string
+  question_text: string
+  asked_at?: string
+  author_name?: string
+  author_display_name?: string
+  author_profile_photo_url?: string
+  author_type?: string
+  answer_text?: string
+  answered_at?: string
+  answered_by?: string
+  answer_status?: 'unanswered' | 'answered' | 'deleted' | 'pending' | 'draft'
+  answer_id?: string
+  upvote_count?: number
+  total_answer_count?: number
+  ai_suggested_answer?: string
+  ai_confidence_score?: number
+  ai_answer_generated?: boolean
+  ai_category?: string
+  status?: 'pending' | 'answered' | 'flagged' | 'archived'
+  priority?: 'low' | 'medium' | 'high' | 'urgent'
+  question_url?: string
+  google_resource_name?: string
+  internal_notes?: string
+  created_at: string
+  updated_at: string
+  // Join fields
+  location_name?: string
+  location_address?: string
+}
+
+export interface GMBPost {
+  id: string
+  user_id: string
+  location_id: string
+  provider_post_id?: string
+  title?: string
+  content: string
+  media_url?: string
+  call_to_action?: string
+  call_to_action_url?: string
+  post_type: 'whats_new' | 'event' | 'offer' | 'product'
+  status: 'draft' | 'queued' | 'published' | 'failed'
+  scheduled_at?: string
+  published_at?: string
+  error_message?: string
+  metadata?: Record<string, any>
+  created_at: string
+  updated_at: string
+  // Join fields
+  location_name?: string
+  location_address?: string
 }

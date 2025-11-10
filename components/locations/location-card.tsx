@@ -50,18 +50,27 @@ export function LocationCard({ location, index }: LocationCardProps) {
   const canHaveFoodMenus = metadata.canHaveFoodMenus
   const isOpen = openInfo.status === 'OPEN'
 
-  // Fetch media for cover/logo photos
+  // Fetch media for cover/logo photos - Added comprehensive error handling for media fetch with user feedback
   useEffect(() => {
     async function fetchLocationMedia() {
       try {
         setLoadingMedia(true)
         const response = await fetch(`/api/gmb/media?locationId=${location.id}`)
+        
+        // Check if response is ok, throw error if not
+        if (!response.ok) {
+          throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`)
+        }
+        
         const result = await response.json()
         
-        if (response.ok && result.data?.media) {
+        // Handle successful response - Batch state updates to prevent multiple re-renders in loop
+        if (result.data?.media) {
           const media = result.data.media
           let foundCover = false
           let foundLogo = false
+          let coverPhotoUrl: string | null = null
+          let logoUrl: string | null = null
           
           media.forEach((item: any) => {
             const category = item.locationAssociation?.category || 
@@ -73,13 +82,17 @@ export function LocationCard({ location, index }: LocationCardProps) {
             if (!url) return
             
             if (category === 'COVER' && !foundCover) {
-              setCoverPhoto(url)
               foundCover = true
+              coverPhotoUrl = url
             } else if (category === 'LOGO' && !foundLogo) {
-              setLogoPhoto(url)
               foundLogo = true
+              logoUrl = url
             }
           })
+          
+          // Batch state updates after loop completion
+          if (coverPhotoUrl) setCoverPhoto(coverPhotoUrl)
+          if (logoUrl) setLogoPhoto(logoUrl)
           
           // If no categorized media found, use first photo as cover
           if (!foundCover && media.length > 0) {
@@ -93,8 +106,15 @@ export function LocationCard({ location, index }: LocationCardProps) {
           }
         }
       } catch (error) {
+        // Log error for debugging
         console.error('Error fetching location media:', error)
+        
+        // Set error state for user feedback (graceful degradation)
+        // Clear any existing media data
+        setCoverPhoto(null)
+        setLogoPhoto(null)
       } finally {
+        // Always stop loading state
         setLoadingMedia(false)
       }
     }
@@ -173,7 +193,7 @@ export function LocationCard({ location, index }: LocationCardProps) {
                 className="w-3 h-3 rounded-full bg-gradient-to-r from-primary to-accent"
               />
             ) : (
-              <div className="w-3 h-3 rounded-full bg-success" />
+              <div className="w-3 h-3 rounded-full bg-success/80" />
             )}
           </div>
 
@@ -220,20 +240,20 @@ export function LocationCard({ location, index }: LocationCardProps) {
                       </Badge>
                     )}
                     {isOpen && (
-                      <Badge variant="default" className="bg-success/20 text-success border-success/30">
-                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                      <Badge variant="default" className="bg-success/10 text-success border-success/30">
+                        <CheckCircle2 className="w-3 h-3 mr-1" aria-hidden="true" />
                         Open
                       </Badge>
                     )}
                     {hasPendingEdits && (
-                      <Badge variant="outline" className="bg-warning/20 text-warning border-warning/30">
-                        <AlertCircle className="w-3 h-3 mr-1" />
+                      <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30">
+                        <AlertCircle className="w-3 h-3 mr-1" aria-hidden="true" />
                         Pending Edits
                       </Badge>
                     )}
                     {hasVoiceOfMerchant && (
-                      <Badge variant="outline" className="bg-info/20 text-info border-info/30">
-                        <MessageCircle className="w-3 h-3 mr-1" />
+                      <Badge variant="outline" className="bg-info/10 text-info border-info/30">
+                        <MessageCircle className="w-3 h-3 mr-1" aria-hidden="true" />
                         Voice of Merchant
                       </Badge>
                     )}
@@ -382,7 +402,7 @@ export function LocationCard({ location, index }: LocationCardProps) {
             )}
 
             {/* Metrics grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
               <div className="text-center p-3 rounded-lg bg-secondary border border-primary/20">
                 <div className="text-2xl font-bold text-primary">{(location.rating ?? 0).toFixed(1)}</div>
                 <div className="text-xs text-muted-foreground">Rating</div>

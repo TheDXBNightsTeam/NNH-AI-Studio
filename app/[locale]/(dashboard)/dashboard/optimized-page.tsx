@@ -27,7 +27,7 @@ import {
 import { useDashboardStats, cacheUtils } from '@/hooks/use-dashboard-cache';
 
 // Regular imports for essential components
-import { LastSyncInfo } from '@/components/dashboard/last-sync-info';
+import { GMBConnectionManager } from '@/components/gmb/gmb-connection-manager';
 import { WeeklyTasksWidget } from '@/components/dashboard/weekly-tasks-widget';
 import { BottlenecksWidget } from '@/components/dashboard/bottlenecks-widget';
 import { QuickActionsBar } from '@/components/dashboard/quick-actions-bar';
@@ -80,6 +80,37 @@ interface DashboardStats {
 const GMBConnectionBanner = () => {
   const t = useTranslations('Dashboard.connectionBanner');
   const { isMobile } = useResponsiveLayout();
+  const router = useRouter();
+  const [connecting, setConnecting] = useState(false);
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    try {
+      // Call the existing GMB auth URL endpoint
+      const response = await fetch('/api/gmb/create-auth-url', {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to start GMB connection');
+      }
+      
+      const data = await response.json();
+      
+      if (data.url) {
+        // Redirect to Google OAuth
+        window.location.href = data.url;
+      } else {
+        throw new Error('No OAuth URL returned');
+      }
+    } catch (error) {
+      console.error('Connection error:', error);
+      toast.error('Failed to connect. Please try again or go to Settings.');
+      setConnecting(false);
+      // Fallback to settings page
+      router.push('/settings');
+    }
+  };
   
   return (
     <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent overflow-hidden relative">
@@ -131,11 +162,23 @@ const GMBConnectionBanner = () => {
             "flex gap-2 md:gap-3 w-full lg:w-auto lg:flex-shrink-0",
             isMobile ? "flex-col" : "flex-col sm:flex-row"
           )}>
-            <Button asChild size={isMobile ? "default" : "lg"} className="gap-2 gradient-orange">
-              <Link href="/settings">
-                <Zap className="w-4 h-4 md:w-5 md:h-5" />
-                {t('connectButton')}
-              </Link>
+            <Button 
+              size={isMobile ? "default" : "lg"} 
+              className="gap-2 gradient-orange"
+              onClick={handleConnect}
+              disabled={connecting}
+            >
+              {connecting ? (
+                <>
+                  <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 md:w-5 md:h-5" />
+                  Connect Google My Business
+                </>
+              )}
             </Button>
             <Button asChild size={isMobile ? "default" : "lg"} variant="outline" className="gap-2">
               <a 
@@ -191,11 +234,6 @@ export default function OptimizedDashboardPage() {
   const { isMobile, isTablet } = useResponsiveLayout();
 
   const [gmbConnected, setGmbConnected] = useState(false);
-  const [gmbAccountId, setGmbAccountId] = useState<string | null>(null);
-  const [syncSchedule, setSyncSchedule] = useState<string>('manual');
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-  const [syncing, setSyncing] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
   const [lastDataUpdate, setLastDataUpdate] = useState<Date | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>({ preset: '30d', start: null, end: null });
 
@@ -237,25 +275,16 @@ export default function OptimizedDashboardPage() {
         return;
       }
 
-      // Check GMB connection status
+      // Check GMB connection status - only active accounts
       const { data: gmbAccounts } = await supabase
         .from("gmb_accounts")
-        .select("id, is_active, settings, last_sync")
-        .eq("user_id", authUser.id);
+        .select("id, is_active")
+        .eq("user_id", authUser.id)
+        .eq("is_active", true);
 
-      const activeAccount = gmbAccounts?.find(acc => acc.is_active);
+      const activeAccount = gmbAccounts && gmbAccounts.length > 0 ? gmbAccounts[0] : null;
       const hasActiveAccount = !!activeAccount;
       setGmbConnected(hasActiveAccount);
-
-      if (activeAccount) {
-        setGmbAccountId(activeAccount.id);
-        if (activeAccount.settings) {
-          setSyncSchedule(activeAccount.settings.syncSchedule || 'manual');
-        }
-        if (activeAccount.last_sync) {
-          setLastSyncTime(new Date(activeAccount.last_sync));
-        }
-      }
     } catch (error) {
       console.error('Error fetching connection status:', error);
     }
@@ -280,61 +309,12 @@ export default function OptimizedDashboardPage() {
     };
   }, [gmbConnected]);
 
-  const handleSync = async () => {
-    if (!gmbAccountId) {
-      toast.error('No GMB account connected');
-      return;
-    }
-
-    try {
-      setSyncing(true);
-      const response = await fetch('/api/gmb/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ account_id: gmbAccountId, sync_type: 'full' }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Sync failed');
-      }
-
-      const data = await response.json();
-      if (data.ok || data.success) {
-        setLastSyncTime(new Date());
-        toast.success('Sync completed successfully!');
-        cacheUtils.invalidateStats();
-        await fetchData(true);
-      }
-    } catch (error) {
-      console.error('Sync error:', error);
-      toast.error('Failed to sync data');
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const handleDisconnect = async () => {
-    if (!gmbAccountId || !confirm('Are you sure you want to disconnect?')) return;
-
-    try {
-      setDisconnecting(true);
-      const response = await fetch('/api/gmb/disconnect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountId: gmbAccountId }),
-      });
-
-      if (!response.ok) throw new Error('Failed to disconnect');
-
-      toast.success('Disconnected successfully');
-      setGmbConnected(false);
-      setGmbAccountId(null);
-      cacheUtils.clear();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to disconnect');
-    } finally {
-      setDisconnecting(false);
-    }
+  // Callback بعد نجاح عمليات GMB (sync/connect/disconnect)
+  const handleGMBSuccess = async () => {
+    cacheUtils.invalidateStats();
+    await fetchData(true);
+    await fetchConnectionStatus();
+    router.refresh();
   };
 
   return (
@@ -399,14 +379,11 @@ export default function OptimizedDashboardPage() {
         <>
           <ResponsiveGrid type="main" className="!grid-cols-1 md:!grid-cols-4">
             <div className="md:col-span-3">
-              <DashboardSection section="Sync Info">
-                <LastSyncInfo
-                  lastSyncTime={lastSyncTime}
-                  isSyncing={syncing}
-                  onSync={handleSync}
-                  syncSchedule={syncSchedule}
-                  onDisconnect={handleDisconnect}
-                  isDisconnecting={disconnecting}
+              <DashboardSection section="GMB Connection">
+                <GMBConnectionManager
+                  variant="compact"
+                  showLastSync={true}
+                  onSuccess={handleGMBSuccess}
                 />
               </DashboardSection>
             </div>
@@ -419,8 +396,6 @@ export default function OptimizedDashboardPage() {
             <QuickActionsBar 
               pendingReviews={currentStats.pendingReviews}
               unansweredQuestions={currentStats.unansweredQuestions}
-              onSync={handleSync}
-              isSyncing={syncing}
             />
           </DashboardSection>
         </>

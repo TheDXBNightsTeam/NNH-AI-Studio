@@ -1,98 +1,119 @@
 'use client';
 
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Component, ReactNode } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
+import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { Link } from '@/lib/navigation';
 
-interface DashboardErrorBoundaryState {
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+  section?: string; // Optional section name for better error context
+}
+
+interface State {
   hasError: boolean;
   error?: Error;
-  errorInfo?: React.ErrorInfo;
+  errorInfo?: any;
 }
 
-interface DashboardErrorBoundaryProps {
-  children: React.ReactNode;
-  fallback?: React.ComponentType<{error?: Error; retry?: () => void}>;
-  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
-  section?: string;
-}
-
-class DashboardErrorBoundary extends React.Component<
-  DashboardErrorBoundaryProps, 
-  DashboardErrorBoundaryState
-> {
-  constructor(props: DashboardErrorBoundaryProps) {
+/**
+ * Granular error boundary for dashboard sections
+ * Provides better error isolation and user experience
+ */
+export class DashboardErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(error: Error): DashboardErrorBoundaryState {
+  static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error(`Dashboard Error (${this.props.section || 'Unknown'}):`, error, errorInfo);
+  componentDidCatch(error: Error, errorInfo: any) {
+    // Log to error reporting service
+    console.error('Dashboard section error:', {
+      error: error.message,
+      stack: error.stack,
+      section: this.props.section || 'unknown',
+      errorInfo,
+      timestamp: new Date().toISOString(),
+    });
     
-    // Log error to external service if needed
-    this.props.onError?.(error, errorInfo);
-    
-    // Show toast notification
-    toast.error(`Error in ${this.props.section || 'dashboard'}: ${error.message}`);
-    
-    this.setState({ error, errorInfo });
+    // Send to monitoring service (e.g., Sentry)
+    if (typeof window !== 'undefined' && (window as any).Sentry) {
+      (window as any).Sentry.captureException(error, { 
+        extra: {
+          ...errorInfo,
+          section: this.props.section,
+        }
+      });
+    }
+
+    this.setState({ errorInfo });
   }
 
-  handleRetry = () => {
+  handleReset = () => {
     this.setState({ hasError: false, error: undefined, errorInfo: undefined });
   };
 
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
-        const FallbackComponent = this.props.fallback;
-        return <FallbackComponent error={this.state.error} retry={this.handleRetry} />;
+        return this.props.fallback;
       }
 
       return (
-        <Card className="border-destructive/50">
+        <Card className="border-destructive/50 bg-destructive/5">
           <CardHeader>
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              <CardTitle className="text-destructive">
-                Error in {this.props.section || 'Dashboard Section'}
-              </CardTitle>
-            </div>
-            <CardDescription>
-              Something went wrong while loading this section. You can try refreshing or continue using other parts of the dashboard.
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              {this.props.section 
+                ? `Error in ${this.props.section}`
+                : 'Something went wrong'
+              }
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {this.state.error && (
-              <div className="p-3 bg-muted rounded-md">
-                <code className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
+              {this.props.section 
+                ? `An error occurred in the ${this.props.section} section. The rest of the dashboard is still functional.`
+                : 'We encountered an unexpected error. Please try refreshing the section.'
+              }
+            </p>
+            
+            {process.env.NODE_ENV === 'development' && this.state.error && (
+              <details className="text-xs bg-muted p-3 rounded overflow-auto">
+                <summary className="cursor-pointer font-medium mb-2">
+                  Error Details (Development Only)
+                </summary>
+                <pre className="mt-2 whitespace-pre-wrap">
                   {this.state.error.message}
-                </code>
-              </div>
+                  {this.state.error.stack && `\n\n${this.state.error.stack}`}
+                </pre>
+              </details>
             )}
             
             <div className="flex gap-2">
               <Button 
-                onClick={this.handleRetry} 
-                size="sm" 
+                onClick={this.handleReset}
                 variant="outline"
-                className="gap-2"
+                size="sm"
               >
-                <RefreshCw className="h-4 w-4" />
-                Try Again
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Retry
               </Button>
               <Button 
-                size="sm" 
-                variant="ghost"
-                onClick={() => window.location.reload()}
+                asChild
+                variant="outline"
+                size="sm"
               >
-                Refresh Page
+                <Link href="/dashboard">
+                  <Home className="w-4 h-4 mr-2" />
+                  Go to Dashboard
+                </Link>
               </Button>
             </div>
           </CardContent>
@@ -104,32 +125,20 @@ class DashboardErrorBoundary extends React.Component<
   }
 }
 
-// Wrapper component for easier usage
-export function DashboardSection({ 
-  children, 
-  section, 
-  fallback,
-  className = '' 
-}: {
-  children: React.ReactNode;
-  section: string;
-  fallback?: React.ComponentType<{error?: Error; retry?: () => void}>;
-  className?: string;
-}) {
-  return (
-    <div className={className}>
-      <DashboardErrorBoundary 
-        section={section} 
-        fallback={fallback}
-        onError={(error, errorInfo) => {
-          // يمكن إضافة logging external هنا
-          console.error(`Section "${section}" error:`, { error, errorInfo });
-        }}
-      >
-        {children}
-      </DashboardErrorBoundary>
-    </div>
-  );
+/**
+ * Convenience wrapper component for dashboard sections
+ * Automatically wraps content with DashboardErrorBoundary
+ */
+interface DashboardSectionProps {
+  children: ReactNode;
+  section?: string;
+  fallback?: ReactNode;
 }
 
-export default DashboardErrorBoundary;
+export function DashboardSection({ children, section, fallback }: DashboardSectionProps) {
+  return (
+    <DashboardErrorBoundary section={section} fallback={fallback}>
+      {children}
+    </DashboardErrorBoundary>
+  );
+}

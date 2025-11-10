@@ -12,7 +12,7 @@ interface CompetitorData {
     rating: number;
 }
 
-const GOOGLE_PLACES_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY; 
+const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_MAPS_API_KEY; 
 
 
 /**
@@ -21,17 +21,67 @@ const GOOGLE_PLACES_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 export async function GET(request: Request) {
     const supabase = await createClient();
 
-    const { data: { user } } = await supabase.auth.getUser();
+    // ✅ SECURITY: Enhanced authentication validation
+    // Using getUser() instead of getSession() for secure authentication
+    // getUser() validates against Supabase Auth server, preventing cookie tampering
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (authError || !user) {
+        // Only log unexpected errors, not missing sessions (expected when user isn't logged in)
+        if (authError && authError.name !== 'AuthSessionMissingError') {
+            console.error('Authentication error:', authError);
+        }
+        return NextResponse.json(
+            { 
+                error: 'Unauthorized',
+                message: 'Authentication required. Please sign in again.'
+            }, 
+            { status: 401 }
+        );
     }
 
     if (!GOOGLE_PLACES_API_KEY) {
-        return NextResponse.json({ error: 'Google Places API key is missing.' }, { status: 500 });
+        console.error('Google Places API key is missing');
+        return NextResponse.json(
+            { 
+                error: 'Configuration error',
+                message: 'Google Places API key is missing. Please contact support.'
+            }, 
+            { status: 500 }
+        );
     }
 
     try {
+        // ✅ SECURITY: Input validation for query parameters - Added comprehensive input validation for radius parameter with proper error handling
+        const url = new URL(request.url);
+        
+        // Validate and sanitize radius parameter
+        const radiusParam = url.searchParams.get('radius');
+        
+        // Check if radius parameter exists and is a valid string
+        if (radiusParam && typeof radiusParam !== 'string') {
+            return NextResponse.json(
+                { 
+                    error: 'Invalid radius parameter', 
+                    message: 'Radius parameter must be a valid number'
+                },
+                { status: 400 }
+            );
+        }
+        
+        // Parse radius with additional validation
+        const radius = radiusParam ? parseInt(radiusParam.trim(), 10) : 5000;
+        
+        // Validate radius is a valid number and within acceptable range
+        if (isNaN(radius) || !isFinite(radius) || radius < 100 || radius > 50000) {
+            return NextResponse.json(
+                { 
+                    error: 'Invalid radius value', 
+                    message: 'Radius must be a number between 100 and 50000 meters'
+                },
+                { status: 400 }
+            );
+        }
         // 1. جلب إحداثيات المواقع النشطة للمستخدم
         const { data: activeLocations, error: locationsError } = await supabase
             .from('gmb_locations')
@@ -56,10 +106,22 @@ export async function GET(request: Request) {
 
             const locationType = location.type.toLowerCase().split(',')[0].trim() || 'establishment'; 
 
-            const radius = 5000; // دائرة بحث 5 كيلومتر
+            // ✅ Use validated radius (defaults to 5000 if not provided)
+            const searchRadius = radius || 5000;
+
+            // ✅ SECURITY: Validate coordinates to prevent injection
+            if (isNaN(location.latitude) || isNaN(location.longitude) ||
+                location.latitude < -90 || location.latitude > 90 ||
+                location.longitude < -180 || location.longitude > 180) {
+                console.error(`Invalid coordinates for location ${location.location_id}`);
+                continue;
+            }
+
+            // ✅ SECURITY: Sanitize location type to prevent injection
+            const sanitizedType = locationType.replace(/[^a-z_]/g, '');
 
             // ⭐️ استخدام الأعمدة الصحيحة في URL
-            const placesApiUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${location.latitude},${location.longitude}&radius=${radius}&type=${locationType}&key=${GOOGLE_PLACES_API_KEY}`;
+            const placesApiUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${location.latitude},${location.longitude}&radius=${searchRadius}&type=${sanitizedType}&key=${GOOGLE_PLACES_API_KEY}`;
 
             const placesResponse = await fetch(placesApiUrl);
             const placesData = await placesResponse.json();
@@ -94,8 +156,22 @@ export async function GET(request: Request) {
         return NextResponse.json(allCompetitors);
 
     } catch (error: any) {
-        console.error('API Error fetching competitor data:', error);
-        // 💡 إرجاع رسالة خطأ موحدة
-        return NextResponse.json({ error: error.message || 'Failed to process competitor data' }, { status: 500 });
+        // ✅ ERROR HANDLING: Enhanced error logging
+        console.error('API Error fetching competitor data:', {
+            error: error.message,
+            stack: error.stack,
+            userId: user?.id || 'unknown',
+            timestamp: new Date().toISOString(),
+        });
+
+        // Don't expose internal error details to client
+        return NextResponse.json(
+            { 
+                error: 'Internal server error',
+                message: 'Failed to fetch competitor data. Please try again later.',
+                code: 'COMPETITOR_DATA_ERROR'
+            }, 
+            { status: 500 }
+        );
     }
 }

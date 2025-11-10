@@ -16,13 +16,13 @@ export function ReviewColumn({ title, status, reviews, onGenerateResponse, onRep
   const getStatusColor = () => {
     switch (status) {
       case "new":
-        return "bg-blue-500/20 text-blue-500 border-blue-500/30"
+        return "bg-info/10 text-info border-info/30"
       case "in_progress":
-        return "bg-yellow-500/20 text-yellow-500 border-yellow-500/30"
+        return "bg-warning/10 text-warning border-warning/30"
       case "responded":
-        return "bg-green-500/20 text-green-500 border-green-500/30"
+        return "bg-success/10 text-success border-success/30"
       default:
-        return "bg-gray-500/20 text-gray-500 border-gray-500/30"
+        return "bg-muted/10 text-muted-foreground border-muted/30"
     }
   }
 
@@ -37,13 +37,21 @@ export function ReviewColumn({ title, status, reviews, onGenerateResponse, onRep
       {/* Reviews List */}
       <div className="flex-1 -mx-4 px-4 overflow-y-auto">
         <div className="space-y-4">
-          {reviews.map((review, index) => (
+          {reviews.map((review) => (
             <ReviewCard
               key={review.id}
               review={review}
-              index={index}
-              onGenerateResponse={onGenerateResponse}
-              onReply={onReply}
+              isSelected={false}
+              onClick={() => {
+                // Handle click - could open a dialog or navigate
+                // For now, just trigger the reply action if review needs response
+                const needsResponse = !review.has_reply && !review.has_response && !review.reply_text && !review.review_reply;
+                if (needsResponse) {
+                  onGenerateResponse(review.id);
+                } else {
+                  onReply(review.id);
+                }
+              }}
             />
           ))}
           {reviews.length === 0 && (

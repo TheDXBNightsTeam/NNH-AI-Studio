@@ -2,8 +2,8 @@
 
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import { GoogleMap, useLoadScript, Marker, InfoWindow } from '@react-google-maps/api';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner'; 
 import Link from 'next/link'; 
 import { useTheme } from 'next-themes'; // ⭐️ للاستفادة من الثيم الداكن للمستخدم
+import { useGoogleMaps } from '@/hooks/use-google-maps';
 
 // تعريف نوع بيانات الموقع والمنافس (يجب أن يتطابق مع API)
 interface LocationData {
@@ -38,10 +39,7 @@ const mapContainerStyle = {
   height: '600px',
 };
 
-const defaultCenter = {
-  lat: 25.2048, 
-  lng: 55.2708,
-};
+// No mock coordinates - center will be calculated from actual location data
 
 const libraries: ("places" | "drawing" | "geometry" | "visualization" | "marker")[] = ['places'];
 
@@ -72,61 +70,107 @@ export function LocationMapDashboard() {
   const [selectedMarker, setSelectedMarker] = useState<LocationData | CompetitorData | null>(null); 
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
-  const [showCompetitors, setShowCompetitors] = useState(false); 
+  const [showCompetitors, setShowCompetitors] = useState(false);
+  
+  // ✅ FIX: Memory leak prevention - track map instance and cleanup
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.Marker[]>([]);
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+  const isMountedRef = useRef(true);
 
+  // ✅ Use shared Google Maps hook to prevent multiple API loads
+  const { isLoaded, loadError: mapLoadError } = useGoogleMaps();
 
-  // 1. تحميل سكربت الخريطة
-  const { isLoaded, loadError: mapLoadError } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'YOUR_GOOGLE_MAPS_API_KEY',
-    libraries,
-  });
+  // ✅ FIX: Cleanup on unmount - Added comprehensive cleanup for Google Maps markers and InfoWindow instances to prevent memory leaks
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    return () => {
+      isMountedRef.current = false;
+      
+      // Cleanup InfoWindow
+      if (infoWindowRef.current) {
+        infoWindowRef.current.close();
+        infoWindowRef.current = null;
+      }
+      
+      // Cleanup all markers
+      markersRef.current.forEach(marker => {
+        marker.setMap(null);
+        google.maps.event.clearInstanceListeners(marker);
+      });
+      markersRef.current = [];
+      
+      // Cleanup map instance
+      if (mapRef.current) {
+        google.maps.event.clearInstanceListeners(mapRef.current);
+        mapRef.current = null;
+      }
+    };
+  }, []);
 
   // 2. دالة جلب بيانات المواقع
   const fetchMapData = useCallback(async () => {
+    if (!isMountedRef.current) return;
+    
     setLoadingData(true);
     setErrorData(null);
     try {
       const response = await fetch('/api/locations/map-data');
       const data = await response.json();
 
+      if (!isMountedRef.current) return;
+
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch location data');
+        throw new Error(data.error || data.message || 'Failed to fetch location data');
       }
 
       setLocationsData(data);
       setSelectedLocations([]); 
-      setLoadingData(false);
     } catch (e: any) {
+      if (!isMountedRef.current) return;
       console.error(e);
       setErrorData(e.message || 'Error fetching map data');
-      setLoadingData(false);
+    } finally {
+      if (isMountedRef.current) {
+        setLoadingData(false);
+      }
     }
   }, []);
 
   // 3. دالة جلب بيانات المنافسين
   const fetchCompetitorData = useCallback(async () => {
-    if (showCompetitors) {
-        setLoadingCompetitors(true);
-        try {
-            const response = await fetch('/api/locations/competitor-data');
-            const data = await response.json();
-            if (!response.ok) {
-                // 💡 إظهار التنبيه للمستخدم إذا كان هناك خطأ في API Key/Restrictions
-                if (data.error && data.error.includes('does not exist')) {
-                    toast.error("Database schema error (check 'type' column).");
-                }
-                throw new Error(data.error || 'Failed to fetch competitor data.');
+    if (!showCompetitors || !isMountedRef.current) {
+      if (!showCompetitors) {
+        setCompetitorData([]);
+      }
+      return;
+    }
+    
+    setLoadingCompetitors(true);
+    try {
+        const response = await fetch('/api/locations/competitor-data');
+        const data = await response.json();
+        
+        if (!isMountedRef.current) return;
+        
+        if (!response.ok) {
+            // 💡 إظهار التنبيه للمستخدم إذا كان هناك خطأ في API Key/Restrictions
+            if (data.error && data.error.includes('does not exist')) {
+                toast.error("Database schema error (check 'type' column).");
             }
-            setCompetitorData(data);
-        } catch (e: any) {
-            console.error('Competitor fetch failed:', e);
-            toast.error('Failed to load competitor data. Check Places API permissions.');
-            setShowCompetitors(false); 
-        } finally {
+            throw new Error(data.error || data.message || 'Failed to fetch competitor data.');
+        }
+        setCompetitorData(data);
+    } catch (e: any) {
+        if (!isMountedRef.current) return;
+        console.error('Competitor fetch failed:', e);
+        toast.error(e.message || 'Failed to load competitor data. Check Places API permissions.');
+        setShowCompetitors(false); 
+    } finally {
+        if (isMountedRef.current) {
             setLoadingCompetitors(false);
         }
-    } else {
-        setCompetitorData([]);
     }
   }, [showCompetitors]);
 
@@ -232,14 +276,30 @@ export function LocationMapDashboard() {
     <GoogleMap
       mapContainerStyle={mapContainerStyle}
       zoom={locationsData.length > 0 ? 11 : 4} 
-      center={locationsData.length > 0 ? { lat: locationsData[0].lat, lng: locationsData[0].lng } : defaultCenter}
+      center={locationsData.length > 0 && locationsData[0].lat && locationsData[0].lng 
+        ? { lat: locationsData[0].lat, lng: locationsData[0].lng } 
+        : { lat: 0, lng: 0 }} // Only show map if we have real location data
       options={{ 
           disableDefaultUI: true, 
           zoomControl: true,
           // ⭐️ تطبيق الثيم الداكن إذا كان مفعلاً
           styles: theme === 'dark' ? darkMapStyles : [] 
       }}
-      onClick={() => setSelectedMarker(null)} 
+      onClick={() => setSelectedMarker(null)}
+      onLoad={(map) => {
+        // ✅ FIX: Store map instance for cleanup
+        mapRef.current = map;
+      }}
+      onUnmount={() => {
+        // ✅ FIX: Cleanup on unmount
+        markersRef.current.forEach(marker => {
+          if (marker) {
+            marker.setMap(null);
+          }
+        });
+        markersRef.current = [];
+        mapRef.current = null;
+      }}
     >
         {/* عرض نقاط المواقع الحقيقية */}
         {filteredLocations.map((loc) => (
@@ -249,6 +309,13 @@ export function LocationMapDashboard() {
                 title={loc.name}
                 icon={getMarkerIcon(loc.status)}
                 onClick={() => setSelectedMarker(loc)}
+                onLoad={(marker) => {
+                  // ✅ FIX: Track markers for cleanup
+                  if (marker && !markersRef.current.includes(marker)) {
+                    markersRef.current.push(marker);
+                  }
+                }}
+                aria-label={`${loc.name}, Status: ${loc.status}, Rating: ${loc.rating}`}
             />
         ))}
 
@@ -260,6 +327,13 @@ export function LocationMapDashboard() {
                 title={`Competitor: ${comp.name}`}
                 icon={getCompetitorIcon()}
                 onClick={() => setSelectedMarker(comp)}
+                onLoad={(marker) => {
+                  // ✅ FIX: Track markers for cleanup
+                  if (marker && !markersRef.current.includes(marker)) {
+                    markersRef.current.push(marker);
+                  }
+                }}
+                aria-label={`Competitor: ${comp.name}, Rating: ${comp.rating}`}
             />
         ))}
 
@@ -268,7 +342,17 @@ export function LocationMapDashboard() {
         {selectedMarker && (
             <InfoWindow 
                 position={{ lat: selectedMarker.lat, lng: selectedMarker.lng }}
-                onCloseClick={() => setSelectedMarker(null)}
+                onCloseClick={() => {
+                  setSelectedMarker(null);
+                  if (infoWindowRef.current) {
+                    infoWindowRef.current = null;
+                  }
+                }}
+                onLoad={(infoWindow) => {
+                  // ✅ FIX: Track InfoWindow for cleanup
+                  infoWindowRef.current = infoWindow;
+                }}
+                aria-label={`Information for ${selectedMarker.name}`}
             >
                 <div className="p-2">
                     <h4 className="font-bold text-sm">
@@ -295,8 +379,33 @@ export function LocationMapDashboard() {
     </GoogleMap>
   );
 
-  if (mapLoadError) return <div className="p-8 text-center text-destructive">Error loading maps. Check your API key.</div>;
-  if (!isLoaded) return <div className="p-8 text-center text-muted-foreground">Loading Map...</div>;
+  // ✅ ACCESSIBILITY: Add proper ARIA labels and loading states
+  if (mapLoadError) {
+    return (
+      <div 
+        className="p-8 text-center text-destructive"
+        role="alert"
+        aria-live="assertive"
+      >
+        <AlertTriangle className="w-6 h-6 mx-auto mb-2" aria-hidden="true" />
+        <p>Error loading maps. Check your API key.</p>
+      </div>
+    );
+  }
+  
+  if (!isLoaded) {
+    return (
+      <div 
+        className="p-8 text-center text-muted-foreground"
+        role="status"
+        aria-live="polite"
+        aria-label="Loading map"
+      >
+        <Loader2 className="w-6 h-6 mx-auto mb-2 animate-spin" aria-hidden="true" />
+        <p>Loading Map...</p>
+      </div>
+    );
+  }
 
 
   return (
@@ -340,20 +449,45 @@ export function LocationMapDashboard() {
 
           {/* شريط البحث */}
           <div className="space-y-2">
-            <label className="text-sm font-medium flex items-center gap-1"><Search className="w-4 h-4"/> Search Location</label>
+            <label 
+              htmlFor="location-search"
+              className="text-sm font-medium flex items-center gap-1"
+            >
+              <Search className="w-4 h-4" aria-hidden="true"/> 
+              Search Location
+            </label>
             <Input 
+                id="location-search"
                 placeholder="Search by name..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 disabled={loadingData}
+                aria-label="Search locations by name"
+                aria-describedby="location-search-hint"
             />
+            <p id="location-search-hint" className="text-xs text-muted-foreground sr-only">
+              Type to filter locations by name
+            </p>
           </div>
 
           {/* فلتر الحالة */}
           <div className="space-y-2">
-            <label className="text-sm font-medium flex items-center gap-1"><Pin className="w-4 h-4"/> Location Status</label>
-            <Select onValueChange={setSelectedStatus} value={selectedStatus} disabled={loadingData}>
-              <SelectTrigger>
+            <label 
+              htmlFor="status-filter"
+              className="text-sm font-medium flex items-center gap-1"
+            >
+              <Pin className="w-4 h-4" aria-hidden="true"/> 
+              Location Status
+            </label>
+            <Select 
+              onValueChange={setSelectedStatus} 
+              value={selectedStatus} 
+              disabled={loadingData}
+            >
+              <SelectTrigger 
+                id="status-filter"
+                aria-label="Filter locations by status"
+              >
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
@@ -448,7 +582,18 @@ export function LocationMapDashboard() {
                                         onCheckedChange={() => toggleLocationSelection(loc.id)}
                                         onClick={(e) => e.stopPropagation()} 
                                     />
-                                    <div onClick={() => setSelectedMarker(loc)}>
+                                    <div 
+                                        onClick={() => setSelectedMarker(loc)}
+                                        role="button"
+                                        aria-label={`View ${loc.name} on map`}
+                                        tabIndex={0}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault();
+                                                setSelectedMarker(loc);
+                                            }
+                                        }}
+                                    >
                                         <p className="font-medium text-sm">{loc.name}</p>
                                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                                             <Star className="w-3 h-3 text-warning fill-warning" />

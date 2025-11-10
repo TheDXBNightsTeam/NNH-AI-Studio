@@ -147,7 +147,7 @@ export function ReviewsList() {
         body: JSON.stringify({
           type: "review_response",
           context: {
-            reviewText: review.review_text || review.comment || '',
+            reviewText: review.review_text || review.review_text || '',
             rating: review.rating,
             sentiment: review.ai_sentiment,
           }
@@ -194,7 +194,7 @@ export function ReviewsList() {
   const filteredReviews = reviews.filter((review) => {
     const matchesSearch = searchQuery === "" || 
       review.reviewer_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (review.review_text || review.comment || '')?.toLowerCase().includes(searchQuery.toLowerCase())
+      (review.review_text || review.review_text || '')?.toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesSentiment = filterSentiment === "all" || 
       review.ai_sentiment === filterSentiment
@@ -234,10 +234,10 @@ export function ReviewsList() {
 
   if (error) {
     return (
-      <Card className="bg-card border-red-500/30">
+      <Card className="bg-card border-destructive/30">
         <CardContent className="p-12">
           <div className="flex flex-col items-center text-center space-y-4">
-            <MessageSquare className="w-12 h-12 text-red-500" />
+            <MessageSquare className="w-12 h-12 text-destructive" aria-hidden="true" />
             <div>
               <h3 className="text-lg font-semibold text-foreground">Error Loading Reviews</h3>
               <p className="text-muted-foreground mt-2">{error}</p>
@@ -338,13 +338,20 @@ export function ReviewsList() {
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main Reviews List - Takes 2/3 of the width */}
           <div className="lg:col-span-2 space-y-4">
-            {filteredReviews.map((review, index) => (
+            {filteredReviews.map((review) => (
               <ReviewCard
                 key={review.id}
                 review={review}
-                index={index}
-                onGenerateResponse={handleGenerateResponse}
-                onReply={handleReply}
+                isSelected={selectedReview?.id === review.id}
+                onClick={() => {
+                  // Check if review needs response
+                  const needsResponse = !review.has_reply && !review.has_response && !review.reply_text && !review.review_reply;
+                  if (needsResponse) {
+                    handleGenerateResponse(review.id);
+                  } else {
+                    handleReply(review.id);
+                  }
+                }}
               />
             ))}
           </div>
@@ -368,35 +375,17 @@ export function ReviewsList() {
       {/* Reply Dialog */}
       {selectedReview && (
         <ReplyDialog
-          open={replyDialogOpen}
-          onOpenChange={setReplyDialogOpen}
+          isOpen={replyDialogOpen}
+          onClose={() => {
+            setReplyDialogOpen(false)
+            setSelectedReview(null)
+          }}
           review={selectedReview}
-          onReply={async (reply) => {
-            try {
-              const { error: updateError } = await supabase
-                .from("gmb_reviews")
-                .update({
-                  reply_text: reply,
-                  review_reply: reply, // Keep both for backwards compatibility
-                  reply_date: new Date().toISOString(),
-                  has_reply: true,
-                  status: "responded",
-                  updated_at: new Date().toISOString()
-                })
-                .eq("id", selectedReview.id)
-
-              if (updateError) {
-                throw updateError
-              }
-
-              await fetchReviews()
-              toast.success("Reply posted successfully")
-              setReplyDialogOpen(false)
-              setSelectedReview(null)
-            } catch (err) {
-              console.error("Error posting reply:", err)
-              toast.error("Failed to post reply")
-            }
+          onSuccess={async () => {
+            await fetchReviews()
+            toast.success("Reply posted successfully")
+            setReplyDialogOpen(false)
+            setSelectedReview(null)
           }}
         />
       )}

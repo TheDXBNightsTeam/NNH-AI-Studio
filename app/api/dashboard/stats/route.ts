@@ -2,6 +2,47 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { checkRateLimit } from '@/lib/rate-limit';
+
+// Input validation schema with enhanced security
+const dateRangeSchema = z.object({
+  start: z.string().datetime().optional(),
+  end: z.string().datetime().optional(),
+}).refine((data) => {
+  if (!data.start || !data.end) return true;
+  
+  const start = new Date(data.start);
+  const end = new Date(data.end);
+  const now = new Date();
+  
+  // Validate dates are not in the future
+  if (start > now || end > now) {
+    throw new Error('Date range cannot be in the future');
+  }
+  
+  // Validate start is before end
+  if (start > end) {
+    throw new Error('Start date must be before end date');
+  }
+  
+  // Limit range to 90 days for performance (reduced from 365)
+  const maxRange = 90 * 24 * 60 * 60 * 1000;
+  if (end.getTime() - start.getTime() > maxRange) {
+    throw new Error('Date range cannot exceed 90 days');
+  }
+  
+  // Validate dates are not too far in the past (e.g., 2 years)
+  const twoYearsAgo = new Date();
+  twoYearsAgo.setFullYear(now.getFullYear() - 2);
+  if (start < twoYearsAgo) {
+    throw new Error('Start date cannot be more than 2 years ago');
+  }
+  
+  return true;
+}, {
+  message: 'Invalid date range',
+});
 
 // ⭐️ واجهة جديدة لتمثيل حالة عنق الزجاجة (Bottleneck)
 interface Bottleneck {
@@ -58,18 +99,64 @@ interface ProcessedStats {
 export async function GET(request: Request) {
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // ✅ SECURITY: Enhanced authentication validation
+  // Using getUser() instead of getSession() for secure authentication
+  // getUser() validates against Supabase Auth server, preventing cookie tampering
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (authError || !user) {
+    // Only log unexpected errors, not missing sessions (expected when user isn't logged in)
+    if (authError && authError.name !== 'AuthSessionMissingError') {
+      console.error('Authentication error:', authError);
+    }
+    return NextResponse.json(
+      { 
+        error: 'Unauthorized',
+        message: 'Authentication required. Please sign in again.'
+      }, 
+      { status: 401 }
+    );
+  }
+
+  // ✅ SECURITY: Rate limiting check
+  const { success, headers } = await checkRateLimit(user.id);
+  if (!success) {
+    return NextResponse.json(
+      { 
+        error: 'Too many requests', 
+        message: 'Rate limit exceeded. Please try again later.',
+        retry_after: headers['X-RateLimit-Reset']
+      },
+      { 
+        status: 429,
+        headers: headers as HeadersInit
+      }
+    );
   }
 
   try {
   const userId = user.id;
   // فترات زمنية ديناميكية حسب بارامترات الطلب (start/end)
   const url = new URL(request.url);
-  const startParam = url.searchParams.get('start');
-  const endParam = url.searchParams.get('end');
+  
+  // ✅ Validate input with Zod
+  const validation = dateRangeSchema.safeParse({
+    start: url.searchParams.get('start'),
+    end: url.searchParams.get('end'),
+  });
+
+  if (!validation.success) {
+    return NextResponse.json(
+      { 
+        error: 'Invalid input',
+        details: validation.error.issues,
+        message: validation.error.issues[0]?.message || 'Invalid date range parameters'
+      },
+      { status: 400 }
+    );
+  }
+
+  const { start: startParam, end: endParam } = validation.data;
   const now = endParam ? new Date(endParam) : new Date();
   const defaultStart = new Date();
   defaultStart.setDate(defaultStart.getDate() - 30);
@@ -101,8 +188,33 @@ export async function GET(request: Request) {
     const activeLocationIds = activeLocationsData?.map(loc => loc.id) || [];
     const totalLocations = activeLocationsData?.length || 0;
 
+    // ✅ SECURITY: Validate location IDs are valid UUIDs
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const validLocationIds = activeLocationIds.filter(id => uuidRegex.test(id));
+
+    if (validLocationIds.length !== activeLocationIds.length) {
+      console.error('Invalid location IDs detected');
+      return NextResponse.json(
+        { error: 'Invalid location data' },
+        { status: 400 }
+      );
+    }
+
+    // ✅ SECURITY: Limit array size to prevent query errors
+    const MAX_LOCATIONS = 1000;
+    if (validLocationIds.length > MAX_LOCATIONS) {
+      console.error(`Too many locations: ${validLocationIds.length}`);
+      return NextResponse.json(
+        { 
+          error: 'Too many locations',
+          message: `Maximum ${MAX_LOCATIONS} locations supported`
+        },
+        { status: 400 }
+      );
+    }
+
     // ... (منطق إرجاع الصفر في حالة عدم وجود مواقع) ...
-    if (activeLocationIds.length === 0) {
+    if (validLocationIds.length === 0) {
         const zeroStats: ProcessedStats = {
             totalLocations: 0, locationsTrend: 0, recentAverageRating: 0, allTimeAverageRating: 0, ratingTrend: 0,
             totalReviews: 0, reviewsTrend: 0, responseRate: 0, pendingReviews: 0, unansweredQuestions: 0,
@@ -116,21 +228,46 @@ export async function GET(request: Request) {
         return NextResponse.json(zeroStats);
     }
 
-    // 💡 جلب الأسئلة غير المستجاب لها من قاعدة البيانات
+    // 💡 جلب جميع المراجعات مع فلترة التاريخ في قاعدة البيانات (بدلاً من JavaScript)
+    // ✅ FIX: Use database WHERE clause instead of JavaScript filtering
     const { data: allReviews } = await supabase
         .from("gmb_reviews")
-        .select("rating, review_reply, review_date, created_at")
+        .select("rating, review_reply, review_date, created_at, location_id")
         .eq("user_id", userId)
-        .in("location_id", activeLocationIds);
+        .in("location_id", validLocationIds);
 
     const reviews = allReviews || [];
+
+    // ✅ FIX: Fetch recent period reviews directly from database
+    const { data: recentReviewsData } = await supabase
+        .from("gmb_reviews")
+        .select("rating, review_reply, review_date, created_at, location_id")
+        .eq("user_id", userId)
+        .in("location_id", validLocationIds)
+        .gte("review_date", startOfPeriod.toISOString())
+        .lte("review_date", endOfPeriod.toISOString())
+        .order("review_date", { ascending: false });
+
+    const recentReviews = recentReviewsData || [];
+
+    // ✅ FIX: Fetch previous period reviews directly from database
+    const { data: previousPeriodReviewsData } = await supabase
+        .from("gmb_reviews")
+        .select("rating, review_reply, review_date, created_at, location_id")
+        .eq("user_id", userId)
+        .in("location_id", validLocationIds)
+        .gte("review_date", prevStart.toISOString())
+        .lte("review_date", prevEnd.toISOString())
+        .order("review_date", { ascending: false });
+
+    const previousPeriodReviews = previousPeriodReviewsData || [];
 
     // 💡 جلب عدد الأسئلة غير المجاب عنها
     const { data: unansweredQuestionsData } = await supabase
         .from("gmb_questions")
         .select("id")
         .eq("user_id", userId)
-        .in("location_id", activeLocationIds)
+        .in("location_id", validLocationIds)
         .is("answer_text", null);
 
     const unansweredQuestions = unansweredQuestionsData?.length || 0;
@@ -149,17 +286,6 @@ export async function GET(request: Request) {
       ? parseFloat((allTimeRatings.reduce((sum, r) => sum + r, 0) / allTimeRatings.length).toFixed(2)) 
       : 0;
     const totalReviews = reviews.length;
-
-    // 2. فلترة المراجعات حسب الفترات الزمنية
-    const recentReviews = reviews.filter(r => {
-      const reviewDate = new Date(r.review_date || r.created_at);
-      return reviewDate >= startOfPeriod && reviewDate <= endOfPeriod;
-    });
-
-    const previousPeriodReviews = reviews.filter(r => {
-      const reviewDate = new Date(r.review_date || r.created_at);
-      return reviewDate >= prevStart && reviewDate <= prevEnd;
-    });
 
     // 3. حساب متوسط التقييم للفترة الأخيرة (30 يوم)
     const recentRatings = recentReviews.map(r => r.rating).filter(r => r && r > 0);
@@ -285,27 +411,21 @@ export async function GET(request: Request) {
         .from("gmb_questions")
         .select("id")
         .eq("user_id", userId)
-        .in("location_id", activeLocationIds)
-  .gte("created_at", startOfPeriod.toISOString())
-  .lte("created_at", endOfPeriod.toISOString());
+        .in("location_id", validLocationIds)
+        .gte("created_at", startOfPeriod.toISOString())
+        .lte("created_at", endOfPeriod.toISOString());
 
     const { data: lastMonthQuestions } = await supabase
         .from("gmb_questions")
         .select("id")
         .eq("user_id", userId)
-        .in("location_id", activeLocationIds)
-  .gte("created_at", prevStart.toISOString())
-  .lte("created_at", prevEnd.toISOString());
+        .in("location_id", validLocationIds)
+        .gte("created_at", prevStart.toISOString())
+        .lte("created_at", prevEnd.toISOString());
 
-    const currentMonthReviews = reviews.filter(r => {
-      const reviewDate = new Date(r.review_date || r.created_at);
-      return reviewDate >= startOfPeriod && reviewDate <= endOfPeriod;
-    });
-
-    const lastMonthReviews = reviews.filter(r => {
-      const reviewDate = new Date(r.review_date || r.created_at);
-      return reviewDate >= prevStart && reviewDate <= prevEnd;
-    });
+    // ✅ FIX: Use already fetched filtered reviews (no need to filter again)
+    const currentMonthReviews = recentReviews;
+    const lastMonthReviews = previousPeriodReviews;
 
     const currentMonthRatings = currentMonthReviews.map(r => r.rating).filter(r => r && r > 0);
     const lastMonthRatings = lastMonthReviews.map(r => r.rating).filter(r => r && r > 0);
@@ -342,59 +462,65 @@ export async function GET(request: Request) {
     }> = [];
 
     if (activeLocationsData && activeLocationsData.length > 0) {
-      // جلب بيانات المراجعات لكل موقع
-      const locationStats = await Promise.all(
-        activeLocationsData.map(async (location) => {
-          const { data: locationReviews } = await supabase
-            .from("gmb_reviews")
-            .select("rating, review_reply, review_date, created_at")
-            .eq("location_id", location.id)
-            .eq("user_id", userId);
+      // ✅ FIX: Batch query all reviews once instead of N+1 queries
+      // Step 1: All reviews are already fetched above, group by location
+      const reviewsByLocation = (allReviews || []).reduce((acc, review) => {
+        if (!acc[review.location_id]) acc[review.location_id] = [];
+        acc[review.location_id]!.push(review);
+        return acc;
+      }, {} as Record<string, typeof allReviews>);
 
-          const reviewsData = locationReviews || [];
-          const ratings = reviewsData.map(r => r.rating).filter(r => r && r > 0);
-          const avgRating = ratings.length > 0
-            ? parseFloat((ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(2))
-            : 0;
+      // Step 2: Group recent and previous period reviews by location
+      const recentReviewsByLocation = (recentReviews || []).reduce((acc, review) => {
+        if (!acc[review.location_id]) acc[review.location_id] = [];
+        acc[review.location_id]!.push(review);
+        return acc;
+      }, {} as Record<string, typeof recentReviews>);
 
-          const pendingReviewsCount = reviewsData.filter(r => !r.review_reply || r.review_reply.trim() === '').length;
+      const previousReviewsByLocation = (previousPeriodReviews || []).reduce((acc, review) => {
+        if (!acc[review.location_id]) acc[review.location_id] = [];
+        acc[review.location_id]!.push(review);
+        return acc;
+      }, {} as Record<string, typeof previousPeriodReviews>);
 
-          // حساب التغيير في التقييم
-          const recentLocationReviews = reviewsData.filter(r => {
-            const reviewDate = new Date(r.review_date || r.created_at);
-            return reviewDate >= startOfPeriod && reviewDate <= endOfPeriod;
-          });
+      // Step 3: Process each location with grouped data (no database queries)
+      const locationStats = activeLocationsData.map(location => {
+        const reviewsData = reviewsByLocation[location.id] || [];
+        const recentLocationReviews = recentReviewsByLocation[location.id] || [];
+        const previousLocationReviews = previousReviewsByLocation[location.id] || [];
 
-          const previousLocationReviews = reviewsData.filter(r => {
-            const reviewDate = new Date(r.review_date || r.created_at);
-            return reviewDate >= prevStart && reviewDate <= prevEnd;
-          });
+        const ratings = reviewsData.map(r => r.rating).filter(r => r && r > 0);
+        const avgRating = ratings.length > 0
+          ? parseFloat((ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(2))
+          : 0;
 
-          const recentLocationRatings = recentLocationReviews.map(r => r.rating).filter(r => r && r > 0);
-          const previousLocationRatings = previousLocationReviews.map(r => r.rating).filter(r => r && r > 0);
+        const pendingReviewsCount = reviewsData.filter(r => !r.review_reply || r.review_reply.trim() === '').length;
 
-          const recentRating = recentLocationRatings.length > 0
-            ? recentLocationRatings.reduce((sum, r) => sum + r, 0) / recentLocationRatings.length
-            : 0;
+        // حساب التغيير في التقييم
+        const recentLocationRatings = recentLocationReviews.map(r => r.rating).filter(r => r && r > 0);
+        const previousLocationRatings = previousLocationReviews.map(r => r.rating).filter(r => r && r > 0);
 
-          const previousRating = previousLocationRatings.length > 0
-            ? previousLocationRatings.reduce((sum, r) => sum + r, 0) / previousLocationRatings.length
-            : 0;
+        const recentRating = recentLocationRatings.length > 0
+          ? recentLocationRatings.reduce((sum, r) => sum + r, 0) / recentLocationRatings.length
+          : 0;
 
-          const ratingChange = previousRating > 0
-            ? parseFloat((((recentRating - previousRating) / previousRating) * 100).toFixed(2))
-            : 0;
+        const previousRating = previousLocationRatings.length > 0
+          ? previousLocationRatings.reduce((sum, r) => sum + r, 0) / previousLocationRatings.length
+          : 0;
 
-          return {
-            id: location.id,
-            name: location.location_name || 'Unknown Location',
-            rating: avgRating,
-            reviewCount: reviewsData.length,
-            pendingReviews: pendingReviewsCount,
-            ratingChange
-          };
-        })
-      );
+        const ratingChange = previousRating > 0
+          ? parseFloat((((recentRating - previousRating) / previousRating) * 100).toFixed(2))
+          : 0;
+
+        return {
+          id: location.id,
+          name: location.location_name || 'Unknown Location',
+          rating: avgRating,
+          reviewCount: reviewsData.length,
+          pendingReviews: pendingReviewsCount,
+          ratingChange
+        };
+      });
 
       // 1. Top Performer (أعلى تقييم)
       const topLocation = [...locationStats].sort((a, b) => b.rating - a.rating)[0];
@@ -450,7 +576,21 @@ export async function GET(request: Request) {
     return NextResponse.json(finalStats);
 
   } catch (error) {
-    console.error('API Error fetching dashboard stats:', error);
-    return NextResponse.json({ error: 'Failed to process dashboard stats' }, { status: 500 });
+    // Log full error internally for debugging
+    console.error('API Error fetching dashboard stats:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString(),
+    });
+    
+    // Send generic error to client
+    return NextResponse.json(
+      { 
+        error: 'Internal server error',
+        message: 'Unable to load dashboard statistics. Please try again later.',
+        code: 'DASHBOARD_STATS_ERROR'
+      },
+      { status: 500 }
+    );
   }
 }

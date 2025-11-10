@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { 
   MapPin, 
@@ -30,16 +31,13 @@ interface LocationHighlight {
 interface LocationHighlightsCarouselProps {
   locations: LocationHighlight[];
   loading?: boolean;
-  locale?: string;
 }
 
 export function LocationHighlightsCarousel({
   locations,
-  loading = false,
-  locale = 'en'
+  loading = false
 }: LocationHighlightsCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const isArabic = locale === 'ar';
 
   // Auto-rotate carousel
   useEffect(() => {
@@ -47,7 +45,7 @@ export function LocationHighlightsCarousel({
     
     const timer = setInterval(() => {
       setNextAnimate();
-    }, 5000); // كل 5 ثواني
+    }, 5000); // every 5 seconds
 
     return () => clearInterval(timer);
   }, [currentIndex, locations.length]);
@@ -68,11 +66,15 @@ export function LocationHighlightsCarousel({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{isArabic ? 'أبرز المواقع' : 'Location Highlights'}</CardTitle>
+          <CardTitle>Location Highlights</CardTitle>
         </CardHeader>
-        <CardContent className="h-[200px] flex items-center justify-center">
-          <div className="animate-pulse text-muted-foreground">
-            {isArabic ? 'جاري التحميل...' : 'Loading...'}
+        <CardContent className="h-[200px] space-y-4">
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+          <div className="mt-4">
+            <Skeleton className="h-24 w-full rounded-lg" />
           </div>
         </CardContent>
       </Card>
@@ -83,13 +85,20 @@ export function LocationHighlightsCarousel({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{isArabic ? 'أبرز المواقع' : 'Location Highlights'}</CardTitle>
+          <CardTitle>Location Highlights</CardTitle>
         </CardHeader>
-        <CardContent className="h-[200px] flex flex-col items-center justify-center text-center">
-          <MapPin className="w-12 h-12 text-muted-foreground mb-2" />
-          <p className="text-sm text-muted-foreground">
-            {isArabic ? 'لا توجد بيانات متاحة' : 'No data available'}
-          </p>
+        <CardContent className="p-6">
+          <div className="flex flex-col items-center justify-center text-center py-12">
+            <div className="rounded-full bg-primary/10 p-4 w-fit mx-auto mb-4">
+              <MapPin className="w-8 h-8 text-primary" aria-hidden="true" />
+            </div>
+            <h3 className="text-2xl font-bold mb-3 text-foreground">
+              No locations available
+            </h3>
+            <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+              Connect your Google My Business account to see location statistics
+            </p>
+          </div>
         </CardContent>
       </Card>
     );
@@ -99,28 +108,28 @@ export function LocationHighlightsCarousel({
 
   const categoryConfig = {
     top: {
-      label: isArabic ? '🏆 الأفضل أداءً' : '🏆 Top Performer',
+      label: '🏆 Top Performer',
       icon: Award,
-      color: 'text-yellow-600',
-      bgColor: 'bg-gradient-to-br from-yellow-500/10 to-yellow-600/5',
-      borderColor: 'border-yellow-500/30',
-      description: isArabic ? 'أعلى تقييم بين جميع المواقع' : 'Highest rating across all locations'
+      color: 'text-warning',
+      bgColor: 'bg-gradient-to-br from-warning/10 to-warning/5',
+      borderColor: 'border-warning/30',
+      description: 'Highest rating across all locations'
     },
     attention: {
-      label: isArabic ? '⚠️ يحتاج اهتمام' : '⚠️ Needs Attention',
+      label: '⚠️ Needs Attention',
       icon: AlertTriangle,
-      color: 'text-red-600',
-      bgColor: 'bg-gradient-to-br from-red-500/10 to-red-600/5',
-      borderColor: 'border-red-500/30',
-      description: isArabic ? 'يتطلب ردوداً أو تحسينات' : 'Requires responses or improvements'
+      color: 'text-destructive',
+      bgColor: 'bg-gradient-to-br from-destructive/10 to-destructive/5',
+      borderColor: 'border-destructive/30',
+      description: 'Requires responses or improvements'
     },
     improved: {
-      label: isArabic ? '📈 الأكثر تحسناً' : '📈 Most Improved',
+      label: '📈 Most Improved',
       icon: TrendingUp,
-      color: 'text-green-600',
-      bgColor: 'bg-gradient-to-br from-green-500/10 to-green-600/5',
-      borderColor: 'border-green-500/30',
-      description: isArabic ? 'أكبر تحسن في التقييم' : 'Biggest rating improvement'
+      color: 'text-success',
+      bgColor: 'bg-gradient-to-br from-success/10 to-success/5',
+      borderColor: 'border-success/30',
+      description: 'Biggest rating improvement'
     }
   };
 
@@ -133,36 +142,65 @@ export function LocationHighlightsCarousel({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <MapPin className="w-5 h-5 text-primary" />
-            {isArabic ? 'أبرز المواقع' : 'Location Highlights'}
+            Location Highlights
           </CardTitle>
           
           {locations.length > 1 && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" role="group" aria-label="Navigate between locations">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={setPrevious}
-                className="h-8 w-8"
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    if (e.key === 'ArrowLeft') {
+                      setPrevious();
+                    } else {
+                      setNext();
+                    }
+                  }
+                }}
+                className="h-8 w-8 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                aria-label="Previous location"
+                aria-describedby="location-counter"
               >
-                <ChevronLeft className={cn("w-4 h-4", isArabic && "rotate-180")} />
+                <ChevronLeft className="w-4 h-4" aria-hidden="true" />
               </Button>
-              <span className="text-sm text-muted-foreground">
+              <span 
+                id="location-counter" 
+                className="text-sm text-muted-foreground" 
+                aria-live="polite"
+                aria-atomic="true"
+              >
                 {currentIndex + 1} / {locations.length}
               </span>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={setNext}
-                className="h-8 w-8"
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    if (e.key === 'ArrowRight') {
+                      setNext();
+                    } else {
+                      setPrevious();
+                    }
+                  }
+                }}
+                className="h-8 w-8 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                aria-label="Next location"
+                aria-describedby="location-counter"
               >
-                <ChevronRight className={cn("w-4 h-4", isArabic && "rotate-180")} />
+                <ChevronRight className="w-4 h-4" aria-hidden="true" />
               </Button>
             </div>
           )}
         </div>
       </CardHeader>
       
-      <CardContent>
+      <CardContent className="p-6">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentLocation.id}
@@ -171,6 +209,10 @@ export function LocationHighlightsCarousel({
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
             className={cn("p-6 rounded-lg", config.bgColor)}
+            role="region"
+            aria-live="polite"
+            aria-atomic="true"
+            aria-label={`Location details: ${currentLocation.name}`}
           >
             {/* Category Badge */}
             <div className="flex items-center gap-2 mb-4">
@@ -200,7 +242,7 @@ export function LocationHighlightsCarousel({
 
                   {/* Review Count */}
                   <div className="text-sm text-muted-foreground">
-                    {currentLocation.reviewCount} {isArabic ? 'مراجعات' : 'reviews'}
+                    {currentLocation.reviewCount} reviews
                   </div>
 
                   {/* Rating Change */}
@@ -226,7 +268,7 @@ export function LocationHighlightsCarousel({
                 <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-warning/10 border border-warning/30">
                   <AlertTriangle className="w-4 h-4 text-warning" />
                   <span className="text-sm text-warning">
-                    {currentLocation.pendingReviews} {isArabic ? 'مراجعات معلقة' : 'pending reviews'}
+                    {currentLocation.pendingReviews} pending reviews
                   </span>
                 </div>
               )}
@@ -234,7 +276,7 @@ export function LocationHighlightsCarousel({
               {/* Action Button */}
               <Button asChild variant="outline" size="sm" className="w-full">
                 <Link href={`/locations?id=${currentLocation.id}`}>
-                  {isArabic ? 'عرض التفاصيل' : 'View Details'}
+                  View Details
                 </Link>
               </Button>
             </div>
@@ -243,17 +285,31 @@ export function LocationHighlightsCarousel({
 
         {/* Progress Indicators */}
         {locations.length > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-4">
+          <div 
+            className="flex items-center justify-center gap-2 mt-4"
+            role="tablist"
+            aria-label="Location indicators"
+          >
             {locations.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setCurrentIndex(index);
+                  }
+                }}
                 className={cn(
-                  "h-1.5 rounded-full transition-all",
+                  "h-1.5 rounded-full transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none",
                   index === currentIndex 
                     ? "w-8 bg-primary" 
                     : "w-1.5 bg-muted-foreground/30"
                 )}
+                role="tab"
+                aria-selected={index === currentIndex}
+                aria-label={`Location ${index + 1}`}
+                tabIndex={index === currentIndex ? 0 : -1}
               />
             ))}
           </div>

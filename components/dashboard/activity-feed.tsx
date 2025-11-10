@@ -21,11 +21,12 @@ import {
   Save,
   Eye
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { ActivityLog } from "@/lib/types/database"
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
+import { sanitizeText } from "@/lib/utils/sanitize"
 
 // خريطة الأيقونات حسب نوع النشاط
 const activityIcons = {
@@ -63,7 +64,7 @@ const getActivityLink = (activity: ActivityLog): string | null => {
   
   // GMB Posts
   if (activity.activity_type.includes('post')) {
-    return '/gmb-posts'
+    return '/posts'
   }
   
   // GMB Reviews
@@ -96,17 +97,39 @@ export function ActivityFeed() {
   const [activities, setActivities] = useState<ActivityLog[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
+  const channelRef = useRef<any>(null)
+  const isMountedRef = useRef(true)
+
+  // ✅ FIX: Stabilize state update function to prevent race conditions
+  const addActivity = useCallback((newActivity: ActivityLog) => {
+    setActivities((prev) => {
+      // ✅ Prevent duplicate activities
+      if (prev.some(a => a.id === newActivity.id)) {
+        return prev;
+      }
+      // ✅ Add new activity and keep only last 10
+      return [newActivity, ...prev].slice(0, 10);
+    });
+  }, []);
 
   useEffect(() => {
-    const fetchActivities = async () => {
+    isMountedRef.current = true;
+    let userId: string | null = null;
+    
+    const setupActivityFeed = async () => {
       try {
         const {
           data: { user },
         } = await supabase.auth.getUser()
+        
         if (!user) {
-          setLoading(false)
+          if (isMountedRef.current) {
+            setLoading(false)
+          }
           return
         }
+
+        userId = user.id;
 
         const { data, error } = await supabase
           .from("activity_logs")
@@ -115,42 +138,64 @@ export function ActivityFeed() {
           .order("created_at", { ascending: false })
           .limit(10)
 
+        if (!isMountedRef.current) return;
+
         if (error) {
           console.error("Failed to fetch activities:", error)
           setActivities([])
         } else if (data) {
           setActivities(data)
         }
+
+        // ✅ FIX: Subscribe to real-time updates AFTER getting user ID
+        if (userId && isMountedRef.current) {
+          const channel = supabase
+            .channel(`activity_logs:${userId}:${Date.now()}`) // Unique channel name
+            .on(
+              "postgres_changes",
+              {
+                event: "INSERT",
+                schema: "public",
+                table: "activity_logs",
+                filter: `user_id=eq.${userId}`, // Filter by user ID
+              },
+              (payload) => {
+                // ✅ Use stabilized callback to prevent race conditions
+                if (isMountedRef.current) {
+                  addActivity(payload.new as ActivityLog);
+                }
+              },
+            )
+            .subscribe((status) => {
+              if (status === 'CHANNEL_ERROR') {
+                console.error('❌ Activity feed subscription error');
+              }
+            });
+
+          channelRef.current = channel;
+        }
       } catch (err) {
         console.error("Activity feed error:", err)
-        setActivities([])
+        if (isMountedRef.current) {
+          setActivities([])
+        }
       } finally {
-        setLoading(false)
+        if (isMountedRef.current) {
+          setLoading(false)
+        }
       }
     }
 
-    fetchActivities()
-
-    // Subscribe to real-time updates with error handling
-    const channel = supabase
-      .channel("activity_logs")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "activity_logs",
-        },
-        (payload) => {
-          setActivities((prev) => [payload.new as ActivityLog, ...prev].slice(0, 10))
-        },
-      )
-      .subscribe()
+    setupActivityFeed();
 
     return () => {
-      supabase.removeChannel(channel)
+      isMountedRef.current = false;
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     }
-  }, [])
+  }, [supabase, addActivity])
 
   const getActivityIcon = (type: string) => {
     const IconComponent = activityIcons[type as keyof typeof activityIcons] || activityIcons.default
@@ -239,8 +284,11 @@ export function ActivityFeed() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   className={`flex items-center gap-4 p-4 rounded-lg bg-secondary border border-primary/20 transition-all duration-200 ${
-                    activityLink ? 'hover:border-primary/40 hover:bg-secondary/80 cursor-pointer' : ''
+                    activityLink ? 'hover:border-primary/40 hover:bg-secondary/80 cursor-pointer focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2' : ''
                   }`}
+                  role={activityLink ? "button" : "article"}
+                  tabIndex={activityLink ? 0 : -1}
+                  aria-label={activityLink ? `${activity.activity_message}. Click to view details.` : activity.activity_message}
                 >
                   <div className="relative group">
                     <div className="absolute inset-0 rounded-full bg-primary/30 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -250,10 +298,17 @@ export function ActivityFeed() {
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground font-medium truncate">
-                      {activity.activity_message}
+                    {/* ✅ SECURITY: Sanitize user-generated content to prevent XSS */}
+                    <p 
+                      className="text-sm text-foreground font-medium truncate"
+                      aria-label={activity.activity_message}
+                    >
+                      {sanitizeText(activity.activity_message)}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p 
+                      className="text-xs text-muted-foreground"
+                      aria-label={`Activity occurred ${formatRelativeTime(activity.created_at)}`}
+                    >
                       {formatRelativeTime(activity.created_at)}
                     </p>
                   </div>

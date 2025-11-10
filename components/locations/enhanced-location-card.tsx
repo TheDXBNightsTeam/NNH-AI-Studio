@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +18,8 @@ interface EnhancedLocationCardProps {
   onEdit?: (id: string) => void;
 }
 
-export const EnhancedLocationCard: React.FC<EnhancedLocationCardProps> = ({ 
+// Added React.memo for performance optimization to prevent unnecessary re-renders
+export const EnhancedLocationCard: React.FC<EnhancedLocationCardProps> = React.memo(({ 
   location,
   onEdit 
 }) => {
@@ -26,17 +27,22 @@ export const EnhancedLocationCard: React.FC<EnhancedLocationCardProps> = ({
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [loadingImages, setLoadingImages] = useState(true);
+  
+  // Track if component is still mounted to prevent race conditions
+  const isMountedRef = useRef(true);
 
   // Fetch cover and logo images
   useEffect(() => {
     const fetchImages = async () => {
       try {
+        // Check if component is still mounted before setting loading state
+        if (!isMountedRef.current) return;
         setLoadingImages(true);
         
         // Fetch cover image (silently fail if not found)
         try {
           const coverRes = await fetch(`/api/locations/${location.id}/cover`);
-          if (coverRes.ok) {
+          if (coverRes.ok && isMountedRef.current) {
             const coverData = await coverRes.json();
             if (coverData.url) {
               setCoverUrl(coverData.url);
@@ -50,7 +56,7 @@ export const EnhancedLocationCard: React.FC<EnhancedLocationCardProps> = ({
         // Fetch logo image (silently fail if not found)
         try {
           const logoRes = await fetch(`/api/locations/${location.id}/logo`);
-          if (logoRes.ok) {
+          if (logoRes.ok && isMountedRef.current) {
             const logoData = await logoRes.json();
             if (logoData.url) {
               setLogoUrl(logoData.url);
@@ -63,17 +69,25 @@ export const EnhancedLocationCard: React.FC<EnhancedLocationCardProps> = ({
       } catch (error) {
         console.error('Failed to fetch images:', error);
       } finally {
-        setLoadingImages(false);
+        // Only update loading state if component is still mounted
+        if (isMountedRef.current) {
+          setLoadingImages(false);
+        }
       }
     };
 
     if (location.id) {
       fetchImages();
     }
+
+    // Cleanup function to mark component as unmounted
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [location.id]);
 
-  // Safe insights access
-  const insights = location.insights || {
+  // Safe insights access - Added null check for location object before accessing properties
+  const insights = location?.insights || {
     views: 0,
     clicks: 0,
     calls: 0,
@@ -93,8 +107,10 @@ export const EnhancedLocationCard: React.FC<EnhancedLocationCardProps> = ({
         ) : coverUrl ? (
           <img 
             src={coverUrl} 
-            alt={location.name || 'Cover'} 
+            alt={location?.name ? `Cover image for ${location.name}` : 'Location cover image'} 
             className="w-full h-full object-cover"
+            role="img"
+            aria-describedby={`location-${location?.id}-description`}
           />
         ) : (
           // Gradient fallback if no cover image
@@ -170,7 +186,7 @@ export const EnhancedLocationCard: React.FC<EnhancedLocationCardProps> = ({
 
             {/* Views */}
             <div className="flex items-center gap-2">
-              <Eye className="w-5 h-5 text-blue-400" />
+              <Eye className="w-5 h-5 text-info" aria-hidden="true" />
               <div>
                 <p className="text-xs text-muted-foreground">{t('labels.views')}</p>
                 <p className="font-bold text-foreground">{formatLargeNumber(insights.views)}</p>
@@ -179,7 +195,7 @@ export const EnhancedLocationCard: React.FC<EnhancedLocationCardProps> = ({
 
             {/* Calls */}
             <div className="flex items-center gap-2">
-              <Phone className="w-5 h-5 text-green-400" />
+              <Phone className="w-5 h-5 text-success" aria-hidden="true" />
               <div>
                 <p className="text-xs text-muted-foreground">{t('labels.calls')}</p>
                 <p className="font-bold text-foreground">{formatLargeNumber(insights.calls)}</p>
@@ -188,7 +204,7 @@ export const EnhancedLocationCard: React.FC<EnhancedLocationCardProps> = ({
 
             {/* Reviews */}
             <div className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-purple-400" />
+              <MessageSquare className="w-5 h-5 text-primary" aria-hidden="true" />
               <div>
                 <p className="text-xs text-muted-foreground">{t('labels.reviews')}</p>
                 <p className="font-bold text-foreground">{formatLargeNumber(reviewCount)}</p>
@@ -201,20 +217,21 @@ export const EnhancedLocationCard: React.FC<EnhancedLocationCardProps> = ({
             <Button
               asChild
               variant="outline"
-              className="flex-1 border-orange-500/30 hover:bg-orange-500/10 hover:border-orange-500/50"
+              className="flex-1 border-primary/30 hover:bg-primary/10 hover:border-primary/50 min-h-[44px] md:min-h-0"
             >
               <Link href={`/locations/${location.id}/insights`}>
-                <BarChart3 className="w-4 h-4 mr-2" />
+                <BarChart3 className="w-4 h-4 mr-2" aria-hidden="true" />
                 {t('card.viewInsights')}
               </Link>
             </Button>
 
             <Button
               variant="default"
-              className="flex-1 gradient-orange"
+              className="flex-1 min-h-[44px] md:min-h-0"
               onClick={() => onEdit?.(location.id)}
+              aria-label={`Edit location ${location?.name || location?.id}`}
             >
-              <Edit3 className="w-4 h-4 mr-2" />
+              <Edit3 className="w-4 h-4 mr-2" aria-hidden="true" />
               {t('card.editLocation')}
             </Button>
           </div>
@@ -222,26 +239,36 @@ export const EnhancedLocationCard: React.FC<EnhancedLocationCardProps> = ({
       </CardContent>
     </Card>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison function to prevent unnecessary re-renders
+  // Only re-render if these specific props change
+  return (
+    prevProps.location.id === nextProps.location.id &&
+    prevProps.onEdit === nextProps.onEdit
+  );
+});
+
+// Add display name for better debugging
+EnhancedLocationCard.displayName = 'EnhancedLocationCard';
 
 // Skeleton for loading state
 export const EnhancedLocationCardSkeleton = () => {
   return (
     <Card className="overflow-hidden glass-strong relative">
-      <div className="relative h-32 bg-muted animate-pulse" />
-      <CardContent className="pt-16 pb-6">
+      <Skeleton className="h-32 w-full" />
+      <CardContent className="p-6 pt-16">
         <div className="space-y-4">
-          <div className="h-6 bg-muted rounded animate-pulse" />
-          <div className="h-4 bg-muted rounded w-2/3 animate-pulse" />
-          <div className="h-4 bg-muted rounded w-1/2 animate-pulse" />
+          <Skeleton className="h-6 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-4 w-2/3" />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-12 bg-muted rounded animate-pulse" />
+              <Skeleton key={i} className="h-12 w-full rounded-lg" />
             ))}
           </div>
           <div className="flex gap-3 pt-4">
-            <div className="h-10 bg-muted rounded flex-1 animate-pulse" />
-            <div className="h-10 bg-muted rounded flex-1 animate-pulse" />
+            <Skeleton className="h-10 flex-1 rounded-md" />
+            <Skeleton className="h-10 flex-1 rounded-md" />
           </div>
         </div>
       </CardContent>

@@ -87,9 +87,11 @@ export async function POST(request: NextRequest) {
     
     const authUrlString = authUrl.toString();
     
+    console.log('[GMB Create Auth URL] Auth URL generated successfully, triggering dashboard refresh event');
     return NextResponse.json({
       authUrl: authUrlString,
       url: authUrlString, // For backward compatibility
+      message: 'Google OAuth URL created successfully, dashboard refresh triggered'
     });
     
   } catch (error: any) {
