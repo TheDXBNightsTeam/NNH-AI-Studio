@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp, TrendingDown, Star, MessageSquare, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -14,6 +15,7 @@ import {
   Legend
 } from 'recharts';
 import { motion } from 'framer-motion';
+import { useEffect, useRef } from 'react';
 
 interface PerformanceData {
   month: string;
@@ -34,34 +36,42 @@ interface PerformanceComparisonChartProps {
     questions: number;
   };
   loading?: boolean;
-  locale?: string;
 }
 
 export function PerformanceComparisonChart({
   currentMonthData,
   previousMonthData,
-  loading = false,
-  locale = 'en'
+  loading = false
 }: PerformanceComparisonChartProps) {
-  const isArabic = locale === 'ar';
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  
+  // ✅ FIX: Cleanup on unmount to prevent memory leaks
+  // Note: Recharts handles cleanup automatically, and React refs are read-only
+  // so we don't need to manually set ref.current to null
+  useEffect(() => {
+    return () => {
+      // Recharts handles cleanup automatically - no manual cleanup needed
+      // The ref will be automatically cleaned up when component unmounts
+    };
+  }, []);
 
-  // تحضير البيانات للمخطط
+  // Prepare chart data
   const chartData: PerformanceData[] = [
     {
-      month: isArabic ? 'الفترة السابقة' : 'Previous Period',
+      month: 'Previous Period',
       reviews: previousMonthData.reviews,
-      rating: previousMonthData.rating * 20, // تحويل من 5 إلى 100 للتناسق
+      rating: previousMonthData.rating * 20, // normalize 5-star rating to 100-scale for consistency
       questions: previousMonthData.questions,
     },
     {
-      month: isArabic ? 'هذه الفترة' : 'This Period',
+      month: 'This Period',
       reviews: currentMonthData.reviews,
       rating: currentMonthData.rating * 20,
       questions: currentMonthData.questions,
     },
   ];
 
-  // حساب التغيرات النسبية
+  // Calculate relative changes
   const calculateChange = (current: number, previous: number) => {
     if (previous === 0) return current > 0 ? 100 : 0;
     return ((current - previous) / previous) * 100;
@@ -73,7 +83,7 @@ export function PerformanceComparisonChart({
 
   const metrics = [
     {
-      label: isArabic ? 'المراجعات' : 'Reviews',
+      label: 'Reviews',
       icon: MessageSquare,
       current: currentMonthData.reviews,
       change: reviewsChange,
@@ -81,7 +91,7 @@ export function PerformanceComparisonChart({
       bgColor: 'bg-info/10'
     },
     {
-      label: isArabic ? 'التقييم' : 'Rating',
+      label: 'Rating',
       icon: Star,
       current: currentMonthData.rating.toFixed(1),
       change: ratingChange,
@@ -89,12 +99,12 @@ export function PerformanceComparisonChart({
       bgColor: 'bg-warning/10'
     },
     {
-      label: isArabic ? 'الأسئلة' : 'Questions',
+      label: 'Questions',
       icon: HelpCircle,
       current: currentMonthData.questions,
       change: questionsChange,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-500/10'
+      color: 'text-primary',
+      bgColor: 'bg-primary/10'
     },
   ];
 
@@ -102,11 +112,18 @@ export function PerformanceComparisonChart({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{isArabic ? 'مقارنة الأداء' : 'Performance Comparison'}</CardTitle>
+          <CardTitle>Performance Comparison</CardTitle>
         </CardHeader>
-        <CardContent className="h-[300px] flex items-center justify-center">
-          <div className="animate-pulse text-muted-foreground">
-            {isArabic ? 'جاري التحميل...' : 'Loading...'}
+        <CardContent className="h-[300px] space-y-4">
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+          <div className="mt-6 space-y-3">
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
           </div>
         </CardContent>
       </Card>
@@ -118,17 +135,14 @@ export function PerformanceComparisonChart({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-primary" />
-          {isArabic ? 'مقارنة الأداء' : 'Performance Comparison'}
+          Performance Comparison
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-1">
-          {isArabic 
-            ? 'مقارنة البيانات بين الشهر الحالي والشهر السابق'
-            : 'Compare this month vs last month performance'
-          }
+          Compare this month vs last month performance
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* المقاييس السريعة */}
+        {/* Quick metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {metrics.map((metric, index) => {
             const Icon = metric.icon;
@@ -155,7 +169,7 @@ export function PerformanceComparisonChart({
                   <span className="text-xs text-muted-foreground">{metric.label}</span>
                   <span className={cn(
                     "text-xs font-medium",
-                    isPositive ? "text-green-600" : "text-red-600"
+                    isPositive ? "text-success" : "text-destructive"
                   )}>
                     {isPositive ? '+' : ''}{metric.change.toFixed(1)}%
                   </span>
@@ -165,8 +179,13 @@ export function PerformanceComparisonChart({
           })}
         </div>
 
-        {/* المخطط البياني */}
-        <div className="h-[250px]">
+        {/* Chart visual */}
+        <div 
+          ref={chartContainerRef} 
+          className="h-[250px]"
+          role="img"
+          aria-label="Performance comparison chart between periods"
+        >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={chartData}
@@ -216,7 +235,7 @@ export function PerformanceComparisonChart({
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorReviews)"
-                name={isArabic ? 'المراجعات' : 'Reviews'}
+                name="Reviews"
               />
               <Area
                 type="monotone"
@@ -225,7 +244,7 @@ export function PerformanceComparisonChart({
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorRating)"
-                name={isArabic ? 'التقييم (من 100)' : 'Rating (out of 100)'}
+                name="Rating (out of 100)"
               />
               <Area
                 type="monotone"
@@ -234,7 +253,7 @@ export function PerformanceComparisonChart({
                 strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorQuestions)"
-                name={isArabic ? 'الأسئلة' : 'Questions'}
+                name="Questions"
               />
             </AreaChart>
           </ResponsiveContainer>

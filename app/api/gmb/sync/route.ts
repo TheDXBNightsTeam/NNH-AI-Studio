@@ -1,8 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { errorResponse, getErrorCode } from '@/lib/utils/api-response';
+import { ApiError, errorResponse } from '@/utils/api-error';
+import { Redis } from '@upstash/redis';
 
 export const dynamic = 'force-dynamic';
+
+// Granular sync types to allow partial refresh from dashboard
+const VALID_SYNC_TYPES = [
+  'full',
+  'locations',
+  'reviews',
+  'questions',
+  'media',
+  'performance',
+  'keywords'
+];
+
+// Phase logging helpers (minimal; replaces later with structured service)
+async function startPhaseLog(supabase: any, accountId: string, userId: string, phase: string) {
+  try {
+    const { data, error } = await supabase
+      .from('gmb_sync_logs')
+      .insert({ gmb_account_id: accountId, user_id: userId, phase, status: 'started' })
+      .select('id')
+      .single();
+    if (error) {
+      console.warn('[GMB Sync API] Failed to start phase log', phase, error.message);
+      return null;
+    }
+    return data?.id || null;
+  } catch (e) {
+    console.warn('[GMB Sync API] Exception starting phase log', phase, e);
+    return null;
+  }
+}
+
+async function finishPhaseLog(supabase: any, id: string | null, status: string, counts: any, error?: any) {
+  if (!id) return;
+  try {
+    const durationMs = 0; // Will compute with SQL trigger later if needed
+    await supabase
+      .from('gmb_sync_logs')
+      .update({ status, ended_at: new Date().toISOString(), counts, error: error ? String(error) : null })
+      .eq('id', id);
+  } catch (e) {
+    console.warn('[GMB Sync API] Failed to finish phase log', id, e);
+  }
+}
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GBP_LOC_BASE = 'https://mybusinessbusinessinformation.googleapis.com/v1';
@@ -10,6 +54,61 @@ const GBP_ACCOUNT_MGMT_BASE = 'https://mybusinessaccountmanagement.googleapis.co
 const GMB_V4_BASE = 'https://mybusiness.googleapis.com/v4'; // v4 API for reviews and media
 const QANDA_API_BASE = 'https://mybusinessqanda.googleapis.com/v1'; // Q&A API for questions
 const PERFORMANCE_API_BASE = 'https://businessprofileperformance.googleapis.com/v1'; // Performance API for metrics
+// Metrics upsert helper: accumulate totals and runs per phase
+async function upsertMetrics(
+  supabase: any,
+  accountId: string,
+  userId: string,
+  phase: 'locations' | 'reviews' | 'media' | 'questions' | 'performance' | 'keywords',
+  durationMs: number,
+  itemsCount: number
+) {
+  try {
+    // Try to get existing row
+    const { data: existing, error: selError } = await supabase
+      .from('gmb_metrics')
+      .select('id, runs_count, total_duration_ms, total_items_count')
+      .eq('gmb_account_id', accountId)
+      .eq('phase', phase)
+      .maybeSingle();
+
+    if (selError && selError.code !== 'PGRST116') {
+      console.warn('[GMB Metrics] Select error:', selError.message);
+    }
+
+    if (existing && existing.id) {
+      const { error: updError } = await supabase
+        .from('gmb_metrics')
+        .update({
+          runs_count: (existing.runs_count || 0) + 1,
+          total_duration_ms: (existing.total_duration_ms || 0) + Math.max(0, durationMs),
+          total_items_count: (existing.total_items_count || 0) + Math.max(0, itemsCount),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id);
+      if (updError) {
+        console.warn('[GMB Metrics] Update error:', updError.message);
+      }
+    } else {
+      const { error: insError } = await supabase
+        .from('gmb_metrics')
+        .insert({
+          gmb_account_id: accountId,
+          user_id: userId,
+          phase,
+          runs_count: 1,
+          total_duration_ms: Math.max(0, durationMs),
+          total_items_count: Math.max(0, itemsCount),
+        });
+      if (insError) {
+        console.warn('[GMB Metrics] Insert error:', insError.message);
+      }
+    }
+  } catch (e) {
+    console.warn('[GMB Metrics] Exception upserting metrics for phase', phase, e);
+  }
+}
+
 
 // Helper function for chunking arrays
 const chunks = <T>(array: T[], size = 100): T[][] => {
@@ -75,7 +174,7 @@ async function refreshAccessToken(refreshToken: string): Promise<{
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    throw new Error('Missing Google OAuth configuration');
+  throw new ApiError('Missing Google OAuth configuration', 500);
   }
 
   const response = await fetch(GOOGLE_TOKEN_URL, {
@@ -94,9 +193,10 @@ async function refreshAccessToken(refreshToken: string): Promise<{
   if (!response.ok) {
     console.error('[GMB Sync] Token refresh failed:', data);
     if (data.error === 'invalid_grant') {
-      throw new Error('invalid_grant');
+  throw new ApiError('invalid_grant', 401);
     }
     throw new Error(`Token refresh failed: ${data.error || 'Unknown error'}`);
+  throw new ApiError(`Token refresh failed: ${data.error || 'Unknown error'}`, 401);
   }
 
   console.log('[GMB Sync] Access token refreshed successfully');
@@ -118,7 +218,7 @@ async function getValidAccessToken(
 
   if (error || !account) {
     console.error('[GMB Sync] Failed to fetch account:', error);
-    throw new Error('Account not found');
+  throw new ApiError('Account not found', 404);
   }
 
   const now = new Date();
@@ -134,7 +234,7 @@ async function getValidAccessToken(
   // Token expired or missing, refresh it
   if (!account.refresh_token) {
     console.error('[GMB Sync] No refresh token available');
-    throw new Error('No refresh token available - reconnect required');
+  throw new ApiError('No refresh token available - reconnect required', 401);
   }
 
   console.log('[GMB Sync] Token expired or missing, refreshing...');
@@ -214,6 +314,7 @@ async function fetchLocations(
 
     console.error('[GMB Sync] Failed to fetch locations:', errorData);
     throw new Error(`Failed to fetch locations: ${errorData.error?.message || 'Unknown error'}`);
+  throw new ApiError(`Failed to fetch locations: ${errorData.error?.message || 'Unknown error'}`, 500, errorData.error);
   }
 
   // Response is OK, verify Content-Type before parsing
@@ -221,6 +322,7 @@ async function fetchLocations(
   if (!contentType || !contentType.includes('application/json')) {
     console.error('[GMB Sync] Unexpected content type for locations:', contentType);
     throw new Error('Unexpected response format from Google API');
+  throw new ApiError('Unexpected response format from Google API', 500);
   }
 
   const data = await response.json();
@@ -878,6 +980,22 @@ export async function POST(request: NextRequest) {
   console.log('[GMB Sync API] Sync request received');
   const started = Date.now();
 
+  // Try distributed lock via Upstash Redis when env is present; fallback to in-memory lock
+  const g: any = globalThis as any;
+  if (!g.__gmbSyncLocks) g.__gmbSyncLocks = new Map<string, number>();
+  const syncLocks: Map<string, number> = g.__gmbSyncLocks;
+  let acquiredLock = false;
+  let usingRedis = false;
+  let redis: Redis | null = null;
+  try {
+    // fromEnv reads UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN
+    redis = Redis.fromEnv();
+    usingRedis = true;
+  } catch {
+    usingRedis = false;
+    redis = null;
+  }
+
   try {
     const supabase = await createClient();
 
@@ -894,7 +1012,7 @@ export async function POST(request: NextRequest) {
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
       if (authError || !authUser) {
         console.error('[GMB Sync API] Authentication failed:', authError);
-        return errorResponse('UNAUTHORIZED', 'Authentication required', 401);
+  return errorResponse(new ApiError('Authentication required', 401));
       }
       user = authUser;
       console.log('[GMB Sync API] User authenticated:', user.id);
@@ -902,17 +1020,52 @@ export async function POST(request: NextRequest) {
       console.log('[GMB Sync API] Cron request detected - skipping user auth');
     }
 
-    // Parse request body
-    const body = await request.json();
+    // Parse request body with proper error handling
+    let body: any = {};
+    try {
+      body = await request.json();
+    } catch (jsonError) {
+      console.error('[GMB Sync API] Invalid JSON in request body:', jsonError);
+  return errorResponse(new ApiError('Request body must be valid JSON', 400));
+    }
+
     // Support both naming conventions: account_id/accountId and sync_type/syncType
     const accountId = body.accountId || body.account_id;
-    const syncType = body.syncType || body.sync_type || 'full';
+    const syncType = (body.syncType || body.sync_type || 'full').toLowerCase();
+
+    if (!VALID_SYNC_TYPES.includes(syncType)) {
+      console.error('[GMB Sync API] Invalid syncType supplied:', syncType);
+  return errorResponse(new ApiError(`syncType must be one of: ${VALID_SYNC_TYPES.join(', ')}`, 400));
+    }
 
     if (!accountId) {
-      return errorResponse('MISSING_FIELDS', 'accountId is required', 400);
+      console.error('[GMB Sync API] Missing accountId in request body:', body);
+  return errorResponse(new ApiError('accountId is required in request body', 400));
     }
 
     console.log(`[GMB Sync API] Starting ${syncType} sync for account:`, accountId);
+
+    // Acquire lock (Redis preferred)
+    const lockKey = `gmb:sync:${accountId}`;
+    const LOCK_TTL_SEC = 60 * 5; // 5 minutes
+    if (usingRedis && redis) {
+      const ok = await redis.set(lockKey, '1', { nx: true, ex: LOCK_TTL_SEC });
+      if (ok !== 'OK') {
+        console.warn('[GMB Sync API] Redis lock already held for account', accountId);
+  return errorResponse(new ApiError('A sync is already running for this account', 409));
+      }
+      acquiredLock = true;
+    } else {
+      const nowTs = Date.now();
+      const existingExpiry = syncLocks.get(lockKey);
+      const LOCK_TTL_MS = LOCK_TTL_SEC * 1000;
+      if (existingExpiry && existingExpiry > nowTs) {
+        console.warn('[GMB Sync API] In-memory lock already held for account', accountId);
+  return errorResponse(new ApiError('A sync is already running for this account', 409));
+      }
+      syncLocks.set(lockKey, nowTs + LOCK_TTL_MS);
+      acquiredLock = true;
+    }
 
     // Get account details
     const accountQuery = supabase
@@ -929,19 +1082,19 @@ export async function POST(request: NextRequest) {
 
     if (accountError || !account) {
       console.error('[GMB Sync API] Account not found:', accountError);
-      return errorResponse('ACCOUNT_NOT_FOUND', 'Account not found', 404);
+  return errorResponse(new ApiError('Account not found', 404));
     }
 
     if (!account.is_active) {
       console.error('[GMB Sync API] Account is inactive');
-      return errorResponse('ACCOUNT_INACTIVE', 'Account is inactive', 400);
+  return errorResponse(new ApiError('Account is inactive', 400));
     }
 
     // Get user_id from account for cron requests (where user might be null)
     const userId = user?.id || account.user_id;
     if (!userId) {
       console.error('[GMB Sync API] Cannot determine user_id');
-      return errorResponse('MISSING_FIELDS', 'Cannot determine user_id', 400);
+  return errorResponse(new ApiError('Cannot determine user_id', 400));
     }
 
     // Get Google account resource name if not stored
@@ -978,121 +1131,130 @@ export async function POST(request: NextRequest) {
 
       if (!accountResource) {
         console.error('[GMB Sync API] Could not find Google account resource');
-        return errorResponse('ACCOUNT_NOT_FOUND', 'Could not find Google account', 400);
+  return errorResponse(new ApiError('Could not find Google account', 400));
       }
     }
 
     // Get valid access token
     const accessToken = await getValidAccessToken(supabase, accountId);
 
-    const counts = { locations: 0, reviews: 0, media: 0, questions: 0, performance_metrics: 0, search_keywords: 0 };
+  const counts = { locations: 0, reviews: 0, media: 0, questions: 0, performance_metrics: 0, search_keywords: 0 };
+  const skipped: string[] = [];
+  const doLocations = syncType === 'full' || syncType === 'locations';
+  const doReviews = syncType === 'full' || syncType === 'reviews';
+  const doMedia = syncType === 'full' || syncType === 'media';
+  const doQuestions = syncType === 'full' || syncType === 'questions';
+  const doPerformance = syncType === 'full' || syncType === 'performance';
+  const doKeywords = syncType === 'full' || syncType === 'keywords';
+
+  if (!doLocations) skipped.push('locations');
+  if (!doReviews) skipped.push('reviews');
+  if (!doMedia) skipped.push('media');
+  if (!doQuestions) skipped.push('questions');
+  if (!doPerformance) skipped.push('performance');
+  if (!doKeywords) skipped.push('keywords');
     // Note: media count will remain 0 as Media API is deprecated
 
     // Fetch and upsert locations
-    console.log('[GMB Sync API] Starting location sync...');
-    let locationsNextPageToken: string | undefined = undefined;
-
-    do {
-      const { locations, nextPageToken } = await fetchLocations(
-        accessToken,
-        accountResource,
-        locationsNextPageToken
-      );
-
-      if (locations.length > 0) {
-        // Log the first location to check format
-        console.log('[GMB Sync API] Sample location from Google API:', {
-          name: locations[0].name,
-          title: locations[0].title
-        });
-
-        const locationRows = locations.map((location) => {
-          const address = location.storefrontAddress;
-          const addressStr = address
-            ? `${(address.addressLines || []).join(', ')}${
-                address.locality ? `, ${address.locality}` : ''
-              }${address.administrativeArea ? `, ${address.administrativeArea}` : ''}${
-                address.postalCode ? ` ${address.postalCode}` : ''
-              }`
-            : null;
-
-          // Extract metadata for quick access
-          const metadata = location.metadata || {};
-          const latlng = location.latlng || {};
-          const profile = location.profile || {};
-          const openInfo = location.openInfo || {};
-          
-          // Store enhanced metadata with all additional fields
-          const enhancedMetadata = {
-            ...location,
-            // Quick access fields in metadata
-            profile: profile,
-            regularHours: location.regularHours,
-            specialHours: location.specialHours,
-            moreHours: location.moreHours,
-            serviceItems: location.serviceItems,
-            openInfo: openInfo,
-            latlng: latlng,
-            labels: location.labels || [],
-            // Extract useful metadata fields
-            placeId: metadata.placeId,
-            mapsUri: metadata.mapsUri,
-            newReviewUri: metadata.newReviewUri,
-            canHaveFoodMenus: metadata.canHaveFoodMenus,
-            canHaveBusinessCalls: metadata.canHaveBusinessCalls,
-            hasVoiceOfMerchant: metadata.hasVoiceOfMerchant,
-            hasPendingEdits: metadata.hasPendingEdits,
-            canDelete: metadata.canDelete,
-            canOperateHealthData: metadata.canOperateHealthData,
-            canOperateLodgingData: metadata.canOperateLodgingData,
-            canModifyServiceList: metadata.canModifyServiceList,
-          };
-
-          return {
-            gmb_account_id: accountId,
-            user_id: userId,
-            location_id: location.name,
-            location_name: location.title || 'Unnamed Location',
-            address: addressStr,
-            phone: location.phoneNumbers?.primaryPhone || null,
-            category: location.categories?.primaryCategory?.displayName || null,
-            website: location.websiteUri || null,
-            is_active: true,
-            latitude: latlng?.latitude ?? null,
-            longitude: latlng?.longitude ?? null,
-            metadata: enhancedMetadata,
-            updated_at: new Date().toISOString(),
-          };
-        });
-
-        // Upsert locations in chunks
-        for (const chunk of chunks(locationRows)) {
-          const { error } = await supabase
-            .from('gmb_locations')
-            .upsert(chunk, { onConflict: 'gmb_account_id,location_id' });
-
-          if (error) {
-            console.error('[GMB Sync API] Error upserting locations:', error);
+    let phaseLocationsId: string | null = null;
+    if (doLocations) {
+      phaseLocationsId = await startPhaseLog(supabase, accountId, userId, 'locations');
+      console.log('[GMB Sync API] Starting location sync...');
+      let locationsNextPageToken: string | undefined = undefined;
+      const phaseStart = Date.now();
+      do {
+        const { locations, nextPageToken } = await fetchLocations(
+          accessToken,
+          accountResource,
+          locationsNextPageToken
+        );
+        if (locations.length > 0) {
+          console.log('[GMB Sync API] Sample location from Google API:', {
+            name: locations[0].name,
+            title: locations[0].title
+          });
+          const locationRows = locations.map((location) => {
+            const address = location.storefrontAddress;
+            const addressStr = address
+              ? `${(address.addressLines || []).join(', ')}${
+                  address.locality ? `, ${address.locality}` : ''
+                }${address.administrativeArea ? `, ${address.administrativeArea}` : ''}${
+                  address.postalCode ? ` ${address.postalCode}` : ''
+                }`
+              : null;
+            const metadata = location.metadata || {};
+            const latlng = location.latlng || {};
+            const profile = location.profile || {};
+            const openInfo = location.openInfo || {};
+            const enhancedMetadata = {
+              ...location,
+              profile,
+              regularHours: location.regularHours,
+              specialHours: location.specialHours,
+              moreHours: location.moreHours,
+              serviceItems: location.serviceItems,
+              openInfo,
+              latlng,
+              labels: location.labels || [],
+              placeId: metadata.placeId,
+              mapsUri: metadata.mapsUri,
+              newReviewUri: metadata.newReviewUri,
+              canHaveFoodMenus: metadata.canHaveFoodMenus,
+              canHaveBusinessCalls: metadata.canHaveBusinessCalls,
+              hasVoiceOfMerchant: metadata.hasVoiceOfMerchant,
+              hasPendingEdits: metadata.hasPendingEdits,
+              canDelete: metadata.canDelete,
+              canOperateHealthData: metadata.canOperateHealthData,
+              canOperateLodgingData: metadata.canOperateLodgingData,
+              canModifyServiceList: metadata.canModifyServiceList,
+            };
+            return {
+              gmb_account_id: accountId,
+              user_id: userId,
+              location_id: location.name,
+              location_name: location.title || 'Unnamed Location',
+              address: addressStr,
+              phone: location.phoneNumbers?.primaryPhone || null,
+              category: location.categories?.primaryCategory?.displayName || null,
+              website: location.websiteUri || null,
+              is_active: true,
+              latitude: latlng?.latitude ?? null,
+              longitude: latlng?.longitude ?? null,
+              metadata: enhancedMetadata,
+              updated_at: new Date().toISOString(),
+            };
+          });
+          for (const chunk of chunks(locationRows)) {
+            const { error } = await supabase
+              .from('gmb_locations')
+              .upsert(chunk, { onConflict: 'gmb_account_id,location_id' });
+            if (error) {
+              console.error('[GMB Sync API] Error upserting locations:', error);
+            }
           }
+          counts.locations += locations.length;
         }
-
-        counts.locations += locations.length;
-      }
-
-      locationsNextPageToken = nextPageToken;
-
-      // For incremental sync, only fetch first page
-      if (syncType === 'incremental') break;
-    } while (locationsNextPageToken);
-
-    console.log(`[GMB Sync API] Synced ${counts.locations} locations`);
+        locationsNextPageToken = nextPageToken;
+      } while (locationsNextPageToken);
+      const phaseDuration = Date.now() - phaseStart;
+      console.log(`[GMB Sync API] Synced ${counts.locations} locations in ${phaseDuration}ms`);
+      await finishPhaseLog(supabase, phaseLocationsId, 'completed', { locations: counts.locations });
+      await upsertMetrics(supabase, accountId, userId, 'locations', phaseDuration, counts.locations);
+    }
 
     // Fetch reviews and media for each location
-    console.log('[GMB Sync API] Starting reviews and media sync...');
+  console.log('[GMB Sync API] Starting reviews and media sync...');
     const { data: dbLocations } = await supabase
       .from('gmb_locations')
       .select('id, location_id')
       .eq('gmb_account_id', accountId);
+
+    let phaseReviewsId: string | null = null;
+    let phaseMediaId: string | null = null;
+    let phaseQuestionsId: string | null = null;
+    if (doReviews) phaseReviewsId = await startPhaseLog(supabase, accountId, userId, 'reviews');
+    if (doMedia) phaseMediaId = await startPhaseLog(supabase, accountId, userId, 'media');
+    if (doQuestions) phaseQuestionsId = await startPhaseLog(supabase, accountId, userId, 'questions');
 
     if (dbLocations && Array.isArray(dbLocations)) {
       console.log(`[GMB Sync API] Processing ${dbLocations.length} locations for reviews/media sync`);
@@ -1120,78 +1282,123 @@ export async function POST(request: NextRequest) {
         // Validate that we have a proper resource name
         if (!fullLocationName.includes('/locations/')) {
           console.error(`[GMB Sync API] Invalid location resource format: ${fullLocationName}. Skipping reviews/media sync.`);
+          skipped.push(`invalid_location_resource:${location.location_id}`);
           continue;
         }
-        
-        // Fetch reviews
-        let reviewsNextPageToken: string | undefined = undefined;
-        do {
-          const { reviews, nextPageToken } = await fetchReviews(
-            accessToken,
-            fullLocationName,
-            account.account_id, // Pass account_id to help build resource if needed
-            reviewsNextPageToken
-          );
 
-          if (reviews.length > 0) {
-            console.log(`[GMB Sync API] Processing ${reviews.length} reviews for location ${location.id}`);
-            
-            const reviewRows = reviews.map((review) => {
-              // Convert starRating enum to number (API v4 returns "ONE", "TWO", etc.)
-              const rating = convertStarRatingToNumber(review.starRating);
-              
-              if (rating < 1 || rating > 5) {
-                console.warn('[GMB Sync API] Invalid rating:', review.starRating, '→', rating, 'for review:', review.name);
-                return null; // Skip invalid reviews
+        // Fetch reviews for this location using Google My Business v4 API
+        if (doReviews) {
+          const phaseReviewsStart = Date.now();
+          let reviewsNextPageToken: string | undefined = undefined;
+
+          do {
+            const { reviews, nextPageToken } = await fetchReviews(
+              accessToken,
+              fullLocationName,
+              account.account_id,
+              reviewsNextPageToken
+            );
+
+            if (reviews.length > 0) {
+              console.log(`[GMB Sync API] Processing ${reviews.length} reviews for location ${location.id}`);
+
+              const reviewRows = reviews
+                .map((review) => {
+                  const externalReviewId =
+                    review.reviewId ||
+                    review.name?.split('/').pop() ||
+                    review.reviewReply?.reviewId ||
+                    null;
+
+                  if (!externalReviewId) {
+                    console.warn('[GMB Sync API] Skipping review without identifiable reviewId', review);
+                    return null;
+                  }
+
+                  const rating = convertStarRatingToNumber(review.starRating);
+                  const reviewerName =
+                    review.reviewer?.displayName?.trim() || 'Anonymous';
+                  const reviewCreateTime =
+                    review.createTime || new Date().toISOString();
+                  const replyUpdateTime =
+                    review.reviewReply?.updateTime || null;
+
+                  return {
+                    gmb_account_id: accountId,
+                    location_id: location.id,
+                    user_id: userId,
+                    external_review_id: externalReviewId,
+                    rating,
+                    review_text: review.comment || null,
+                    review_date: reviewCreateTime,
+                    reviewer_name: reviewerName,
+                    reviewer_display_name: reviewerName,
+                    reviewer_profile_photo_url:
+                      review.reviewer?.profilePhotoUrl || null,
+                    response: review.reviewReply?.comment || null,
+                    reply_date: replyUpdateTime,
+                    responded_at: replyUpdateTime,
+                    has_reply: !!review.reviewReply,
+                    status: review.reviewReply ? 'replied' : 'pending',
+                    google_my_business_name: review.name || null,
+                    review_url: review.reviewUrl || null,
+                    synced_at: new Date().toISOString(),
+                    metadata: review,
+                  };
+                })
+                .filter((row): row is NonNullable<typeof row> => !!row);
+
+              console.log(
+                `[GMB Sync API] Prepared ${reviewRows.length} review rows from ${reviews.length} reviews`
+              );
+
+              let upsertedCount = 0;
+              for (const chunk of chunks(reviewRows)) {
+                const { data, error } = await supabase
+                  .from('gmb_reviews')
+                  .upsert(chunk, {
+                    onConflict: 'external_review_id',
+                    ignoreDuplicates: false,
+                  })
+                  .select();
+
+                if (error) {
+                  console.error('[GMB Sync API] Error upserting reviews:', error);
+                } else if (data) {
+                  upsertedCount += data.length;
+                } else {
+                  upsertedCount += chunk.length;
+                }
               }
-              
-              return {
-                gmb_account_id: accountId,
-                user_id: userId,
-                location_id: location.id,  // Use UUID id, not location_id (resource name)
-                external_review_id: review.name,
-                reviewer_name: review.reviewer?.displayName || 'Anonymous',
-                rating: rating,
-                review_text: review.comment || null,
-                review_date: review.createTime || new Date().toISOString(),
-                reply_text: review.reviewReply?.comment || null,
-                reply_date: review.reviewReply?.updateTime || null,
-                has_reply: !!review.reviewReply?.comment,
-                updated_at: new Date().toISOString(),
-              };
-            }).filter(Boolean); // Remove null entries (invalid reviews)
 
-            console.log(`[GMB Sync API] Prepared ${reviewRows.length} valid review rows from ${reviews.length} reviews`);
+              console.log(
+                `[GMB Sync API] Completed reviews sync: upserted ${upsertedCount} reviews`
+              );
+              counts.reviews += reviews.length;
 
-            // Upsert reviews in chunks
-            let upsertedCount = 0;
-            for (const chunk of chunks(reviewRows)) {
-              console.log(`[GMB Sync API] Upserting chunk of ${chunk.length} reviews...`);
-              
-              const { data, error } = await supabase
-                .from('gmb_reviews')
-                .upsert(chunk, { onConflict: 'external_review_id' });
-
-              if (error) {
-                console.error('[GMB Sync API] Error upserting reviews:', error);
-                console.error('[GMB Sync API] Failed chunk sample:', JSON.stringify(chunk[0], null, 2));
-              } else {
-                upsertedCount += chunk.length;
-                console.log(`[GMB Sync API] Successfully upserted ${chunk.length} reviews (total: ${upsertedCount})`);
-              }
+              const phaseReviewsDuration = Date.now() - phaseReviewsStart;
+              await upsertMetrics(
+                supabase,
+                accountId,
+                userId,
+                'reviews',
+                phaseReviewsDuration,
+                reviews.length
+              );
+            } else {
+              console.log(
+                `[GMB Sync API] No reviews returned for location ${location.id}`
+              );
             }
 
-            console.log(`[GMB Sync API] Completed reviews sync: ${upsertedCount}/${reviewRows.length} reviews saved`);
-            counts.reviews += reviews.length;
-          } else {
-            console.log(`[GMB Sync API] No reviews found for location ${location.id}`);
-          }
-
-          reviewsNextPageToken = nextPageToken;
-        } while (reviewsNextPageToken && syncType === 'full');
+            reviewsNextPageToken = nextPageToken;
+          } while (reviewsNextPageToken && syncType === 'full');
+        }
 
         // Try to fetch media using Google My Business v4 API
         // Note: This API requires Google My Business API to be enabled in Google Cloud Console
+  if (doMedia) {
+  const phaseMediaStart = Date.now();
         let mediaNextPageToken: string | undefined = undefined;
         do {
           const { media, nextPageToken } = await fetchMedia(
@@ -1265,16 +1472,21 @@ export async function POST(request: NextRequest) {
             
             console.log(`[GMB Sync API] Completed media sync: ${upsertedCount}/${mediaRows.length} items saved`);
             counts.media += media.length;
+            const phaseMediaDuration = Date.now() - phaseMediaStart;
+            await upsertMetrics(supabase, accountId, userId, 'media', phaseMediaDuration, media.length);
           } else {
             console.log(`[GMB Sync API] No media found for location ${location.id}`);
           }
 
           mediaNextPageToken = nextPageToken;
-        } while (mediaNextPageToken && syncType === 'full');
+  } while (mediaNextPageToken && syncType === 'full');
+  }
 
         // Fetch questions for this location using Google My Business Q&A API v1
         // Q&A API requires just the location ID number (not the full resource path)
-        let questionsNextPageToken: string | undefined = undefined;
+  if (doQuestions) {
+  const phaseQuestionsStart = Date.now();
+  let questionsNextPageToken: string | undefined = undefined;
         
         // Extract location ID from fullLocationName for Q&A API
         let locationIdForQandA: string;
@@ -1369,20 +1581,35 @@ export async function POST(request: NextRequest) {
 
             console.log(`[GMB Sync API] Completed questions sync: ${upsertedCount}/${questionRows.length} questions saved`);
             counts.questions += questions.length;
+            const phaseQuestionsDuration = Date.now() - phaseQuestionsStart;
+            await upsertMetrics(supabase, accountId, userId, 'questions', phaseQuestionsDuration, questions.length);
           } else {
             console.log(`[GMB Sync API] No questions found for location ${location.id}`);
           }
 
           questionsNextPageToken = nextPageToken;
         } while (questionsNextPageToken && syncType === 'full');
+        }
       }
-    }
+  }
+  await finishPhaseLog(supabase, phaseReviewsId, 'completed', { reviews: counts.reviews });
+  if (doReviews && counts.reviews === 0) {
+    await upsertMetrics(supabase, accountId, userId, 'reviews', 0, 0);
+  }
+  await finishPhaseLog(supabase, phaseMediaId, 'completed', { media: counts.media });
+  await finishPhaseLog(supabase, phaseQuestionsId, 'completed', { questions: counts.questions });
 
     console.log(`[GMB Sync API] Synced ${counts.reviews} reviews, ${counts.media} media items, and ${counts.questions} questions`);
 
     // Fetch performance metrics and search keywords for each location
-    console.log('[GMB Sync API] Starting performance metrics sync...');
-    if (dbLocations && Array.isArray(dbLocations)) {
+    if (doPerformance || doKeywords) {
+      console.log('[GMB Sync API] Starting performance metrics sync...');
+    }
+    let phasePerformanceId: string | null = null;
+    let phaseKeywordsId: string | null = null;
+  if (doPerformance) phasePerformanceId = await startPhaseLog(supabase, accountId, userId, 'performance');
+  if (doKeywords) phaseKeywordsId = await startPhaseLog(supabase, accountId, userId, 'keywords');
+    if (dbLocations && Array.isArray(dbLocations) && (doPerformance || doKeywords)) {
       console.log(`[GMB Sync API] Processing ${dbLocations.length} locations for performance metrics sync`);
 
       // Calculate date range: last 30 days for daily metrics, last 3 months for search keywords
@@ -1409,51 +1636,59 @@ export async function POST(request: NextRequest) {
         }
 
         // Fetch daily metrics
-        try {
-          console.log(`[GMB Sync API] Fetching performance metrics for location: ${locationIdForPerformance}`);
-          const { metrics } = await fetchDailyMetrics(
-            accessToken,
-            locationIdForPerformance,
-            startDate,
-            endDate
-          );
+        if (doPerformance) {
+          const phasePerformanceStart = Date.now();
+          try {
+            console.log(`[GMB Sync API] Fetching performance metrics for location: ${locationIdForPerformance}`);
+            const { metrics } = await fetchDailyMetrics(
+              accessToken,
+              locationIdForPerformance,
+              startDate,
+              endDate
+            );
 
-          if (metrics.length > 0) {
-            const metricRows = metrics.map((metric) => ({
-              gmb_account_id: accountId,
-              location_id: location.id, // Use UUID id, not location_id
-              user_id: userId,
-              metric_type: metric.metric_type,
-              metric_date: metric.metric_date,
-              metric_value: metric.metric_value,
-              sub_entity_type: metric.sub_entity_type || {},
-              metadata: {},
-            }));
+            if (metrics.length > 0) {
+              const metricRows = metrics.map((metric) => ({
+                gmb_account_id: accountId,
+                location_id: location.id, // Use UUID id, not location_id
+                user_id: userId,
+                metric_type: metric.metric_type,
+                metric_date: metric.metric_date,
+                metric_value: metric.metric_value,
+                sub_entity_type: metric.sub_entity_type || {},
+                metadata: {},
+              }));
 
-            // Upsert metrics in chunks
-            for (const chunk of chunks(metricRows)) {
-              const { error } = await supabase
-                .from('gmb_performance_metrics')
-                .upsert(chunk, { 
-                  onConflict: 'location_id,metric_date,metric_type',
-                  ignoreDuplicates: false 
-                });
+              // Upsert metrics in chunks
+              for (const chunk of chunks(metricRows)) {
+                const { error } = await supabase
+                  .from('gmb_performance_metrics')
+                  .upsert(chunk, { 
+                    onConflict: 'location_id,metric_date,metric_type',
+                    ignoreDuplicates: false 
+                  });
 
-              if (error) {
-                console.error('[GMB Sync API] Error upserting performance metrics:', error);
-              } else {
-                console.log(`[GMB Sync API] Upserted ${chunk.length} performance metrics`);
+                if (error) {
+                  console.error('[GMB Sync API] Error upserting performance metrics:', error);
+                } else {
+                  console.log(`[GMB Sync API] Upserted ${chunk.length} performance metrics`);
+                }
               }
-            }
 
-            counts.performance_metrics += metrics.length;
+              counts.performance_metrics += metrics.length;
+              const phasePerformanceDuration = Date.now() - phasePerformanceStart;
+              await upsertMetrics(supabase, accountId, userId, 'performance', phasePerformanceDuration, metrics.length);
+            }
+          } catch (error) {
+            console.error(`[GMB Sync API] Error fetching performance metrics for location ${location.id}:`, error);
           }
-        } catch (error) {
-          console.error(`[GMB Sync API] Error fetching performance metrics for location ${location.id}:`, error);
         }
 
         // Fetch search keywords
         try {
+          if (!doKeywords) {
+            continue;
+          }
           console.log(`[GMB Sync API] Fetching search keywords for location: ${locationIdForPerformance}`);
           let keywordsNextPageToken: string | undefined = undefined;
           
@@ -1467,6 +1702,7 @@ export async function POST(request: NextRequest) {
             );
 
             if (keywords.length > 0) {
+              const phaseKeywordsStart = Date.now();
               const keywordRows = keywords.map((keyword) => ({
                 gmb_account_id: accountId,
                 location_id: location.id, // Use UUID id
@@ -1495,6 +1731,8 @@ export async function POST(request: NextRequest) {
               }
 
               counts.search_keywords += keywords.length;
+              const phaseKeywordsDuration = Date.now() - phaseKeywordsStart;
+              await upsertMetrics(supabase, accountId, userId, 'keywords', phaseKeywordsDuration, keywords.length);
             }
 
             keywordsNextPageToken = nextPageToken;
@@ -1503,7 +1741,9 @@ export async function POST(request: NextRequest) {
           console.error(`[GMB Sync API] Error fetching search keywords for location ${location.id}:`, error);
         }
       }
-    }
+  }
+  await finishPhaseLog(supabase, phasePerformanceId, 'completed', { performance_metrics: counts.performance_metrics });
+  await finishPhaseLog(supabase, phaseKeywordsId, 'completed', { search_keywords: counts.search_keywords });
 
     console.log(`[GMB Sync API] Synced ${counts.performance_metrics} performance metrics and ${counts.search_keywords} search keywords`);
 
@@ -1516,19 +1756,46 @@ export async function POST(request: NextRequest) {
     const took = Date.now() - started;
     console.log(`[GMB Sync API] Sync completed in ${took}ms`, counts);
 
-    return NextResponse.json({
+    const successPayload = {
+      success: true, // For consistency with dashboard checks
       ok: true,
       accountId,
       syncType,
       counts,
+      skipped_sections: skipped,
       took_ms: took,
-    });
+    };
+
+    if (acquiredLock) {
+      const lockKey = `gmb:sync:${accountId}`;
+      if (usingRedis && redis) {
+        await redis.del(lockKey).catch(() => {});
+      } else {
+        syncLocks.delete(lockKey);
+      }
+    }
+
+    return NextResponse.json(successPayload);
 
   } catch (error: any) {
     const took = Date.now() - started;
     console.error('[GMB Sync API] Sync failed:', error);
-
-    const errorCode = getErrorCode(error);
-    return errorResponse(errorCode, 'Sync failed', 500);
+    return errorResponse(error);
+  } finally {
+    // Best-effort lock release when exceptions occur
+    try {
+      if (acquiredLock) {
+        const body = await request.json().catch(() => ({} as any));
+        const accountId = body?.accountId || body?.account_id;
+        if (accountId) {
+          const lockKey = `gmb:sync:${accountId}`;
+          if (usingRedis && redis) {
+            await redis.del(lockKey).catch(() => {});
+          } else {
+            syncLocks.delete(lockKey);
+          }
+        }
+      }
+    } catch {}
   }
 }

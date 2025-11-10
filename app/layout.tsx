@@ -1,9 +1,8 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Providers } from "./providers"
+import { Toaster } from "sonner"
 import "./globals.css"
-
-const inter = Inter({ subsets: ["latin"] })
 
 const getBaseUrl = () => {
   if (process.env.NEXT_PUBLIC_BASE_URL) {
@@ -33,20 +32,18 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
 }
 
-export default async function RootLayout({
-  children,
-  params,
+export default function RootLayout({
+  children
 }: Readonly<{
   children: React.ReactNode
-  params: Promise<{ locale?: string }>
 }>) {
-  const { locale = 'en' } = await params
-  const dir = locale === 'ar' ? 'rtl' : 'ltr'
-  
   return (
-    <html className="dark" lang={locale} dir={dir}>
-      <body className={inter.className}>
-        {children}
+    <html className="dark" lang="en" dir="ltr">
+      <body className="min-h-screen bg-background font-sans antialiased">
+        <Providers>
+          {children}
+          <Toaster position="top-right" richColors closeButton />
+        </Providers>
       </body>
     </html>
   )

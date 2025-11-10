@@ -60,7 +60,7 @@ const navigationCommands = [
   {
     icon: FileText,
     label: 'GMB Posts',
-    action: '/gmb-posts',
+    action: '/posts',
     shortcut: 'G P',
   },
   {
@@ -96,7 +96,7 @@ const actionCommands = [
   {
     icon: Plus,
     label: 'Create GMB Post',
-    action: '/gmb-posts',
+    action: '/posts',
   },
   {
     icon: Plus,

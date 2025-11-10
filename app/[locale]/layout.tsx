@@ -1,7 +1,9 @@
 import type React from "react"
+import { notFound } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { Toaster } from "sonner"
+import { Providers } from '../providers';
 
 export default async function LocaleLayout({
   children,
@@ -11,14 +13,19 @@ export default async function LocaleLayout({
   params: Promise<{ locale: string }>
 }>) {
   const { locale } = await params;
+  if (locale !== 'en' && locale !== 'ar') {
+    notFound();
+  }
   const messages = await getMessages();
-  const dir = locale === 'ar' ? 'rtl' : 'ltr';
+  const direction = locale === 'ar' ? 'rtl' : 'ltr';
 
   return (
-    <div dir={dir} lang={locale}>
+    <div lang={locale} dir={direction} className={locale === 'ar' ? 'rtl' : 'ltr'}>
       <NextIntlClientProvider messages={messages} locale={locale}>
-        {children}
-        <Toaster position="top-right" richColors closeButton />
+        <Providers>
+          {children}
+          <Toaster position={locale === 'ar' ? 'top-left' : 'top-right'} richColors closeButton />
+        </Providers>
       </NextIntlClientProvider>
     </div>
   )

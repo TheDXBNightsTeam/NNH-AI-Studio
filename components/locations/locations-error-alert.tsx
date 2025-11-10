@@ -4,15 +4,20 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-// Error alert component for locations page
+// Error alert component for locations page - Added user-friendly error message handling to prevent technical details exposure
 export const LocationsErrorAlert = ({ 
   error, 
   onRetryAction 
 }: { 
-  error: string; 
+  error: string | Error; 
   onRetryAction: () => void; 
 }) => {
   const t = useTranslations('Locations');
+
+  // Extract error message with proper type checking and internationalization
+  const errorMessage = typeof error === 'string' 
+    ? t('errors.customMessage', { message: error }) 
+    : t('errors.customMessage', { message: error.message || t('errors.genericMessage') });
 
   return (
     <Card className="border-destructive">
@@ -25,7 +30,9 @@ export const LocationsErrorAlert = ({
           </div>
           <div className="flex-1">
             <h3 className="font-semibold text-destructive">{t('errors.loadFailed')}</h3>
-            <p className="text-sm text-muted-foreground mt-1">{error}</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {errorMessage}
+            </p>
           </div>
           <Button 
             variant="outline" 

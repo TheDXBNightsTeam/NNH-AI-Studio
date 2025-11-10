@@ -1,253 +1,65 @@
+# NNH AI Studio – Core Agent Instructions
 
-# Copilot Instructions - NNH AI Studio
+Purpose: Next.js 14 + Supabase platform for Google My Business (GMB) & YouTube management with multi‑provider AI content generation and structured server actions.
 
-## Project Overview
-**Production Next.js 14 SaaS platform** for managing Google My Business (GMB) and YouTube channels with AI-powered content generation and analytics.
+Architecture & Routing
+- Locale segment: `app/[locale]/(dashboard)/...`; current `i18n.ts` lists `['en']` but keep code locale‑aware for future Arabic (use `dir={locale==='ar'?'rtl':'ltr'}`).
+- Navigation helpers: `lib/navigation.ts` (`Link`, `redirect`, etc.).
+- API feature boundaries under `app/api/{gmb,ai,youtube,locations,reviews,...}`; UI feature folders under `components/{gmb,reviews,posts,questions,analytics,...}`.
 
-**Status:** ✅ LIVE IN PRODUCTION - Deployed on Replit  
-**Stack:** Next.js 14 App Router, Supabase (PostgreSQL + Auth), TypeScript, Tailwind CSS 4, shadcn/ui, next-intl (i18n)
+Auth & Security
+- Always create Supabase client via `createClient()` (`lib/supabase/server.ts`) and gate APIs: `const { data:{user} } = await supabase.auth.getUser(); if(!user) return 401.`
+- Rate limit: `middleware.ts` (100 req/hour/user) adds `X-RateLimit-*` headers; don’t exceed with aggressive polling.
+- Use `createAdminClient()` only for privileged server tasks (no persisted session).
 
-## Architecture Essentials
+Server Actions & Domains (`/server/actions/`)
+- Files map to business capabilities (e.g. `gmb-reviews.ts`, `locations.ts`, `posts-management.ts`). Prefer adding new domain file instead of bloating existing ones.
 
-### 1. **Internationalization (i18n)**
-- **Locale routing:** All routes prefixed with `/[locale]` (en/ar). Always use `next-intl` navigation helpers from `@/lib/navigation`
-- **RTL support:** Arabic (`ar`) locale sets `dir="rtl"` in root layout
-- **Translation files:** `messages/en.json` and `messages/ar.json`
-- Use `useTranslations('SectionName')` in client components, not raw strings
+Database & IDs
+- Key tables defined in `lib/types/database.ts` (e.g. `GMBLocation`, `GMBReview`, `ContentGeneration`).
+- Always set & reuse `normalized_location_id = location_id.replace(/[^a-zA-Z0-9]/g,'_')` before joins / storage.
 
-### 2. **Supabase Client Patterns**
-Three distinct client types - **never mix them**:
-```typescript
-// Client components (browser)
-import { createClient } from '@/lib/supabase/client'
-
-// Server components/actions
-import { createClient } from '@/lib/supabase/server'
-
-// Admin operations (bypasses RLS)
-import { createAdminClient } from '@/lib/supabase/server'
+AI Generation Pattern
+- Endpoint `/api/ai/generate` iterates providers in order (Groq → DeepSeek → Together → OpenAI) skipping missing API keys; optional `provider` field can reprioritize.
+- Persist generation in `content_generations` with `metadata.timestamp`.
+```ts
+// Minimal API pattern
+const supabase = await createClient();
+const { data:{user} } = await supabase.auth.getUser();
+if(!user) return NextResponse.json({error:'Unauthorized'},{status:401});
 ```
 
-### 3. **Authentication & Middleware Flow**
-- Middleware (`middleware.ts`) chains: `next-intl` → `updateSession` (Supabase auth)
-- Protected routes redirect to `/{locale}/auth/login` if unauthenticated
-- Session expiration handled automatically - clears cookies and redirects
-- API routes use `withAuth` wrapper (`lib/api/auth-middleware.ts`) for authentication
+GMB Connection
+- Use `GMBConnectionManager` (see `components/gmb/README.md`) instead of scattered connect/sync/disconnect buttons. Variants: `compact` (dashboard) / `full` (settings). Supports keep/export/delete flows.
 
-### 4. **OAuth Implementation Pattern**
-GMB & YouTube OAuth follows identical flow:
-1. **Create auth URL:** Generate state token → Store in `oauth_states` table (30min expiry) → Return Google OAuth URL
-2. **Callback:** Validate state → Exchange code for tokens → Store in `oauth_tokens` → Sync data
-3. **Token refresh:** Check expiry before API calls → Auto-refresh if needed → Update database
+Location Creation (Approvals)
+- Current Phase: UI mock (wizard steps 1–4) under `app/[locale]/(dashboard)/approvals/` – no real Google create/verify yet; don’t wire live API until Phase 3.
 
-**Critical:** Always validate `state` from `oauth_states` table and mark as `used: true` after consumption.
+Caching & Client Patterns
+- React Query with 5m `staleTime` (see hooks like `use-gmb-connection.ts`). Invalidate with `router.refresh()` after mutations.
+- Store transient UI state locally; persist only vetted domain entities.
 
-### 5. **Server Actions Pattern**
-- All server actions in `server/actions/` with `"use server"` directive
-- Grouped by domain: `auth.ts`, `dashboard.ts`, `reviews.ts`, etc.
-- Always check authentication first:
-```typescript
-const { data: { user }, error } = await supabase.auth.getUser()
-if (error || !user) throw new Error("Not authenticated")
-```
+Build & Scripts
+- Dev: `npm run dev` (port 5050). Prod: `npm start` (port 5000). Clean rebuild: `npm run rebuild`.
+- DB inspection: `node scripts/show_all_tables.js`, `node scripts/inspect_db_structure.js`.
 
-### 6. **Component Organization**
-- **Domain-based structure:** `components/{domain}/` (e.g., `reviews/`, `dashboard/`, `ai/`)
-- **Client components:** Mark with `"use client"` - required for hooks, interactivity, framer-motion
-- **Atomic design:** `components/ui/` for base shadcn components, domain folders for composed widgets
+UI & Components
+- Never edit `components/ui/` (shadcn). Follow pattern: destructure `className`, use `cn()`, assign `Component.displayName`.
+- Toasts via Sonner (`use-toast.ts`); map API errors to user‑friendly messages.
 
-## Development Workflows
+Common Pitfalls
+1. Skipping `getUser()` check in API routes.
+2. Modifying generated UI primitives.
+3. Hardcoding `/en` instead of locale utilities.
+4. Storing raw unnormalized location IDs.
+5. Bypassing centralized GMB connection logic.
 
-### Production Environment (Replit)
-The platform is currently **LIVE IN PRODUCTION** on Replit:
-- **Deployment:** Auto-deploy on push to main branch
-- **Domain:** Connected via Replit deployment
-- **Monitoring:** Check Replit logs for runtime issues
-- **Hot reload:** Changes pushed to main auto-deploy (use caution!)
+Performance & Dynamic Routes
+- Mark truly dynamic API endpoints with `export const dynamic = 'force-dynamic'` to avoid stale data.
+- Avoid unnecessary large AI token counts (cap ~1000 tokens as in `/api/ai/generate`).
 
-### Local Development Workflow
-```bash
-# 1. Install dependencies
-npm install
+Next Steps / Extensions
+- Add new provider? Mirror pattern in `generateWithProvider()` and append env key.
+- New GMB action? Extend server action file + invoke via a thin API route.
 
-# 2. Start dev server for testing
-npm run dev                    # Runs on :5001 (configured in package.json)
-
-# 3. Make your changes and test thoroughly
-
-# 4. Clean up project (remove unnecessary files)
-npm run clean                  # Removes .next and cache files
-# Also delete any unused files, temp files, or redundant code
-# Check for .DS_Store, node_modules leftovers, unused components
-
-# 5. Run checks before committing
-npm run lint                   # Check for code issues
-npm run build                  # Verify production build works
-npm run rebuild                # Clean + build if needed
-
-# 6. Commit and push to GitHub
-git add .
-git commit -m "Description of changes"
-git push origin main           # ⚠️ Auto-deploys to production!
-```
-
-**Port conflict?** Kill existing process: `lsof -ti:5001 | xargs kill -9` (note: port 5001, not 5000)
-
-⚠️ **CRITICAL WORKFLOW:** Clean project → Test locally → Run lint & build checks → Push to GitHub → Auto-deploy to Replit production
-
-### Database Migrations
-- SQL files in `supabase/migrations/` are auto-applied
-- Manual execution: Run SQL in Supabase SQL Editor
-- **Row Level Security (RLS):** All tables have policies filtering by `user_id`
-- Key tables: `gmb_accounts`, `gmb_locations`, `gmb_reviews`, `oauth_tokens`, `youtube_drafts`, `profiles`
-- **Database Access for AI:** See `SETUP_SUPABASE_MCP.md` for connecting AI to database via MCP
-
-**When creating new features that require database changes:**
-1. Always provide complete SQL script for Supabase SQL Editor
-2. Include table creation, RLS policies, and indexes
-3. Test migration script locally before production
-4. Example pattern:
-```sql
--- Create table
-CREATE TABLE IF NOT EXISTS table_name (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Enable RLS
-ALTER TABLE table_name ENABLE ROW LEVEL SECURITY;
-
--- Create policy
-CREATE POLICY "Users can manage their own data"
-  ON table_name FOR ALL
-  USING (auth.uid() = user_id);
-
--- Create indexes
-CREATE INDEX idx_table_name_user_id ON table_name(user_id);
-```
-
-### Environment Variables
-Required in production (configured in Replit Secrets):
-```bash
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=         # For admin client
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-YT_CLIENT_ID=                       # YouTube OAuth
-YT_CLIENT_SECRET=
-NEXT_PUBLIC_BASE_URL=               # Production URL (Replit domain)
-```
-
-For local development: Create `.env.local` with same variables
-
-## Project-Specific Patterns
-
-### 1. **Toast Notifications**
-Use `sonner` for user feedback (not the custom hook):
-```typescript
-import { toast } from 'sonner'
-toast.success("Operation successful")
-toast.error("Something went wrong")
-```
-
-### 2. **Data Fetching in Client Components**
-- Use API routes (`app/api/`) NOT server actions for client-side fetches
-- Example: `fetch('/api/gmb/locations')` with error handling
-- Server actions are for form submissions and mutations
-
-### 3. **Styling Conventions**
-- **Glass effect:** `glass-strong` class for cards
-- **Gradients:** `gradient-orange` for primary CTAs
-- **Icons:** Lucide React (`lucide-react`)
-- **Animations:** Framer Motion for page transitions, stat counters
-- **Dark theme enforced:** `<html className="dark">` in root layout
-
-### 4. **Error Handling Hierarchy**
-1. `app/global-error.tsx` - Catches all errors (full page replacement)
-2. `app/[locale]/error.tsx` - Locale-scoped errors with UI chrome
-3. API routes - Return `NextResponse.json({ error })` with status codes
-4. Server actions - Throw errors, caught by error boundaries
-
-### 5. **API Route Structure**
-**Standard pattern** with `withAuth` wrapper (recommended):
-```typescript
-import { withAuth } from '@/lib/api/auth-middleware'
-
-export const dynamic = 'force-dynamic'
-
-export const GET = withAuth(async (request: Request, user: any) => {
-  // User is already authenticated
-  const supabase = await createClient()
-  // Implementation
-  return NextResponse.json({ data })
-})
-```
-
-**Manual auth pattern** (for special cases):
-```typescript
-export const dynamic = 'force-dynamic'
-
-export async function GET(request: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-  
-  // Implementation
-}
-```
-
-### 6. **Type Safety**
-- Interfaces in `lib/types/database.ts` match Supabase schema exactly
-- Use TypeScript path alias `@/*` for all imports
-- Strict mode enabled - handle all null/undefined cases
-
-## Integration Points
-
-### Google APIs
-- **GMB:** Account Management + Business Information + My Business API v4
-- **YouTube:** Data API v3 with `youtube` scope (includes read + write)
-- **Token storage:** `oauth_tokens` table with AES-256-GCM encryption (planned)
-- **Scopes:** Request `access_type=offline` and `prompt=consent` for refresh tokens
-
-### AI Features
-- **Providers:** Groq, Together AI, Deepseek (API keys in env)
-- **Review replies:** `/api/ai/generate-review-reply` - Pass `reviewText`, `rating`, `tone`, `locationName`
-- **YouTube content:** `/api/youtube/composer/generate` - Draft system in `youtube_drafts` table
-- **Tone options:** Friendly, professional, apologetic, marketing
-
-### Scheduled Jobs
-- Configured in `vercel.json` crons
-- Example: `/api/gmb/scheduled-sync` runs hourly for data sync
-
-### CSS & Styling Architecture
-- **Tailwind CSS 4** with `@tailwindcss/postcss` (no config file needed)
-- **CSS Variables** system in `app/globals.css` for theme colors
-- **Glass effect:** `glass-strong` class for glassmorphism cards
-- **Color system:** Pure black background with electric orange accents
-- **Typography:** Dark theme enforced, white text on black backgrounds
-- **Animations:** Framer Motion for page transitions, `tw-animate-css` for utility animations
-
-## Common Pitfalls
-
-1. **Don't use `Link` from `next/link`** - Use `@/lib/navigation` for locale-aware routing
-2. **Don't call server actions from client directly** - Wrap in API routes for client components
-3. **Don't forget `await createClient()`** - Server Supabase client is async
-4. **Don't skip state validation in OAuth** - Prevents CSRF attacks
-5. **Check token expiry before Google API calls** - Auto-refresh or return 401
-6. **⚠️ Don't push untested code to main** - Auto-deploys to production on Replit!
-
-## Quick Reference
-
-- **New dashboard widget:** Create in `components/dashboard/`, use server action from `server/actions/dashboard.ts`
-- **New API endpoint:** `app/api/{domain}/{name}/route.ts` with `withAuth` wrapper
-- **Add i18n text:** Update `messages/en.json` and `messages/ar.json`
-- **Database change:** Create migration in `supabase/migrations/` with RLS policies
-- **Styling:** Tailwind + `components/ui/` (shadcn) + Framer Motion for animations
-
----
-**Last updated:** 2025-11-04 | Update this file as patterns evolve.
+Clarify anything missing (tests, deployment, YouTube specifics) and this guide can be iterated.

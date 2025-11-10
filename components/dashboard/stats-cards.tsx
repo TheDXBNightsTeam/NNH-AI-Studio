@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, MapPin, Star, MessageSquare, Target } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { memo, useMemo } from 'react';
 
 interface StatsCardProps {
   title: string;
@@ -15,7 +16,15 @@ interface StatsCardProps {
   target?: number;
 }
 
-function StatsCard({ title, value, trend, icon, suffix, loading, target }: StatsCardProps) {
+// ✅ FIX: Memoize StatsCard to prevent unnecessary re-renders
+const StatsCard = memo(function StatsCard({ title, value, trend, icon, suffix, loading, target }: StatsCardProps) {
+  // ✅ FIX: Memoize trend calculations
+  const trendConfig = useMemo(() => {
+    const trendColor = trend && trend > 0 ? 'text-success' : trend && trend < 0 ? 'text-destructive' : 'text-muted-foreground';
+    const TrendIcon = trend && trend > 0 ? TrendingUp : TrendingDown;
+    return { trendColor, TrendIcon };
+  }, [trend]);
+
   if (loading) {
     return (
       <Card>
@@ -31,8 +40,7 @@ function StatsCard({ title, value, trend, icon, suffix, loading, target }: Stats
     );
   }
 
-  const trendColor = trend && trend > 0 ? 'text-success' : trend && trend < 0 ? 'text-destructive' : 'text-muted-foreground';
-  const TrendIcon = trend && trend > 0 ? TrendingUp : TrendingDown;
+  const { trendColor, TrendIcon } = trendConfig;
 
   return (
     <motion.div
@@ -70,7 +78,7 @@ function StatsCard({ title, value, trend, icon, suffix, loading, target }: Stats
       </Card>
     </motion.div>
   );
-}
+});
 
 interface StatsCardsProps {
   loading?: boolean;
@@ -86,8 +94,10 @@ interface StatsCardsProps {
   };
 }
 
-export function StatsCards({ loading, data }: StatsCardsProps) {
-  const stats = data || {
+// ✅ FIX: Memoize StatsCards component to prevent unnecessary re-renders
+export const StatsCards = memo(function StatsCards({ loading, data }: StatsCardsProps) {
+  // ✅ FIX: Memoize stats calculation to prevent recalculation on every render
+  const stats = useMemo(() => data || {
     totalLocations: 0,
     locationsTrend: 0,
     averageRating: 0,
@@ -96,40 +106,47 @@ export function StatsCards({ loading, data }: StatsCardsProps) {
     reviewsTrend: 0,
     responseRate: 0,
     responseTarget: 100,
-  };
+  }, [data]);
+
+  // ✅ FIX: Memoize card props to prevent re-renders
+  const cardProps = useMemo(() => [
+    {
+      title: "Total Locations",
+      value: stats.totalLocations,
+      trend: stats.locationsTrend,
+      icon: <MapPin className="h-4 w-4" />,
+      loading,
+    },
+    {
+      title: "Average Rating",
+      value: stats.averageRating.toFixed(1),
+      trend: stats.ratingTrend,
+      icon: <Star className="h-4 w-4" />,
+      suffix: "/ 5.0",
+      loading,
+    },
+    {
+      title: "Total Reviews",
+      value: stats.totalReviews.toLocaleString(),
+      trend: stats.reviewsTrend,
+      icon: <MessageSquare className="h-4 w-4" />,
+      loading,
+    },
+    {
+      title: "Response Rate",
+      value: `${stats.responseRate.toFixed(1)}%`,
+      icon: <Target className="h-4 w-4" />,
+      target: stats.responseTarget,
+      loading,
+    },
+  ], [stats, loading]);
 
   return (
     <>
-      <StatsCard
-        title="Total Locations"
-        value={stats.totalLocations}
-        trend={stats.locationsTrend}
-        icon={<MapPin className="h-4 w-4" />}
-        loading={loading}
-      />
-      <StatsCard
-        title="Average Rating"
-        value={stats.averageRating.toFixed(1)}
-        trend={stats.ratingTrend}
-        icon={<Star className="h-4 w-4" />}
-        suffix="/ 5.0"
-        loading={loading}
-      />
-      <StatsCard
-        title="Total Reviews"
-        value={stats.totalReviews.toLocaleString()}
-        trend={stats.reviewsTrend}
-        icon={<MessageSquare className="h-4 w-4" />}
-        loading={loading}
-      />
-      <StatsCard
-        title="Response Rate"
-        value={`${stats.responseRate.toFixed(1)}%`}
-        icon={<Target className="h-4 w-4" />}
-        target={stats.responseTarget}
-        loading={loading}
-      />
+      {cardProps.map((props, index) => (
+        <StatsCard key={props.title} {...props} />
+      ))}
     </>
   );
-}
+});
 

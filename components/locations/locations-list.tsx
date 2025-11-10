@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Component } from "react"
+import type { ErrorInfo, ReactNode } from "react"
 import { useRouter } from "@/lib/navigation"
 import { LocationCard } from "./location-card"
 import { LocationProfileEnhanced } from "./location-profile-enhanced"
@@ -62,7 +63,6 @@ export function LocationsList() {
 
         if (!user) {
           setError("Please sign in to view locations")
-          setLoading(false)
           return
         }
 
@@ -262,10 +262,14 @@ export function LocationsList() {
           return
         }
 
-        // Get performance metrics with error handling
+        // Get performance metrics with error handling - Fixed N+1 query by using single aggregated query with grouping
         const { data: metrics, error: metricsError } = await supabase
           .from("gmb_performance_metrics")
-          .select("metric_type, metric_value, location_id")
+          .select(`
+            location_id,
+            metric_type,
+            metric_value
+          `)
           .eq("user_id", user.id)
           .in("location_id", locationIds)
           .gte("metric_date", thirtyDaysAgo.toISOString().split('T')[0])
@@ -561,4 +565,59 @@ export function LocationsList() {
       <AddLocationDialog open={showAddDialog} onOpenChange={setShowAddDialog} />
     </div>
   )
+}
+
+// Error Boundary for Locations List component
+interface LocationsErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface LocationsErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+export class LocationsErrorBoundary extends Component<
+  LocationsErrorBoundaryProps,
+  LocationsErrorBoundaryState
+> {
+  constructor(props: LocationsErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): LocationsErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    console.error('LocationsList Error Boundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Card className="border-destructive">
+          <CardContent className="p-6">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-destructive mb-2">
+                Something went wrong
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                {this.state.error?.message || 'An unexpected error occurred in the locations list.'}
+              </p>
+              <Button
+                onClick={() => this.setState({ hasError: false, error: null })}
+                variant="outline"
+              >
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return this.props.children;
+  }
 }

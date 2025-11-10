@@ -103,6 +103,8 @@ export default function OptimizedLocationsPage() {
       await refetchLocations();
       
       toast.success('Locations synced successfully!');
+      window.dispatchEvent(new Event('dashboard:refresh'));
+      console.log('[OptimizedLocationsPage] Locations synced, dashboard refresh triggered');
     } catch (error) {
       toast.error('Failed to sync locations');
     } finally {
