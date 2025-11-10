@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { useLocale } from 'next-intl';
 
 interface QuickAction {
   id: string;
@@ -33,6 +34,8 @@ export function QuickActionsBar({
   pendingReviews, 
   unansweredQuestions
 }: QuickActionsBarProps) {
+  const locale = useLocale();
+  const isArabic = locale === 'ar';
 
   const quickActions: QuickAction[] = [
     {
