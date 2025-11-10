@@ -230,11 +230,88 @@ function deduplicateAndSortLocations(rawLocations: Location[]): Location[] {
     return [];
   }
 
-  const toTimestamp = (value?: string | null): number => {
-    if (!value) return 0;
-    const parsed = Date.parse(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-  };
+  return (
+    <Card className="lg:col-span-1 border border-primary/20">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-primary">Active Location</CardTitle>
+        <MapPin className="w-4 h-4 text-primary" />
+      </CardHeader>
+      <CardContent>
+        <h3 className="text-xl font-bold truncate">
+          {stats.totalLocations === 0 
+            ? "No Locations" 
+            : locationName
+          }
+        </h3>
+        {stats.totalLocations > 0 && (
+          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+            {locationRating.toFixed(1)} / 5.0 Rating
+          </p>
+        )}
+        {stats.totalLocations > 0 && (
+          <Button asChild size="sm" variant="outline" className="mt-3 w-full">
+            <Link href={`/locations/${bestLocation?.id || 'default'}`}>
+              Go to Location
+            </Link>
+          </Button>
+        )}
+        {stats.totalLocations > 1 && (
+          <Link href="/locations" className="text-xs text-primary hover:underline mt-1 block text-center">
+            Manage {stats.totalLocations - 1} more
+          </Link>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// Health Score Card with safe defaults
+const HealthScoreCard = ({ loading, healthScore }: { loading: boolean; healthScore: number }) => (
+  <Card className={cn("lg:col-span-1 border-l-4", 
+    healthScore > 80 ? 'border-green-500' : 
+    healthScore > 60 ? 'border-yellow-500' : 'border-red-500'
+  )}>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">GMB Health Score</CardTitle>
+      <ShieldCheck className="w-4 h-4 text-primary" />
+    </CardHeader>
+    <CardContent>
+      <div className="text-4xl font-bold">
+        {loading ? (
+          <Loader2 className="w-6 h-6 animate-spin" />
+        ) : (
+          `${healthScore}%`
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground mt-1">
+        Score based on Quality, Visibility, and Compliance.
+      </p>
+    </CardContent>
+  </Card>
+);
+
+export default function DashboardPage() {
+  useNavigationShortcuts();
+  const supabase = createClient();
+  const router = useRouter();
+
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalLocations: 0,
+    locationsTrend: 0,
+    averageRating: 0,
+    allTimeAverageRating: 0, 
+    ratingTrend: 0,
+    totalReviews: 0,
+    reviewsTrend: 0,
+    responseRate: 0,
+    responseTarget: 100,
+    healthScore: 0,
+    pendingReviews: 0,
+    unansweredQuestions: 0,
+    bottlenecks: [],
+  });
 
   const locationMap = new Map<string, Location>();
 
