@@ -47,7 +47,9 @@ interface DashboardStats {
 }
 
 interface Location {
-    id: string;
+  id: string;
+  location_id?: string | null;
+  normalized_location_id?: string | null;
   location_name: string;
   rating: number | null;
   review_count: number | null;
@@ -55,6 +57,7 @@ interface Location {
   is_active: boolean | null;
   address: string | null;
   category: string | null;
+  updated_at?: string | null;
 }
 
 interface Review {
@@ -127,7 +130,7 @@ async function getDashboardData(startDate?: string, endDate?: string) {
     }
     
     // Fetch locations for current user
-    const { data: locations, error: locationsError } = await supabase
+    const { data: locationRows, error: locationsError } = await supabase
       .from('gmb_locations')
       .select('*')
       .eq('user_id', user.id)
@@ -174,9 +177,11 @@ async function getDashboardData(startDate?: string, endDate?: string) {
       accountId = accountRow?.id || null;
     } catch {}
 
+    const locations = deduplicateAndSortLocations((locationRows || []) as Location[]);
+
     return {
       reviews: (reviews || []) as Review[],
-      locations: (locations || []) as Location[],
+      locations,
       questions: (questions || []) as Question[],
       accountId,
     };
@@ -228,11 +233,79 @@ function getPendingQuestions(questions: Question[]): number {
   return questions.filter(q => !q.answer_text || q.answer_text.trim() === '' || q.answer_status === 'pending').length;
 }
 
-function getTopLocation(locations: Location[]): Location | null {
-  if (!locations || locations.length === 0) return null;
-  return locations.reduce((prev, current) => 
-    (current.rating || 0) > (prev.rating || 0) ? current : prev
-  , locations[0]);
+function deduplicateAndSortLocations(rawLocations: Location[]): Location[] {
+  if (!rawLocations || rawLocations.length === 0) {
+    return [];
+  }
+
+  const toTimestamp = (value?: string | null): number => {
+    if (!value) return 0;
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const locationMap = new Map<string, Location>();
+
+  const getKey = (loc: Location) =>
+    loc.normalized_location_id || loc.location_id || loc.id;
+
+  const hasHigherPriority = (candidate: Location, incumbent: Location) => {
+    const candidateActive = candidate.is_active ? 1 : 0;
+    const incumbentActive = incumbent.is_active ? 1 : 0;
+    if (candidateActive !== incumbentActive) {
+      return candidateActive > incumbentActive;
+    }
+
+    const candidateUpdated = toTimestamp(candidate.updated_at);
+    const incumbentUpdated = toTimestamp(incumbent.updated_at);
+    if (candidateUpdated !== incumbentUpdated) {
+      return candidateUpdated > incumbentUpdated;
+    }
+
+    const candidateReviews = candidate.review_count ?? 0;
+    const incumbentReviews = incumbent.review_count ?? 0;
+    if (candidateReviews !== incumbentReviews) {
+      return candidateReviews > incumbentReviews;
+    }
+
+    return false;
+  };
+
+  for (const location of rawLocations) {
+    const key = getKey(location);
+    const existing = locationMap.get(key);
+    if (!existing) {
+      locationMap.set(key, location);
+      continue;
+    }
+
+    if (hasHigherPriority(location, existing)) {
+      locationMap.set(key, location);
+    }
+  }
+
+  const deduped = Array.from(locationMap.values());
+
+  deduped.sort((a, b) => {
+    const activeDiff = (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0);
+    if (activeDiff !== 0) {
+      return activeDiff;
+    }
+
+    const updatedDiff = toTimestamp(b.updated_at) - toTimestamp(a.updated_at);
+    if (updatedDiff !== 0) {
+      return updatedDiff;
+    }
+
+    const reviewDiff = (b.review_count ?? 0) - (a.review_count ?? 0);
+    if (reviewDiff !== 0) {
+      return reviewDiff;
+    }
+
+    return (a.location_name || '').localeCompare(b.location_name || '', undefined, { sensitivity: 'base' });
+  });
+
+  return deduped;
 }
 
 // Generate dynamic AI insights
@@ -366,8 +439,7 @@ export default async function DashboardPage({
   const responseRateValue = Number.parseFloat(stats.responseRate) || 0;
   
   // Get active location and top performer
-  const activeLocation = locations[0] || null;
-  const topLocation = getTopLocation(locations);
+  const activeLocation = locations.find(location => location.is_active) || locations[0] || null;
   
   // Generate dynamic alerts
   const alerts: Array<{
