@@ -510,3 +510,31 @@ body {
   background-size: 1000px 100%;
   animation: shimmer 2s infinite linear;
 }
+
+/* ===================================
+   Brand Color Utilities
+   Dynamic colors from client branding
+   =================================== */
+.bg-brand-primary {
+  background-color: var(--brand-primary) !important;
+}
+
+.text-brand-primary {
+  color: var(--brand-primary) !important;
+}
+
+.border-brand-primary {
+  border-color: var(--brand-primary) !important;
+}
+
+.bg-brand-secondary {
+  background-color: var(--brand-secondary) !important;
+}
+
+.text-brand-secondary {
+  color: var(--brand-secondary) !important;
+}
+
+.border-brand-secondary {
+  border-color: var(--brand-secondary) !important;
+}
