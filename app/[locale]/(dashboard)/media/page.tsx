@@ -147,16 +147,6 @@ export default async function MediaPage() {
               Manage your location photos and videos
             </p>
           </div>
-          
-          <button
-            onClick={() => {
-              window.dispatchEvent(new Event('dashboard:refresh'));
-              console.log('[MediaPage] Upload Media clicked, dashboard refresh triggered');
-            }}
-            className="px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-lg font-medium transition flex items-center gap-2"
-          >
-            ⬆️ Upload Media
-          </button>
         </div>
         
         {/* Stats Cards */}
