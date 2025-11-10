@@ -6,9 +6,6 @@ import { z } from "zod"
 import type { GMBPost } from "@/lib/types/database"
 import { getValidAccessToken, GMB_CONSTANTS } from "@/lib/gmb/helpers"
 
-// Ensures all server actions in this file are dynamically rendered
-export const dynamic = 'force-dynamic';
-
 const GMB_V4_BASE = GMB_CONSTANTS.GMB_V4_BASE
 
 // Cache for location data to reduce database queries
