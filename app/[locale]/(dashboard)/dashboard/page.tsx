@@ -22,6 +22,11 @@ import {
   LazyGamificationWidget 
 } from '@/components/dashboard/lazy-dashboard-components';
 import { useDashboardStats, cacheUtils } from '@/hooks/use-dashboard-cache';
+import { 
+  type DashboardWidgetPreferences, 
+  getDashboardPreferences 
+} from '@/lib/dashboard-preferences';
+import { getDetailedComparisonPeriod } from '@/lib/date-range-utils';
 
 // Regular imports for essential components
 import { GMBConnectionManager } from '@/components/gmb/gmb-connection-manager';
@@ -86,6 +91,7 @@ export default function DashboardPage() {
   const [gmbConnected, setGmbConnected] = useState(false);
   const [lastDataUpdate, setLastDataUpdate] = useState<Date | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>({ preset: '30d', start: null, end: null });
+  const [widgetPreferences, setWidgetPreferences] = useState<DashboardWidgetPreferences>(getDashboardPreferences());
 
   // استخدام الـ cached data fetching
   const { data: stats, loading, error, fetchData, invalidate } = useDashboardStats(dateRange);
@@ -111,6 +117,9 @@ export default function DashboardPage() {
     ...defaultStats,
     ...stats
   } : defaultStats;
+
+  // Get detailed comparison period for stats cards
+  const comparisonDetails = getDetailedComparisonPeriod(dateRange);
 
   const fetchConnectionStatus = async () => {
     try {
@@ -167,10 +176,14 @@ export default function DashboardPage() {
     router.refresh();
   };
 
+  const handlePreferencesChange = (preferences: DashboardWidgetPreferences) => {
+    setWidgetPreferences(preferences);
+  };
+
   return (
     <div className="space-y-4 md:space-y-8 p-4 md:p-6" data-print-root>
       {/* Header - محسن للموبايل */}
-      <DashboardHeader />
+      <DashboardHeader onPreferencesChange={handlePreferencesChange} />
 
       {/* Real-time Updates Indicator */}
       {gmbConnected && (
@@ -245,72 +258,89 @@ export default function DashboardPage() {
       {/* Stats Cards - Lazy Loaded */}
       {gmbConnected && (
         <DashboardSection section="Statistics">
-          <LazyStatsCards loading={loading} data={currentStats} />
+          <LazyStatsCards 
+            loading={loading} 
+            data={currentStats} 
+            dateRange={dateRange}
+            comparisonDetails={comparisonDetails}
+          />
         </DashboardSection>
       )}
 
       {/* Weekly Tasks and Bottlenecks */}
-      {gmbConnected && (
+      {gmbConnected && (widgetPreferences.showWeeklyTasks || widgetPreferences.showBottlenecks) && (
         <ResponsiveGrid type="main">
-          <DashboardSection section="Weekly Tasks">
-            <WeeklyTasksWidget />
-          </DashboardSection>
-          <DashboardSection section="Bottlenecks">
-            <BottlenecksWidget 
-              bottlenecks={currentStats.bottlenecks} 
-              loading={loading}
-            />
-          </DashboardSection>
+          {widgetPreferences.showWeeklyTasks && (
+            <DashboardSection section="Weekly Tasks">
+              <WeeklyTasksWidget />
+            </DashboardSection>
+          )}
+          {widgetPreferences.showBottlenecks && (
+            <DashboardSection section="Bottlenecks">
+              <BottlenecksWidget 
+                bottlenecks={currentStats.bottlenecks} 
+                loading={loading}
+              />
+            </DashboardSection>
+          )}
         </ResponsiveGrid>
       )}
 
       {/* Performance Charts - Lazy Loaded */}
-      {gmbConnected && currentStats.monthlyComparison && (
+      {gmbConnected && currentStats.monthlyComparison && (widgetPreferences.showPerformanceComparison || widgetPreferences.showLocationHighlights) && (
         <ResponsiveGrid type="chart">
-          <DashboardSection section="Performance Chart">
-            <LazyPerformanceChart
-              currentMonthData={currentStats.monthlyComparison.current}
-              previousMonthData={currentStats.monthlyComparison.previous}
-              loading={loading}
-            />
-          </DashboardSection>
-          <DashboardSection section="Location Highlights">
-            <LazyLocationHighlights
-              locations={currentStats.locationHighlights || []}
-              loading={loading}
-            />
-          </DashboardSection>
+          {widgetPreferences.showPerformanceComparison && (
+            <DashboardSection section="Performance Chart">
+              <LazyPerformanceChart
+                currentMonthData={currentStats.monthlyComparison.current}
+                previousMonthData={currentStats.monthlyComparison.previous}
+                loading={loading}
+              />
+            </DashboardSection>
+          )}
+          {widgetPreferences.showLocationHighlights && (
+            <DashboardSection section="Location Highlights">
+              <LazyLocationHighlights
+                locations={currentStats.locationHighlights || []}
+                loading={loading}
+              />
+            </DashboardSection>
+          )}
         </ResponsiveGrid>
       )}
 
       {/* AI Insights + Gamification - Lazy Loaded */}
-      {gmbConnected && (
+      {gmbConnected && (widgetPreferences.showAIInsights || widgetPreferences.showAchievements) && (
         <ResponsiveGrid type="main">
-          <DashboardSection section="AI Insights">
-            <LazyAIInsights
-              stats={{
-                totalReviews: currentStats.totalReviews,
-                averageRating: currentStats.averageRating,
-                responseRate: currentStats.responseRate,
-                pendingReviews: currentStats.pendingReviews,
-                unansweredQuestions: currentStats.unansweredQuestions,
-                ratingTrend: currentStats.ratingTrend,
-                reviewsTrend: currentStats.reviewsTrend
-              }}
-              loading={loading}
-            />
-          </DashboardSection>
-          <DashboardSection section="Gamification">
-            <LazyGamificationWidget
-              stats={{
-                healthScore: currentStats.healthScore,
-                responseRate: currentStats.responseRate,
-                averageRating: currentStats.averageRating,
-                totalReviews: currentStats.totalReviews,
-                pendingReviews: currentStats.pendingReviews,
-              }}
-            />
-          </DashboardSection>
+          {widgetPreferences.showAIInsights && (
+            <DashboardSection section="AI Insights">
+              <LazyAIInsights
+                stats={{
+                  totalReviews: currentStats.totalReviews,
+                  averageRating: currentStats.averageRating,
+                  responseRate: currentStats.responseRate,
+                  pendingReviews: currentStats.pendingReviews,
+                  unansweredQuestions: currentStats.unansweredQuestions,
+                  ratingTrend: currentStats.ratingTrend,
+                  reviewsTrend: currentStats.reviewsTrend
+                }}
+                loading={loading}
+              />
+            </DashboardSection>
+          )}
+          {widgetPreferences.showAchievements && (
+            <DashboardSection section="Gamification">
+              <LazyGamificationWidget
+                stats={{
+                  healthScore: currentStats.healthScore,
+                  responseRate: currentStats.responseRate,
+                  averageRating: currentStats.averageRating,
+                  totalReviews: currentStats.totalReviews,
+                  pendingReviews: currentStats.pendingReviews,
+                }}
+              />
+            </DashboardSection>
+          )}
         </ResponsiveGrid>
       )}
     </div>
