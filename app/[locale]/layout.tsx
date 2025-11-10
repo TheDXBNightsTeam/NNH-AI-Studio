@@ -17,13 +17,14 @@ export default async function LocaleLayout({
     notFound();
   }
   const messages = await getMessages();
+  const direction = locale === 'ar' ? 'rtl' : 'ltr';
 
   return (
     <div lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <NextIntlClientProvider messages={messages} locale={locale}>
         <Providers>
           {children}
-          <Toaster position="top-right" richColors closeButton />
+          <Toaster position={locale === 'ar' ? 'top-left' : 'top-right'} richColors closeButton />
         </Providers>
       </NextIntlClientProvider>
     </div>

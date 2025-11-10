@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleApiError } from '@/lib/utils/api-error-handler';
 import { getBaseUrlDynamic } from '@/lib/utils/get-base-url-dynamic';
-import { createAdminClient, createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -285,13 +285,17 @@ export async function GET(request: NextRequest) {
         .single();
         
       if (upsertError || !upsertedAccount) {
-        console.error('[OAuth Callback] Failed to upsert account:', upsertError);
-        const baseUrl = getBaseUrlDynamic(request);
-        return NextResponse.redirect(
-          `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent(
-            `Failed to save account: ${upsertError?.message || 'Unknown error'}`
-          )}`
-        );
+    // Use the new centralized handler for logging the unexpected error
+    handleApiError(error, '[OAuth Callback] Unexpected error');
+    
+    // Still redirect the user with a generic error message
+    const baseUrl = getBaseUrlDynamic(request);
+    return NextResponse.redirect(
+      `${baseUrl}/${localeCookie}/settings?error=${encodeURIComponent(
+        `An unexpected error occurred: ${error.message || 'Unknown error'}`
+      )}`
+    );
+  } ); // Keep redirect for user-facing error
       }
       
       savedAccountId = upsertedAccount.id;
