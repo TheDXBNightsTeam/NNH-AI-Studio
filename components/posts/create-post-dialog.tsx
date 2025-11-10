@@ -414,6 +414,7 @@ export function CreatePostDialog({ isOpen, onClose, locations, onSuccess }: Crea
                 )}
               </div>
             )}
+          </div>
 
           {/* CTA */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
