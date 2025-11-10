@@ -255,7 +255,8 @@ export async function getPosts(params: z.infer<typeof FilterSchema>) {
  * Builds the Google API request body from post data.
  */
 function buildGooglePostBody(postData: GMBPost | z.infer<typeof CreatePostSchema>): any {
-    const summaryText = 'content' in postData && postData.content ? postData.content : (postData as z.infer<typeof CreatePostSchema>).description;
+    const typedPostData = postData as any;
+    const summaryText = typedPostData.content ?? typedPostData.description ?? '';
 
     const body: any = {
         languageCode: "en",
