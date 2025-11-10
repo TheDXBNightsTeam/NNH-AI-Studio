@@ -19,21 +19,13 @@ import {
 import {
   RefreshButton,
   SyncAllButton,
-  SyncButton,
-  DisconnectButton,
-  LocationCard,
   TimeFilterButtons,
-  ViewDetailsButton,
-  ManageProtectionButton,
   LastUpdated,
-  QuickActionsInteractive
 } from './DashboardClient';
-import { WeeklyTasksList } from '@/components/dashboard/WeeklyTasksList';
-import { ExpandableFeed } from '@/components/dashboard/ExpandableFeed';
 import Link from 'next/link';
-import { PerformanceChart } from './PerformanceChart';
 import { RefreshOnEvent } from './RefreshOnEvent';
 import { MetricsPanel } from '@/components/analytics/metrics-panel';
+import { DashboardTabs } from '@/components/dashboard/dashboard-tabs';
 
 // TypeScript Interfaces
 interface DashboardStats {
@@ -47,7 +39,9 @@ interface DashboardStats {
 }
 
 interface Location {
-    id: string;
+  id: string;
+  location_id?: string | null;
+  normalized_location_id?: string | null;
   location_name: string;
   rating: number | null;
   review_count: number | null;
@@ -55,6 +49,7 @@ interface Location {
   is_active: boolean | null;
   address: string | null;
   category: string | null;
+  updated_at?: string | null;
 }
 
 interface Review {
@@ -127,7 +122,7 @@ async function getDashboardData(startDate?: string, endDate?: string) {
     }
     
     // Fetch locations for current user
-    const { data: locations, error: locationsError } = await supabase
+    const { data: locationRows, error: locationsError } = await supabase
       .from('gmb_locations')
       .select('*')
       .eq('user_id', user.id)
@@ -174,9 +169,11 @@ async function getDashboardData(startDate?: string, endDate?: string) {
       accountId = accountRow?.id || null;
     } catch {}
 
+    const locations = deduplicateAndSortLocations((locationRows || []) as Location[]);
+
     return {
       reviews: (reviews || []) as Review[],
-      locations: (locations || []) as Location[],
+      locations,
       questions: (questions || []) as Question[],
       accountId,
     };
@@ -228,11 +225,156 @@ function getPendingQuestions(questions: Question[]): number {
   return questions.filter(q => !q.answer_text || q.answer_text.trim() === '' || q.answer_status === 'pending').length;
 }
 
-function getTopLocation(locations: Location[]): Location | null {
-  if (!locations || locations.length === 0) return null;
-  return locations.reduce((prev, current) => 
-    (current.rating || 0) > (prev.rating || 0) ? current : prev
-  , locations[0]);
+function deduplicateAndSortLocations(rawLocations: Location[]): Location[] {
+  if (!rawLocations || rawLocations.length === 0) {
+    return [];
+  }
+
+  return (
+    <Card className="lg:col-span-1 border border-primary/20">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-primary">Active Location</CardTitle>
+        <MapPin className="w-4 h-4 text-primary" />
+      </CardHeader>
+      <CardContent>
+        <h3 className="text-xl font-bold truncate">
+          {stats.totalLocations === 0 
+            ? "No Locations" 
+            : locationName
+          }
+        </h3>
+        {stats.totalLocations > 0 && (
+          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+            {locationRating.toFixed(1)} / 5.0 Rating
+          </p>
+        )}
+        {stats.totalLocations > 0 && (
+          <Button asChild size="sm" variant="outline" className="mt-3 w-full">
+            <Link href={`/locations/${bestLocation?.id || 'default'}`}>
+              Go to Location
+            </Link>
+          </Button>
+        )}
+        {stats.totalLocations > 1 && (
+          <Link href="/locations" className="text-xs text-primary hover:underline mt-1 block text-center">
+            Manage {stats.totalLocations - 1} more
+          </Link>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// Health Score Card with safe defaults
+const HealthScoreCard = ({ loading, healthScore }: { loading: boolean; healthScore: number }) => (
+  <Card className={cn("lg:col-span-1 border-l-4", 
+    healthScore > 80 ? 'border-green-500' : 
+    healthScore > 60 ? 'border-yellow-500' : 'border-red-500'
+  )}>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">GMB Health Score</CardTitle>
+      <ShieldCheck className="w-4 h-4 text-primary" />
+    </CardHeader>
+    <CardContent>
+      <div className="text-4xl font-bold">
+        {loading ? (
+          <Loader2 className="w-6 h-6 animate-spin" />
+        ) : (
+          `${healthScore}%`
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground mt-1">
+        Score based on Quality, Visibility, and Compliance.
+      </p>
+    </CardContent>
+  </Card>
+);
+
+export default function DashboardPage() {
+  useNavigationShortcuts();
+  const supabase = createClient();
+  const router = useRouter();
+
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalLocations: 0,
+    locationsTrend: 0,
+    averageRating: 0,
+    allTimeAverageRating: 0, 
+    ratingTrend: 0,
+    totalReviews: 0,
+    reviewsTrend: 0,
+    responseRate: 0,
+    responseTarget: 100,
+    healthScore: 0,
+    pendingReviews: 0,
+    unansweredQuestions: 0,
+    bottlenecks: [],
+  });
+
+  const locationMap = new Map<string, Location>();
+
+  const getKey = (loc: Location) =>
+    loc.normalized_location_id || loc.location_id || loc.id;
+
+  const hasHigherPriority = (candidate: Location, incumbent: Location) => {
+    const candidateActive = candidate.is_active ? 1 : 0;
+    const incumbentActive = incumbent.is_active ? 1 : 0;
+    if (candidateActive !== incumbentActive) {
+      return candidateActive > incumbentActive;
+    }
+
+    const candidateUpdated = toTimestamp(candidate.updated_at);
+    const incumbentUpdated = toTimestamp(incumbent.updated_at);
+    if (candidateUpdated !== incumbentUpdated) {
+      return candidateUpdated > incumbentUpdated;
+    }
+
+    const candidateReviews = candidate.review_count ?? 0;
+    const incumbentReviews = incumbent.review_count ?? 0;
+    if (candidateReviews !== incumbentReviews) {
+      return candidateReviews > incumbentReviews;
+    }
+
+    return false;
+  };
+
+  for (const location of rawLocations) {
+    const key = getKey(location);
+    const existing = locationMap.get(key);
+    if (!existing) {
+      locationMap.set(key, location);
+      continue;
+    }
+
+    if (hasHigherPriority(location, existing)) {
+      locationMap.set(key, location);
+    }
+  }
+
+  const deduped = Array.from(locationMap.values());
+
+  deduped.sort((a, b) => {
+    const activeDiff = (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0);
+    if (activeDiff !== 0) {
+      return activeDiff;
+    }
+
+    const updatedDiff = toTimestamp(b.updated_at) - toTimestamp(a.updated_at);
+    if (updatedDiff !== 0) {
+      return updatedDiff;
+    }
+
+    const reviewDiff = (b.review_count ?? 0) - (a.review_count ?? 0);
+    if (reviewDiff !== 0) {
+      return reviewDiff;
+    }
+
+    return (a.location_name || '').localeCompare(b.location_name || '', undefined, { sensitivity: 'base' });
+  });
+
+  return deduped;
 }
 
 // Generate dynamic AI insights
@@ -366,8 +508,7 @@ export default async function DashboardPage({
   const responseRateValue = Number.parseFloat(stats.responseRate) || 0;
   
   // Get active location and top performer
-  const activeLocation = locations[0] || null;
-  const topLocation = getTopLocation(locations);
+  const activeLocation = locations.find(location => location.is_active) || locations[0] || null;
   
   // Generate dynamic alerts
   const alerts: Array<{
@@ -434,25 +575,26 @@ export default async function DashboardPage({
   const lastUpdatedAt = new Date().toISOString();
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-zinc-950 p-3 sm:p-4 md:p-6 lg:p-8">
       {/* Auto-refresh on custom events */}
       <RefreshOnEvent eventName="dashboard:refresh" />
       
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* HEADER SECTION */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-zinc-100 flex items-center gap-2">
-              🤖 AI Command Center
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-zinc-100 flex items-center gap-2 rtl:flex-row-reverse">
+              <span className="rtl:order-2">🤖</span>
+              <span className="rtl:order-1">AI Command Center</span>
             </h1>
-            <p className="text-zinc-400 mt-2 text-sm md:text-base">
+            <p className="text-zinc-400 mt-1 sm:mt-2 text-xs sm:text-sm md:text-base">
               Proactive risk and growth optimization dashboard
             </p>
           </div>
           
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm">
-              <CardContent className="p-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm flex-1 sm:flex-initial">
+              <CardContent className="p-2 sm:p-3">
                 <LastUpdated updatedAt={lastUpdatedAt} />
               </CardContent>
             </Card>
@@ -466,65 +608,65 @@ export default async function DashboardPage({
         {/* ========================================= */}
         {/* CONNECTION & SYNC STATUS BANNER - START */}
         {/* ========================================= */}
-        <div className="mb-8 space-y-4">
+        <div className="mb-4 sm:mb-6 md:mb-8 space-y-3 sm:space-y-4">
           {/* Case 1: No GMB Account Connected */}
           {!accountId && (
             <Card className="bg-gradient-to-r from-red-500/10 via-orange-500/10 to-yellow-500/10 border-red-500/30 backdrop-blur-sm hover:border-red-500/50 transition-all">
-              <CardContent className="py-8">
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-                  <div className="flex-shrink-0">
-                    <div className="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center">
-                      <svg className="w-10 h-10 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <CardContent className="py-4 sm:py-6 md:py-8">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-4 sm:gap-6">
+                  <div className="flex-shrink-0 mx-auto md:mx-0">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-red-500/20 flex items-center justify-center">
+                      <svg className="w-8 h-8 sm:w-10 sm:h-10 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                       </svg>
                     </div>
                   </div>
                   
-                  <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-zinc-100 mb-2">
+                  <div className="flex-1 w-full">
+                    <h3 className="text-xl sm:text-2xl font-bold text-zinc-100 mb-2 text-center md:text-start rtl:text-right">
                       🔌 Connect Your Google My Business Account
                     </h3>
-                    <p className="text-zinc-300 mb-4 leading-relaxed">
+                    <p className="text-zinc-300 mb-3 sm:mb-4 leading-relaxed text-sm sm:text-base text-center md:text-start rtl:text-right">
                       Start managing your business by connecting your Google My Business account. 
                       You'll be able to manage locations, respond to reviews with AI, track analytics, and more.
                     </p>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                      <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900/50 border border-zinc-800 rtl:flex-row-reverse">
                         <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
                           <span className="text-xl">✓</span>
                         </div>
-                        <div>
+                        <div className="rtl:text-right flex-1">
                           <p className="text-sm font-medium text-zinc-200">AI-Powered Replies</p>
                           <p className="text-xs text-zinc-400">Smart review responses</p>
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900/50 border border-zinc-800 rtl:flex-row-reverse">
                         <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
                           <span className="text-xl">📊</span>
                         </div>
-                        <div>
+                        <div className="rtl:text-right flex-1">
                           <p className="text-sm font-medium text-zinc-200">Real-time Analytics</p>
                           <p className="text-xs text-zinc-400">Track performance</p>
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900/50 border border-zinc-800">
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900/50 border border-zinc-800 rtl:flex-row-reverse">
                         <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0">
                           <span className="text-xl">🗺️</span>
                         </div>
-                        <div>
+                        <div className="rtl:text-right flex-1">
                           <p className="text-sm font-medium text-zinc-200">Multi-Location</p>
                           <p className="text-xs text-zinc-400">Manage everything</p>
                         </div>
                       </div>
                     </div>
                     
-                    <Link href="/settings?tab=connections">
-                      <Button className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white px-8 py-6 text-base font-semibold">
+                    <Link href="/settings?tab=connections" className="w-full sm:w-auto inline-block">
+                      <Button className="w-full sm:w-auto bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base font-semibold">
                         🔗 Connect GMB Account Now
-                        <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="ml-2 rtl:mr-2 rtl:ml-0 rtl:rotate-180 w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
                       </Button>
@@ -538,43 +680,43 @@ export default async function DashboardPage({
           {/* Case 2: GMB Connected but No Locations */}
           {accountId && (!locations || locations.length === 0) && (
             <Card className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-orange-500/30 backdrop-blur-sm hover:border-orange-500/50 transition-all">
-              <CardContent className="py-8">
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-                  <div className="flex-shrink-0">
-                    <div className="w-20 h-20 rounded-full bg-orange-500/20 flex items-center justify-center">
-                      <svg className="w-10 h-10 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <CardContent className="py-4 sm:py-6 md:py-8">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-4 sm:gap-6">
+                  <div className="flex-shrink-0 mx-auto md:mx-0">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-orange-500/20 flex items-center justify-center">
+                      <svg className="w-8 h-8 sm:w-10 sm:h-10 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
                     </div>
                   </div>
                   
-                  <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-zinc-100 mb-2 flex items-center gap-2">
-                      🔄 Sync Your Locations
-                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                  <div className="flex-1 w-full">
+                    <h3 className="text-xl sm:text-2xl font-bold text-zinc-100 mb-2 flex flex-wrap items-center gap-2 justify-center md:justify-start rtl:md:justify-end">
+                      <span>🔄 Sync Your Locations</span>
+                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
                         Account Connected ✓
                       </Badge>
                     </h3>
-                    <p className="text-zinc-300 mb-4 leading-relaxed">
+                    <p className="text-zinc-300 mb-3 sm:mb-4 leading-relaxed text-sm sm:text-base text-center md:text-start rtl:text-right">
                       Your Google My Business account is connected successfully! 
                       Now sync your locations to start managing them from this dashboard.
                     </p>
                     
-                    <div className="flex items-center gap-3 p-4 rounded-lg bg-zinc-900/50 border border-zinc-800 mb-6">
-                      <div className="text-3xl">💡</div>
-                      <div>
+                    <div className="flex items-start gap-3 p-3 sm:p-4 rounded-lg bg-zinc-900/50 border border-zinc-800 mb-4 sm:mb-6 rtl:flex-row-reverse">
+                      <div className="text-2xl sm:text-3xl flex-shrink-0">💡</div>
+                      <div className="flex-1 rtl:text-right">
                         <p className="text-sm font-medium text-zinc-200">What happens when you sync?</p>
-                        <p className="text-xs text-zinc-400">
+                        <p className="text-xs text-zinc-400 mt-1">
                           We'll import all your business locations, recent reviews, questions, and performance data from Google.
                           This usually takes 10-30 seconds depending on the number of locations.
                         </p>
                       </div>
                     </div>
                     
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3">
                       <SyncAllButton />
                       <Link href="/settings?tab=connections">
-                        <Button variant="outline" className="border-zinc-700 hover:bg-zinc-800">
+                        <Button variant="outline" className="w-full sm:w-auto border-zinc-700 hover:bg-zinc-800">
                           ⚙️ Manage Connection
                         </Button>
                       </Link>
@@ -588,26 +730,26 @@ export default async function DashboardPage({
           {/* Case 3: Everything Working - Success Status */}
           {accountId && locations && locations.length > 0 && (
             <Card className="bg-zinc-900/50 border-green-500/30 backdrop-blur-sm hover:border-green-500/50 transition-all">
-              <CardContent className="py-4">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <CardContent className="py-3 sm:py-4">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4">
                   {/* Left: Status Info */}
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-7 h-7 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                  <div className="flex items-center gap-3 sm:gap-4 w-full md:w-auto rtl:flex-row-reverse">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-6 h-6 sm:w-7 sm:h-7 text-green-400" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
                     </div>
                     
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-base font-semibold text-zinc-100">
+                    <div className="flex-1 rtl:text-right">
+                      <div className="flex flex-wrap items-center gap-2 mb-1 rtl:flex-row-reverse rtl:justify-end">
+                        <p className="text-sm sm:text-base font-semibold text-zinc-100">
                           GMB Account Connected
                         </p>
                         <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
                           Active & Synced
                         </Badge>
                       </div>
-                      <p className="text-sm text-zinc-400">
+                      <p className="text-xs sm:text-sm text-zinc-400">
                         {locations.length} location{locations.length !== 1 ? 's' : ''} • 
                         {' '}{stats.totalReviews} review{stats.totalReviews !== 1 ? 's' : ''} • 
                         {' '}{stats.pendingReviews} pending
@@ -616,21 +758,23 @@ export default async function DashboardPage({
                   </div>
                   
                   {/* Right: Action Buttons */}
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="text-xs text-zinc-500 flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto justify-between md:justify-end">
+                    <div className="text-xs text-zinc-500 flex items-center gap-2 rtl:flex-row-reverse">
                       <Clock className="w-3 h-3" />
                       <LastUpdated updatedAt={lastUpdatedAt} />
                     </div>
-                    <RefreshButton />
-                    <Link href="/settings?tab=connections">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="border-zinc-700 hover:bg-zinc-800"
-                      >
-                        ⚙️ Settings
-                      </Button>
-                    </Link>
+                    <div className="flex gap-2">
+                      <RefreshButton />
+                      <Link href="/settings?tab=connections">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="border-zinc-700 hover:bg-zinc-800"
+                        >
+                          ⚙️ Settings
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -643,7 +787,7 @@ export default async function DashboardPage({
         {/* ============================================ */}
         {/* ENHANCED STATS CARDS WITH TOOLTIPS - START */}
         {/* ============================================ */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-4 sm:mb-6 md:mb-8">
           <Card
             className={`bg-zinc-900/50 border backdrop-blur-sm hover:shadow-lg transition-all ${
               stats.healthScore >= 70
@@ -653,9 +797,9 @@ export default async function DashboardPage({
                 : 'border-red-500/30 hover:border-red-500/50'
             }`}
           >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-zinc-400">Health Score</p>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-2 rtl:flex-row-reverse">
+                <p className="text-xs sm:text-sm font-medium text-zinc-400 rtl:text-right">Health Score</p>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -674,9 +818,9 @@ export default async function DashboardPage({
                 </TooltipProvider>
               </div>
 
-              <div className="flex items-baseline gap-2">
+              <div className="flex items-baseline gap-2 rtl:flex-row-reverse rtl:justify-end">
                 <p
-                  className={`text-3xl font-bold ${
+                  className={`text-2xl sm:text-3xl font-bold ${
                     stats.healthScore >= 70
                       ? 'text-green-400'
                       : stats.healthScore >= 40
@@ -855,328 +999,19 @@ export default async function DashboardPage({
           </Card>
         )}
 
-        {/* MAIN GRID LAYOUT - 3 Columns */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* LEFT COLUMN - Location Management */}
-          <div className="space-y-4">
-            {/* Active Location Card */}
-            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
-              <CardHeader>
-                <CardTitle className="text-zinc-100 flex items-center gap-2">
-                  📍 Active Location
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Badge className={activeLocation?.is_active ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-orange-500/20 text-orange-400 border-orange-500/30"}>
-                    {activeLocation?.is_active ? "Connected" : "Disconnected"}
-                  </Badge>
-                </div>
-                
-                {activeLocation && (
-                  <div className="flex gap-2">
-                    <SyncButton locationId={activeLocation.id} />
-                    <DisconnectButton locationId={activeLocation.id} />
-                  </div>
-                )}
-                
-                {activeLocation ? (
-                  <div className="bg-zinc-800/50 rounded-lg p-4 space-y-2 border border-zinc-700/50">
-                    <p className="text-zinc-100 font-medium truncate">{activeLocation.location_name}</p>
-                    <div className="flex items-center gap-1 text-sm text-zinc-400">
-                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                      <span>{activeLocation.rating?.toFixed(1) || 'N/A'} / 5.0</span>
-                    </div>
-                    {activeLocation.id && (
-                      <LocationCard 
-                        locationName={activeLocation.location_name} 
-                        href={`/locations/${activeLocation.id}`} 
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center text-zinc-500 py-4">
-                    No active location found
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Quick Actions Section */}
-            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
-              <CardHeader>
-                <CardTitle className="text-zinc-100 flex items-center gap-2">
-                  ⚡ Quick Actions
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <QuickActionsInteractive
-                  pendingReviews={pendingReviewsList}
-                  unansweredQuestions={unansweredQuestionsList}
-                  locationId={activeLocation?.id}
-                />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* CENTER COLUMN - Monitoring & Alerts */}
-          <div className="space-y-4">
-            {/* AI Risk & Opportunity Feed */}
-            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-zinc-100 flex items-center gap-2">
-                      🎯 AI Alerts
-                    </CardTitle>
-                    <p className="text-zinc-400 text-sm mt-1">
-                      Proactive recommendations
-                    </p>
-                  </div>
-                  {alerts.length > 0 && (
-                    <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
-                      {alerts.length} items
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                {alerts.length > 0 ? (
-                  <div className="space-y-2">
-                    {alerts.slice(0, 3).map((alert, idx) => (
-                      <div
-                        key={idx}
-                        className={`p-3 rounded-lg border ${
-                          alert.priority === 'HIGH'
-                            ? 'bg-red-500/10 border-red-500/30'
-                            : 'bg-yellow-500/10 border-yellow-500/30'
-                        }`}
-                      >
-                        <div className="flex items-start gap-2">
-                          <span className="text-lg">{alert.icon}</span>
-                          <div className="flex-1 min-w-0">
-                            <Badge 
-                              className={`mb-1 text-xs ${
-                                alert.priority === 'HIGH'
-                                  ? 'bg-red-500/20 text-red-400 border-red-500/30'
-                                  : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                              }`}
-                            >
-                              {alert.priority}
-                            </Badge>
-                            <p className="text-sm text-zinc-200">{alert.message}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center text-zinc-500 py-8 text-sm">
-                    🎉 No urgent alerts!
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Performance Chart */}
-            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all">
-              <CardHeader>
-                <CardTitle className="text-zinc-100 flex items-center gap-2">
-                  📊 Performance
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PerformanceChart reviews={reviews} />
-              </CardContent>
-            </Card>
-
-            {/* AI Insights */}
-            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all">
-              <CardHeader>
-                <CardTitle className="text-zinc-100 flex items-center gap-2">
-                  💡 AI Insights
-                </CardTitle>
-                <p className="text-zinc-400 text-sm mt-1">
-                  Smart recommendations based on your data
-                </p>
-              </CardHeader>
-              <CardContent>
-                {insights.length > 0 ? (
-                  <div className="space-y-2">
-                    {insights.slice(0, 4).map((insight, idx) => {
-                      const bgColor = 
-                        insight.type === 'success' ? 'bg-green-500/10 border-green-500/30' :
-                        insight.type === 'warning' ? 'bg-yellow-500/10 border-yellow-500/30' :
-                        'bg-blue-500/10 border-blue-500/30';
-                      
-                      return (
-                        <div key={idx} className={`p-3 rounded-lg border ${bgColor}`}>
-                          <div className="flex items-start gap-2">
-                            <span className="text-lg">{insight.icon}</span>
-                            <p className="text-sm text-zinc-200 flex-1">{insight.description}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center text-zinc-500 py-6 text-sm">
-                    No insights yet
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* RIGHT COLUMN - Actions & Tasks */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Weekly Tasks Card */}
-            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
-              <CardHeader>
-                <CardTitle className="text-zinc-100 flex items-center gap-2">
-                  ⚡ Weekly Tasks
-                </CardTitle>
-                <p className="text-zinc-400 text-sm mt-1">
-                  AI-powered recommendations to improve your business
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <WeeklyTasksList locationId={activeLocation?.id} />
-              </CardContent>
-            </Card>
-
-            {/* Profile Protection Card */}
-            <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
-              <CardHeader>
-                <CardTitle className="text-zinc-100 flex items-center gap-2">
-                  🛡️ Profile Protection
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-5xl font-bold text-zinc-100 text-center">
-                  {stats.healthScore >= 70 ? stats.totalLocations : 0}/{stats.totalLocations}
-                </div>
-                
-                <div className="space-y-2">
-                  {stats.healthScore < 70 && (
-                    <div className="flex items-center gap-2 text-sm text-yellow-400">
-                      <span>⚠️</span>
-                      <span>Improve health score to activate</span>
-                    </div>
-                  )}
-                  {pendingReviews > 0 && (
-                    <div className="flex items-center gap-2 text-sm text-yellow-400">
-                      <span>⚠️</span>
-                      <span>Pending items need attention</span>
-        </div>
-      )}
-                </div>
-
-                <ManageProtectionButton />
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* BOTTOM ANALYTICS SECTION */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Performance Comparison */}
-          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
-            <CardHeader>
-              <CardTitle className="text-zinc-100 flex items-center gap-2">
-                📊 Performance Comparison
-              </CardTitle>
-              <p className="text-zinc-400 text-sm mt-1">
-                Compare this month vs last month performance
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
-                  <p className="text-zinc-400 text-xs mb-1">Questions</p>
-                  <p className="text-zinc-100 text-xl font-bold">{stats.pendingQuestions}</p>
-                  <p className="text-zinc-400 text-xs mt-1">Current</p>
-                </div>
-                <div className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
-                  <p className="text-zinc-400 text-xs mb-1">Rating</p>
-                  <p className="text-zinc-100 text-xl font-bold">{stats.avgRating}</p>
-                  <p className="text-zinc-400 text-xs mt-1">Average</p>
-                </div>
-                <div className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
-                  <p className="text-zinc-400 text-xs mb-1">Reviews</p>
-                  <p className="text-zinc-100 text-xl font-bold">{stats.totalReviews}</p>
-                  <p className="text-zinc-400 text-xs mt-1">Total</p>
-                </div>
-              </div>
-
-              <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50">
-                <PerformanceChart reviews={reviews} />
-              </div>
-
-              <div className="flex items-center justify-center gap-4 text-xs">
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                  <span className="text-zinc-400">Questions</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                  <span className="text-zinc-400">Rating</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                  <span className="text-zinc-400">Reviews</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Achievements & Progress */}
-          <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all hover:shadow-lg hover:-translate-y-0.5">
-            <CardHeader>
-              <CardTitle className="text-zinc-100 flex items-center gap-2">
-                🏆 Achievements & Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {achievements.map((achievement, index) => {
-                const percentage = (achievement.current / achievement.target) * 100;
-                return (
-                  <div key={index} className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-zinc-300">{achievement.label}</span>
-                      <span className="text-zinc-400">
-                        {achievement.current.toFixed(1)} / {achievement.target}
-                      </span>
-                    </div>
-                    <div className="relative h-3 bg-zinc-800 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full bg-gradient-to-r ${achievement.gradient} transition-all duration-500`}
-                        style={{ width: `${Math.min(percentage, 100)}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* SYNC METRICS PANEL */}
-        <Card className="bg-zinc-900/50 border-orange-500/20 backdrop-blur-sm hover:border-orange-500/50 transition-all">
-          <CardHeader>
-            <CardTitle className="text-zinc-100 flex items-center gap-2">
-              🔧 Sync Metrics
-            </CardTitle>
-            <p className="text-zinc-400 text-sm mt-1">Historic performance of each sync phase</p>
-          </CardHeader>
-          <CardContent>
-            {accountId ? (
-              <MetricsPanel accountId={accountId} />
-            ) : (
-              <div className="text-sm text-zinc-500">No active account detected.</div>
-            )}
-          </CardContent>
-        </Card>
+        {/* TAB-BASED NAVIGATION */}
+        <DashboardTabs
+          stats={stats}
+          activeLocation={activeLocation as any}
+          alerts={alerts}
+          insights={insights}
+          reviews={reviews}
+          achievements={achievements}
+          pendingReviewsList={pendingReviewsList}
+          unansweredQuestionsList={unansweredQuestionsList}
+          accountId={accountId}
+          lastUpdatedAt={lastUpdatedAt}
+        />
       </div>
     </div>
   );
