@@ -15,7 +15,7 @@ import {
   Legend
 } from 'recharts';
 import { motion } from 'framer-motion';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface PerformanceData {
   month: string;
@@ -44,6 +44,11 @@ export function PerformanceComparisonChart({
   loading = false
 }: PerformanceComparisonChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const [visibleLines, setVisibleLines] = useState({
+    reviews: true,
+    rating: true,
+    questions: true,
+  });
   
   // ✅ FIX: Cleanup on unmount to prevent memory leaks
   // Note: Recharts handles cleanup automatically, and React refs are read-only
@@ -88,7 +93,8 @@ export function PerformanceComparisonChart({
       current: currentMonthData.reviews,
       change: reviewsChange,
       color: 'text-info',
-      bgColor: 'bg-info/10'
+      bgColor: 'bg-info/10',
+      dataKey: 'reviews' as keyof typeof visibleLines,
     },
     {
       label: 'Rating',
@@ -96,7 +102,8 @@ export function PerformanceComparisonChart({
       current: currentMonthData.rating.toFixed(1),
       change: ratingChange,
       color: 'text-warning',
-      bgColor: 'bg-warning/10'
+      bgColor: 'bg-warning/10',
+      dataKey: 'rating' as keyof typeof visibleLines,
     },
     {
       label: 'Questions',
@@ -104,9 +111,71 @@ export function PerformanceComparisonChart({
       current: currentMonthData.questions,
       change: questionsChange,
       color: 'text-primary',
-      bgColor: 'bg-primary/10'
+      bgColor: 'bg-primary/10',
+      dataKey: 'questions' as keyof typeof visibleLines,
     },
   ];
+
+  const handleLegendClick = (dataKey: keyof typeof visibleLines) => {
+    setVisibleLines((prev) => ({
+      ...prev,
+      [dataKey]: !prev[dataKey],
+    }));
+  };
+
+  // Custom Tooltip with detailed information
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
+          <p className="font-semibold mb-2">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <div key={index} className="flex items-center gap-2 text-sm">
+              <div
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: entry.color }}
+              />
+              <span className="text-muted-foreground">{entry.name}:</span>
+              <span className="font-medium">
+                {entry.name === 'Rating (out of 100)' 
+                  ? `${(entry.value / 20).toFixed(1)} ⭐` 
+                  : entry.value}
+              </span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Custom Legend with click functionality
+  const CustomLegend = () => (
+    <div className="flex items-center justify-center gap-4 mt-4 flex-wrap">
+      {metrics.map((metric) => (
+        <button
+          key={metric.dataKey}
+          onClick={() => handleLegendClick(metric.dataKey)}
+          className={cn(
+            "flex items-center gap-2 px-3 py-1.5 rounded-full transition-all cursor-pointer",
+            "border hover:border-primary/50",
+            visibleLines[metric.dataKey] 
+              ? "border-border bg-background" 
+              : "border-border/50 bg-muted/50 opacity-50"
+          )}
+        >
+          <div
+            className={cn("w-3 h-3 rounded-full", {
+              "bg-blue-500": metric.dataKey === 'reviews',
+              "bg-yellow-500": metric.dataKey === 'rating',
+              "bg-purple-500": metric.dataKey === 'questions',
+            })}
+          />
+          <span className="text-xs font-medium">{metric.label}</span>
+        </button>
+      ))}
+    </div>
+  );
 
   if (loading) {
     return (
@@ -138,7 +207,7 @@ export function PerformanceComparisonChart({
           Performance Comparison
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-1">
-          Compare this month vs last month performance
+          Compare this month vs last month performance (click legend to toggle)
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -179,12 +248,15 @@ export function PerformanceComparisonChart({
           })}
         </div>
 
-        {/* Chart visual */}
-        <div 
+        {/* Chart visual with animation */}
+        <motion.div 
           ref={chartContainerRef} 
           className="h-[250px]"
           role="img"
           aria-label="Performance comparison chart between periods"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
         >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
@@ -215,49 +287,49 @@ export function PerformanceComparisonChart({
                 tick={{ fill: '#9ca3af', fontSize: 12 }}
                 stroke="#4b5563"
               />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1f2937',
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#f9fafb'
-                }}
-                labelStyle={{ color: '#f9fafb', fontWeight: 'bold' }}
-              />
-              <Legend 
-                wrapperStyle={{ paddingTop: '20px' }}
-                iconType="circle"
-              />
-              <Area
-                type="monotone"
-                dataKey="reviews"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                fillOpacity={1}
-                fill="url(#colorReviews)"
-                name="Reviews"
-              />
-              <Area
-                type="monotone"
-                dataKey="rating"
-                stroke="#eab308"
-                strokeWidth={2}
-                fillOpacity={1}
-                fill="url(#colorRating)"
-                name="Rating (out of 100)"
-              />
-              <Area
-                type="monotone"
-                dataKey="questions"
-                stroke="#a855f7"
-                strokeWidth={2}
-                fillOpacity={1}
-                fill="url(#colorQuestions)"
-                name="Questions"
-              />
+              <Tooltip content={<CustomTooltip />} />
+              {visibleLines.reviews && (
+                <Area
+                  type="monotone"
+                  dataKey="reviews"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorReviews)"
+                  name="Reviews"
+                  animationDuration={1000}
+                />
+              )}
+              {visibleLines.rating && (
+                <Area
+                  type="monotone"
+                  dataKey="rating"
+                  stroke="#eab308"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorRating)"
+                  name="Rating (out of 100)"
+                  animationDuration={1000}
+                />
+              )}
+              {visibleLines.questions && (
+                <Area
+                  type="monotone"
+                  dataKey="questions"
+                  stroke="#a855f7"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorQuestions)"
+                  name="Questions"
+                  animationDuration={1000}
+                />
+              )}
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </motion.div>
+
+        {/* Interactive Custom Legend */}
+        <CustomLegend />
       </CardContent>
     </Card>
   );
