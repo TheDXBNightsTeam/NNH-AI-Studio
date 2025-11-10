@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type KeyboardEvent } from 'react';
 import { Star, MapPin, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,10 +9,10 @@ import { toast } from 'sonner';
 import type { GMBReview } from '@/lib/types/database';
 
 interface InboxViewProps {
-  reviews: GMBReview[];
-  selectedReview: GMBReview | null;
-  onSelectReview: (review: GMBReview) => void;
-  onReplySuccess: () => void;
+  readonly reviews: ReadonlyArray<GMBReview>;
+  readonly selectedReview: GMBReview | null;
+  readonly onSelectReview: (review: GMBReview) => void;
+  readonly onReplySuccess: () => void;
 }
 
 export function InboxView({ 
@@ -45,7 +45,7 @@ export function InboxView({
   };
 
   // Handle keyboard shortcuts
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.ctrlKey || e.metaKey) {
       if (e.key === 'ArrowUp') {
         e.preventDefault();
@@ -130,75 +130,79 @@ export function InboxView({
   return (
     <div className="flex h-full gap-4" onKeyDown={handleKeyPress} tabIndex={-1}>
       {/* Left Panel - Review List */}
-      <div className="w-96 flex-shrink-0 overflow-auto border-r border-zinc-800 pr-4">
-        <div className="space-y-2">
+      <div className="w-96 flex-shrink-0 overflow-auto border-r border-zinc-800 pr-4" aria-label="Reviews list">
+        <ul className="space-y-2" role="list">
           {reviews.map((review) => {
             const isActive = selectedReview?.id === review.id;
             const needsResponse = !review.has_reply && !review.reply_text;
 
             return (
-              <div
-                key={review.id}
-                onClick={() => {
-                  onSelectReview(review);
-                  setReplyText('');
-                }}
-                className={`
-                  p-3 rounded-lg border cursor-pointer transition-all
-                  ${isActive 
-                    ? 'bg-orange-500/20 border-orange-500/50' 
-                    : 'bg-zinc-900/50 border-zinc-800 hover:bg-zinc-800/70'
-                  }
-                `}
-              >
-                {/* Review Header */}
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-zinc-100 truncate">
-                      {review.reviewer_name || 'Anonymous'}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-zinc-400 mt-1">
-                      <MapPin size={10} />
-                      <span className="truncate">{review.location_name || 'Unknown'}</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-0.5 ml-2">
-                    {[1, 2, 3, 4, 5].map(star => (
-                      <Star
-                        key={star}
-                        size={12}
-                        className={star <= review.rating ? 'fill-yellow-500 text-yellow-500' : 'text-zinc-600'}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Review Preview */}
-                {review.review_text && (
-                  <p className="text-xs text-zinc-400 line-clamp-2 mb-2">
-                    {review.review_text}
-                  </p>
-                )}
-
-                {/* Status Badge */}
-                <div className="flex items-center justify-between">
-                  <span className={`
-                    text-xs px-2 py-0.5 rounded
-                    ${needsResponse 
-                      ? 'bg-red-500/20 text-red-400' 
-                      : 'bg-green-500/20 text-green-400'
+              <li key={review.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelectReview(review);
+                    setReplyText('');
+                  }}
+                  className={`
+                    w-full text-left p-3 rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500
+                    ${isActive 
+                      ? 'bg-orange-500/20 border-orange-500/50' 
+                      : 'bg-zinc-900/50 border-zinc-800 hover:bg-zinc-800/70'
                     }
-                  `}>
-                    {needsResponse ? '⚠️ Needs Reply' : '✓ Replied'}
-                  </span>
-                  <span className="text-xs text-zinc-500">
-                    {formatTimeAgo(review.review_date || review.created_at)}
-                  </span>
-                </div>
-              </div>
+                  `}
+                  aria-pressed={isActive}
+                >
+                  {/* Review Header */}
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-zinc-100 truncate">
+                        {review.reviewer_name || 'Anonymous'}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-zinc-400 mt-1">
+                        <MapPin size={10} aria-hidden="true" />
+                        <span className="truncate">{review.location_name || 'Unknown'}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-0.5 ml-2" aria-label={`${review.rating} out of 5 stars`}>
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <Star
+                          key={star}
+                          size={12}
+                          className={star <= review.rating ? 'fill-yellow-500 text-yellow-500' : 'text-zinc-600'}
+                          aria-hidden="true"
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Review Preview */}
+                  {review.review_text && (
+                    <p className="text-xs text-zinc-400 line-clamp-2 mb-2">
+                      {review.review_text}
+                    </p>
+                  )}
+
+                  {/* Status Badge */}
+                  <div className="flex items-center justify-between">
+                    <span className={`
+                      text-xs px-2 py-0.5 rounded
+                      ${needsResponse 
+                        ? 'bg-red-500/20 text-red-400' 
+                        : 'bg-green-500/20 text-green-400'
+                      }
+                    `}>
+                      {needsResponse ? '⚠️ Needs Reply' : '✓ Replied'}
+                    </span>
+                    <span className="text-xs text-zinc-500">
+                      {formatTimeAgo(review.review_date || review.created_at)}
+                    </span>
+                  </div>
+                </button>
+              </li>
             );
           })}
-        </div>
+        </ul>
       </div>
 
       {/* Right Panel - Review Detail */}

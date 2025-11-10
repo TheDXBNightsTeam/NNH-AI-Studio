@@ -1787,22 +1787,51 @@ export async function POST(request: NextRequest) {
     console.error('[GMB Sync API] Sync failed:', error);
     return errorResponse(error);
   } finally {
-    // Best-effort lock release when exceptions occur
-    try {
-      if (acquiredLock) {
-        const body = await request.json().catch(() => ({} as any));
-        const accountId = body?.accountId || body?.account_id;
-        if (accountId) {
-          const lockKey = `gmb:sync:${accountId}`;
-          if (usingRedis && redis) {
-            await redis.del(lockKey).catch(() => {});
-          } else {
-            syncLocks.delete(lockKey);
-          }
-        }
-      }
-    } catch {
-      // Best effort lock release - ignore errors
+    await releaseSyncLock({
+      acquiredLock,
+      request,
+      redis,
+      usingRedis,
+      syncLocks,
+    });
+  }
+}
+
+interface ReleaseLockParams {
+  acquiredLock: boolean
+  request: Request
+  redis: typeof redis | null
+  usingRedis: boolean
+  syncLocks: Map<string, boolean>
+}
+
+async function releaseSyncLock({
+  acquiredLock,
+  request,
+  redis,
+  usingRedis,
+  syncLocks,
+}: ReleaseLockParams) {
+  if (!acquiredLock) {
+    return
+  }
+
+  try {
+    const body = await request.clone().json().catch(() => ({} as any))
+    const accountId = body?.accountId || body?.account_id
+
+    if (!accountId) {
+      return
     }
+
+    const lockKey = `gmb:sync:${accountId}`
+
+    if (usingRedis && redis) {
+      await redis.del(lockKey).catch(() => {})
+    } else {
+      syncLocks.delete(lockKey)
+    }
+  } catch (error) {
+    console.warn('[GMB Sync API] Failed to release sync lock', error)
   }
 }

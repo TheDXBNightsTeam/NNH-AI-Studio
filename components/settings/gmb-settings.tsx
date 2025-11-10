@@ -28,8 +28,7 @@ interface GMBAccount {
 export function GMBSettings() {
   const supabase = createClient()
   const router = useRouter()
-  
-  // State management
+
   const [autoReply, setAutoReply] = useState(false)
   const [reviewNotifications, setReviewNotifications] = useState(true)
   const [emailDigest, setEmailDigest] = useState("daily")
@@ -169,6 +168,9 @@ export function GMBSettings() {
     router.refresh()
   }
 
+  const hasAccounts = gmbAccounts.length > 0
+  const firstTab = hasAccounts ? "account" : "branding"
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -188,53 +190,53 @@ export function GMBSettings() {
       </div>
 
       {/* Settings Tabs */}
-      <Tabs defaultValue="account" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6 bg-secondary/50">
-          <TabsTrigger value="account" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
-            <Shield className="h-4 w-4" />
+      <Tabs defaultValue={firstTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-6 bg-secondary/50" role="tablist">
+          <TabsTrigger
+            value="account"
+            className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
+            disabled={!hasAccounts}
+          >
+            <Shield className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">Account</span>
           </TabsTrigger>
           <TabsTrigger value="branding" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
-            <Palette className="h-4 w-4" />
+            <Palette className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">Branding</span>
           </TabsTrigger>
           <TabsTrigger value="general" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
-            <Globe className="h-4 w-4" />
+            <Globe className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">General</span>
           </TabsTrigger>
           <TabsTrigger value="ai" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
-            <Sparkles className="h-4 w-4" />
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">AI & Auto</span>
           </TabsTrigger>
           <TabsTrigger value="notifications" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
-            <Bell className="h-4 w-4" />
+            <Bell className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">Alerts</span>
           </TabsTrigger>
           <TabsTrigger value="data" className="gap-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
-            <Database className="h-4 w-4" />
+            <Database className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">Data</span>
           </TabsTrigger>
         </TabsList>
 
-        {/* Account & Connection Tab */}
-        <TabsContent value="account" className="space-y-6">
+        <TabsContent value="account" className="space-y-6" role="tabpanel">
           <AccountConnectionTab 
             gmbAccounts={gmbAccounts}
             onSuccess={handleGMBSuccess}
           />
         </TabsContent>
 
-        {/* Branding Tab */}
-        <TabsContent value="branding" className="space-y-6">
+        <TabsContent value="branding" className="space-y-6" role="tabpanel">
           <BrandingTab onSave={() => {
-            // Trigger brand profile refresh
             window.dispatchEvent(new Event('brand-profile-updated'));
             router.refresh();
           }} />
         </TabsContent>
 
-        {/* General Settings Tab */}
-        <TabsContent value="general" className="space-y-6">
+        <TabsContent value="general" className="space-y-6" role="tabpanel">
           <GeneralSettingsTab
             syncSchedule={syncSchedule}
             setSyncSchedule={setSyncSchedule}
@@ -244,8 +246,7 @@ export function GMBSettings() {
           />
         </TabsContent>
 
-        {/* AI & Automation Tab */}
-        <TabsContent value="ai" className="space-y-6">
+        <TabsContent value="ai" className="space-y-6" role="tabpanel">
           <AIAutomationTab
             aiResponseTone={aiResponseTone}
             setAiResponseTone={setAiResponseTone}
@@ -254,8 +255,7 @@ export function GMBSettings() {
           />
         </TabsContent>
 
-        {/* Notifications Tab */}
-        <TabsContent value="notifications" className="space-y-6">
+        <TabsContent value="notifications" className="space-y-6" role="tabpanel">
           <NotificationsTab
             reviewNotifications={reviewNotifications}
             setReviewNotifications={setReviewNotifications}
@@ -264,17 +264,13 @@ export function GMBSettings() {
           />
         </TabsContent>
 
-        {/* Data Management Tab */}
-        <TabsContent value="data" className="space-y-6">
+        <TabsContent value="data" className="space-y-6" role="tabpanel">
           <DataManagement accountId={gmbAccounts.find(acc => acc.is_active)?.id} />
-          
-          {/* Audit Panel */}
+
           <GMBAuditPanel />
-          
-          {/* Settings Test Panel */}
+
           <SettingsTestPanel />
-          
-          {/* Security Review Panel */}
+
           <SecurityReviewPanel />
         </TabsContent>
       </Tabs>

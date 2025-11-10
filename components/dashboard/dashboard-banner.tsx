@@ -11,7 +11,11 @@ export function DashboardBanner() {
   }
 
   return (
-    <div className="relative w-full h-48 rounded-lg overflow-hidden mb-6 border border-border">
+    <div
+      className="relative w-full h-48 rounded-lg overflow-hidden mb-6 border border-border"
+      role="img"
+      aria-label="Brand cover image"
+    >
       <Image
         src={profile.cover_image_url}
         alt="Dashboard Banner"

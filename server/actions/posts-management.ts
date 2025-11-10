@@ -8,6 +8,10 @@ import { getValidAccessToken, GMB_CONSTANTS } from "@/lib/gmb/helpers"
 
 const GMB_V4_BASE = GMB_CONSTANTS.GMB_V4_BASE
 
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
+type CreatePostPayload = z.infer<typeof CreatePostSchema>
+type UpdatePostPayload = z.infer<typeof UpdatePostSchema>
+
 // Cache for location data to reduce database queries
 const locationCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -333,7 +337,6 @@ export async function createPost(data: z.infer<typeof CreatePostSchema>) {
       return createErrorResponse("Not authenticated");
     }
 
-    // Get location details with caching
     const location = await getCachedLocation(supabase, validatedData.locationId, user.id);
 
     if (!location) {
@@ -348,122 +351,27 @@ export async function createPost(data: z.infer<typeof CreatePostSchema>) {
       return createErrorResponse("Linked Google account not found. Please reconnect your Google account.");
     }
 
-    // If scheduled, save as draft/queued without publishing to Google
     if (validatedData.scheduledAt) {
-      const { error: insertError } = await supabase.from("gmb_posts").insert({
-        user_id: user.id,
-        location_id: validatedData.locationId,
-        post_type: validatedData.postType,
-        title: validatedData.title || null,
-        content: validatedData.description,
-        media_url: validatedData.mediaUrl || null,
-        call_to_action: validatedData.ctaType || null,
-        call_to_action_url: validatedData.ctaUrl || null,
-        scheduled_at: validatedData.scheduledAt,
-        status: "queued",
-        metadata: {},
-      })
-
-      if (insertError) {
-        console.error("[Posts] Database insert error:", insertError)
-        return createErrorResponse("Failed to save scheduled post");
-      }
-
-      revalidatePath("/posts")
-      revalidatePath("/dashboard")
-
-      return createSuccessResponse("Post scheduled successfully");
+      return schedulePostDraft(supabase, validatedData, user.id)
     }
 
-    // Publish immediately
-    let accessToken: string;
-    try {
-      accessToken = await getValidAccessToken(supabase, location.gmb_account_id);
-    } catch (tokenError) {
-      console.error("[Posts] Token error:", tokenError);
-      return createErrorResponse(
-        "Failed to authenticate with Google. Please reconnect your account.",
-        "AUTH_EXPIRED"
-      );
-    }
-
-    // Prepare post data for Google API
-    const postData = buildGooglePostBody(validatedData);
-
-    const locationResourceV4 = buildV4LocationResource(account.account_id, location.location_id)
-    const gmbApiUrl = `${GMB_V4_BASE}/${locationResourceV4}/localPosts`
-
-    const response = await fetch(gmbApiUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(postData),
-      signal: AbortSignal.timeout(30000), // 30 second timeout
+    const publishOutcome = await publishPostToGoogle(supabase, validatedData, {
+      locationAccountId: location.gmb_account_id,
+      locationId: location.location_id,
+      accountId: account.account_id
     })
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-
-      if (response.status === 401) {
-        return createErrorResponse(
-          "Authentication expired. Please reconnect your Google account.",
-          "AUTH_EXPIRED"
-        );
-      }
-
-      if (response.status === 403) {
-        return createErrorResponse(
-          "Permission denied. Please check your Google Business Profile permissions.",
-          "PERMISSION_DENIED"
-        );
-      }
-
-      if (response.status === 429) {
-        return createErrorResponse(
-          "Too many requests. Please try again later.",
-          "RATE_LIMIT"
-        );
-      }
-
-      console.error("[Posts] API error:", errorData)
-      return createErrorResponse(errorData.error?.message || "Failed to create post on Google");
+    if (!publishOutcome.success) {
+      return publishOutcome.errorResponse
     }
 
-    const googleResult = await response.json()
-    
-
-    // Save to database
-    const { error: insertError } = await supabase.from("gmb_posts").insert({
-      user_id: user.id,
-      location_id: validatedData.locationId,
-      provider_post_id: googleResult?.name?.split("/").pop() || null,
-      post_type: validatedData.postType,
-      title: validatedData.title || null,
-      content: validatedData.description,
-      media_url: validatedData.mediaUrl || null,
-      call_to_action: validatedData.ctaType || null,
-      call_to_action_url: validatedData.ctaUrl || null,
-      scheduled_at: validatedData.scheduledAt || null,
-      published_at: googleResult ? new Date().toISOString() : null,
-      status: "published",
-      metadata: googleResult || {},
+    return persistPublishedPost({
+      supabase,
+      userId: user.id,
+      validatedData,
+      googleResult: publishOutcome.googleResult,
+      locationId: validatedData.locationId
     })
-
-    if (insertError) {
-      console.error("[Posts] Database insert error:", insertError)
-      // Don't fail if post was created on Google
-      if (googleResult) {
-        return createSuccessResponse("Post published on Google but failed to save to database");
-      }
-      return createErrorResponse("Failed to save post");
-    }
-
-    revalidatePath("/posts")
-    revalidatePath("/dashboard")
-
-    return createSuccessResponse("Post published successfully");
   } catch (error: any) {
     console.error("[Posts] Create post error:", error)
 
@@ -492,41 +400,13 @@ export async function updatePost(data: z.infer<typeof UpdatePostSchema>) {
       return createErrorResponse("Not authenticated");
     }
 
-    // Get post details
-    const { data: post, error: fetchError } = await supabase
-      .from("gmb_posts")
-      .select(`
-        *,
-        gmb_locations!inner(
-          id,
-          location_id,
-          gmb_account_id,
-          gmb_accounts!inner(id, account_id)
-        )
-      `)
-      .eq("id", validatedData.postId)
-      .eq("user_id", user.id)
-      .single()
+    const { post, errorResponse } = await fetchPostForUpdate(supabase, validatedData.postId, user.id)
 
-    if (fetchError || !post) {
-      return createErrorResponse("Post not found");
+    if (errorResponse || !post) {
+      return errorResponse ?? createErrorResponse("Post not found")
     }
 
-    // Update database
-    const updateData: any = {
-      updated_at: new Date().toISOString(),
-    }
-
-    if (validatedData.title !== undefined) updateData.title = validatedData.title
-    if (validatedData.description !== undefined) updateData.content = validatedData.description
-    if (validatedData.mediaUrl !== undefined) updateData.media_url = validatedData.mediaUrl
-    if (validatedData.ctaType !== undefined) updateData.call_to_action = validatedData.ctaType
-    if (validatedData.ctaUrl !== undefined) updateData.call_to_action_url = validatedData.ctaUrl
-    if (validatedData.scheduledAt !== undefined) {
-      updateData.scheduled_at = validatedData.scheduledAt
-      updateData.status = validatedData.scheduledAt ? "queued" : "draft"
-    }
-
+    const updateData = buildPostUpdatePayload(validatedData)
     const { error: updateError } = await supabase
       .from("gmb_posts")
       .update(updateData)
@@ -534,95 +414,296 @@ export async function updatePost(data: z.infer<typeof UpdatePostSchema>) {
 
     if (updateError) {
       console.error("[Posts] Update error:", updateError)
-      return {
-        success: false,
-        error: "Failed to update post",
-      }
+      return createErrorResponse("Failed to update post")
     }
 
-    // If post is published and we're updating content, update on Google too
-    const shouldSyncToGoogle =
-      post.status === "published" &&
-      post.provider_post_id &&
-      (validatedData.description !== undefined ||
-        validatedData.mediaUrl !== undefined ||
-        validatedData.ctaType !== undefined ||
-        validatedData.ctaUrl !== undefined)
-
-    if (shouldSyncToGoogle) {
-      const location = Array.isArray(post.gmb_locations)
-        ? post.gmb_locations[0]
-        : post.gmb_locations
-      const account =
-        (Array.isArray(location?.gmb_accounts) ? location.gmb_accounts[0] : location?.gmb_accounts) ||
-        null
-
-      if (location?.gmb_account_id && account?.account_id) {
-        try {
-          const accessToken = await getValidAccessToken(supabase, location.gmb_account_id)
-          const locationResourceV4 = buildV4LocationResource(account.account_id, location.location_id)
-          const postResourceUrl = new URL(
-            `${GMB_V4_BASE}/${locationResourceV4}/localPosts/${post.provider_post_id}`
-          )
-
-          const postBody = buildGooglePostBody({ ...post, ...validatedData } as GMBPost);
-
-          const updateMask: string[] = []
-          if (validatedData.description) updateMask.push("summary")
-          if (validatedData.mediaUrl) updateMask.push("media")
-          if (validatedData.ctaType) updateMask.push("callToAction")
-          if (validatedData.title && (post.post_type === 'event' || post.post_type === 'offer')) {
-              if(post.post_type === 'event') updateMask.push("event");
-              if(post.post_type === 'offer') updateMask.push("offer");
-          }
-
-
-          if (updateMask.length > 0) {
-            postResourceUrl.searchParams.set("updateMask", updateMask.join(","))
-          }
-
-          const response = await fetch(postResourceUrl.toString(), {
-            method: "PATCH",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(postBody),
-          })
-
-          if (!response.ok) {
-            console.error("[Posts] Failed to update post on Google")
-            // Don't fail the request, post is updated in database
-          }
-        } catch (error) {
-          console.error("[Posts] Error updating post on Google:", error)
-          // Continue, post is updated in database
-        }
-      }
+    if (shouldSyncPostToGoogle(post, validatedData)) {
+      await syncPostUpdateWithGoogle(supabase, post, validatedData)
     }
 
-    revalidatePath("/posts")
-    revalidatePath("/dashboard")
+    revalidatePostViews()
 
-    return {
-      success: true,
-      message: "Post updated successfully",
-    }
+    return createSuccessResponse("Post updated successfully")
   } catch (error: any) {
     console.error("[Posts] Update post error:", error)
 
     if (error instanceof z.ZodError) {
+      return createErrorResponse(`Validation error: ${error.errors.map((e) => e.message).join(", ")}`)
+    }
+
+    return createErrorResponse(error.message || "Failed to update post")
+  }
+}
+
+function revalidatePostViews() {
+  revalidatePath("/posts")
+  revalidatePath("/dashboard")
+}
+
+async function schedulePostDraft(
+  supabase: SupabaseServerClient,
+  validatedData: CreatePostPayload,
+  userId: string
+) {
+  const { error } = await supabase.from("gmb_posts").insert({
+    user_id: userId,
+    location_id: validatedData.locationId,
+    post_type: validatedData.postType,
+    title: validatedData.title || null,
+    content: validatedData.description,
+    media_url: validatedData.mediaUrl || null,
+    call_to_action: validatedData.ctaType || null,
+    call_to_action_url: validatedData.ctaUrl || null,
+    scheduled_at: validatedData.scheduledAt,
+    status: "queued",
+    metadata: {},
+  })
+
+  if (error) {
+    console.error("[Posts] Database insert error:", error)
+    return createErrorResponse("Failed to save scheduled post")
+  }
+
+  revalidatePostViews()
+
+  return createSuccessResponse("Post scheduled successfully")
+}
+
+interface PublishContext {
+  locationAccountId: string
+  locationId: string
+  accountId: string
+}
+
+async function publishPostToGoogle(
+  supabase: SupabaseServerClient,
+  validatedData: CreatePostPayload,
+  context: PublishContext
+): Promise<
+  | { success: true; googleResult: any }
+  | { success: false; errorResponse: ReturnType<typeof createErrorResponse> }
+> {
+  try {
+    const accessToken = await getValidAccessToken(supabase, context.locationAccountId)
+    const postData = buildGooglePostBody(validatedData)
+    const locationResourceV4 = buildV4LocationResource(context.accountId, context.locationId)
+    const gmbApiUrl = `${GMB_V4_BASE}/${locationResourceV4}/localPosts`
+
+    const response = await fetch(gmbApiUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(postData),
+      signal: AbortSignal.timeout(30000),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
       return {
         success: false,
-        error: `Validation error: ${error.errors.map((e) => e.message).join(", ")}`,
+        errorResponse: mapGoogleApiError(response.status, errorData),
       }
     }
 
+    const googleResult = await response.json()
+
+    return {
+      success: true,
+      googleResult,
+    }
+  } catch (error) {
+    console.error("[Posts] Token or publish error:", error)
     return {
       success: false,
-      error: error.message || "Failed to update post",
+      errorResponse: createErrorResponse(
+        "Failed to authenticate with Google. Please reconnect your account.",
+        "AUTH_EXPIRED"
+      ),
     }
   }
+}
+
+async function persistPublishedPost(params: {
+  supabase: SupabaseServerClient
+  userId: string
+  validatedData: CreatePostPayload
+  googleResult: any
+  locationId: string
+}) {
+  const { supabase, userId, validatedData, googleResult, locationId } = params
+  const { error } = await supabase.from("gmb_posts").insert({
+    user_id: userId,
+    location_id: locationId,
+    provider_post_id: googleResult?.name?.split("/").pop() || null,
+    post_type: validatedData.postType,
+    title: validatedData.title || null,
+    content: validatedData.description,
+    media_url: validatedData.mediaUrl || null,
+    call_to_action: validatedData.ctaType || null,
+    call_to_action_url: validatedData.ctaUrl || null,
+    scheduled_at: validatedData.scheduledAt || null,
+    published_at: googleResult ? new Date().toISOString() : null,
+    status: "published",
+    metadata: googleResult || {},
+  })
+
+  if (error) {
+    console.error("[Posts] Database insert error:", error)
+    if (googleResult) {
+      return createSuccessResponse("Post published on Google but failed to save to database")
+    }
+    return createErrorResponse("Failed to save post")
+  }
+
+  revalidatePostViews()
+
+  return createSuccessResponse("Post published successfully")
+}
+
+function mapGoogleApiError(status: number, errorData: any) {
+  if (status === 401) {
+    return createErrorResponse(
+      "Authentication expired. Please reconnect your Google account.",
+      "AUTH_EXPIRED"
+    )
+  }
+
+  if (status === 403) {
+    return createErrorResponse(
+      "Permission denied. Please check your Google Business Profile permissions.",
+      "PERMISSION_DENIED"
+    )
+  }
+
+  if (status === 429) {
+    return createErrorResponse("Too many requests. Please try again later.", "RATE_LIMIT")
+  }
+
+  console.error("[Posts] API error:", errorData)
+  return createErrorResponse(errorData?.error?.message || "Failed to create post on Google")
+}
+
+async function fetchPostForUpdate(
+  supabase: SupabaseServerClient,
+  postId: string,
+  userId: string
+): Promise<{ post?: any; errorResponse?: ReturnType<typeof createErrorResponse> }> {
+  const { data: post, error } = await supabase
+    .from("gmb_posts")
+    .select(`
+      *,
+      gmb_locations!inner(
+        id,
+        location_id,
+        gmb_account_id,
+        gmb_accounts!inner(id, account_id)
+      )
+    `)
+    .eq("id", postId)
+    .eq("user_id", userId)
+    .single()
+
+  if (error || !post) {
+    return { errorResponse: createErrorResponse("Post not found") }
+  }
+
+  return { post }
+}
+
+function buildPostUpdatePayload(validatedData: UpdatePostPayload) {
+  const updateData: Record<string, any> = {
+    updated_at: new Date().toISOString(),
+  }
+
+  if (validatedData.title !== undefined) updateData.title = validatedData.title
+  if (validatedData.description !== undefined) updateData.content = validatedData.description
+  if (validatedData.mediaUrl !== undefined) updateData.media_url = validatedData.mediaUrl
+  if (validatedData.ctaType !== undefined) updateData.call_to_action = validatedData.ctaType
+  if (validatedData.ctaUrl !== undefined) updateData.call_to_action_url = validatedData.ctaUrl
+  if (validatedData.scheduledAt !== undefined) {
+    updateData.scheduled_at = validatedData.scheduledAt
+    updateData.status = validatedData.scheduledAt ? "queued" : "draft"
+  }
+
+  return updateData
+}
+
+function shouldSyncPostToGoogle(post: any, validatedData: UpdatePostPayload) {
+  return (
+    post.status === "published" &&
+    post.provider_post_id &&
+    (validatedData.description !== undefined ||
+      validatedData.mediaUrl !== undefined ||
+      validatedData.ctaType !== undefined ||
+      validatedData.ctaUrl !== undefined ||
+      validatedData.title !== undefined)
+  )
+}
+
+async function syncPostUpdateWithGoogle(
+  supabase: SupabaseServerClient,
+  post: any,
+  validatedData: UpdatePostPayload
+) {
+  const location = Array.isArray(post.gmb_locations) ? post.gmb_locations[0] : post.gmb_locations
+  const account =
+    (Array.isArray(location?.gmb_accounts) ? location.gmb_accounts[0] : location?.gmb_accounts) ||
+    null
+
+  if (!location?.gmb_account_id || !account?.account_id || !post.provider_post_id) {
+    return
+  }
+
+  try {
+    const accessToken = await getValidAccessToken(supabase, location.gmb_account_id)
+    const locationResourceV4 = buildV4LocationResource(account.account_id, location.location_id)
+    const postResourceUrl = new URL(
+      `${GMB_V4_BASE}/${locationResourceV4}/localPosts/${post.provider_post_id}`
+    )
+
+    const postBody = buildGooglePostBody({ ...post, ...validatedData } as GMBPost)
+    const updateMask = buildUpdateMask(post, validatedData)
+
+    if (updateMask.length > 0) {
+      postResourceUrl.searchParams.set("updateMask", updateMask.join(","))
+    }
+
+    const response = await fetch(postResourceUrl.toString(), {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(postBody),
+    })
+
+    if (!response.ok) {
+      console.error("[Posts] Failed to update post on Google")
+    }
+  } catch (error) {
+    console.error("[Posts] Error updating post on Google:", error)
+  }
+}
+
+function buildUpdateMask(post: any, validatedData: UpdatePostPayload) {
+  const mask: string[] = []
+
+  if (validatedData.description) mask.push("summary")
+  if (validatedData.mediaUrl) mask.push("media")
+  if (validatedData.ctaType) mask.push("callToAction")
+
+  if (validatedData.title && (post.post_type === "event" || post.post_type === "offer")) {
+    if (post.post_type === "event") {
+      mask.push("event")
+    }
+    if (post.post_type === "offer") {
+      mask.push("offer")
+    }
+  }
+
+  return mask
 }
 
 // ============================================

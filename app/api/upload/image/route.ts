@@ -3,12 +3,32 @@ import { createClient } from '@/lib/supabase/server'
 import sharp from 'sharp'
 
 export const dynamic = 'force-dynamic'
+
 const MAX_SIZE = 10 * 1024 * 1024 // 10MB
 const THUMBNAIL_SIZE = 400
+const MAX_IMAGE_DIMENSION = 2048
+const STORAGE_BUCKET = 'gmb-media'
+const ALLOWED_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'video/mp4',
+  'video/webm'
+])
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
+
+interface UploadContext {
+  supabase: SupabaseServerClient
+  userId: string
+  locationId?: string
+}
 
 interface MediaMetadata {
   fileSize: number
-  originalSize?: number
+  originalSize: number
   fileType: string
   fileName: string
   width?: number
@@ -18,145 +38,320 @@ interface MediaMetadata {
   uploadedAt: string
 }
 
+interface UploadPaths {
+  objectPath: string
+  thumbnailPath: string
+  isVideo: boolean
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const formData = await request.formData()
-    const file = formData.get('file') as File | null
-    const locationId = formData.get('locationId') as string | null
-    
-    if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
-    if (file.size > MAX_SIZE) return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 })
-
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm']
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Invalid file type' }, { status: 400 })
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const isVideo = file.type.startsWith('video/')
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-    const timestamp = Date.now()
-    const basePath = locationId ? `${user.id}/${locationId}` : `${user.id}/general`
-    const fileName = `${basePath}/${timestamp}.${ext}`
-    const thumbnailName = `${basePath}/${timestamp}_thumb.webp`
+    const { file, locationId, error } = await extractRequestPayload(await request.formData())
 
-    let uploadBuffer = Buffer.from(await file.arrayBuffer())
-    let metadata: MediaMetadata = {
-      fileSize: file.size,
-      originalSize: file.size,
-      fileType: file.type,
-      fileName: file.name,
-      optimized: false,
-      thumbnailGenerated: false,
-      uploadedAt: new Date().toISOString()
+    if (error) {
+      return NextResponse.json({ error }, { status: 400 })
     }
 
-    let thumbnailUrl: string | null = null
-
-    // Optimize images with Sharp
-    if (!isVideo) {
-      try {
-        const image = sharp(uploadBuffer)
-        const imageMetadata = await image.metadata()
-        
-        metadata.width = imageMetadata.width
-        metadata.height = imageMetadata.height
-
-        // Optimize image (resize if too large, compress)
-        const maxDimension = 2048
-        if ((imageMetadata.width || 0) > maxDimension || (imageMetadata.height || 0) > maxDimension) {
-          const optimizedBuffer = await image
-            .resize(maxDimension, maxDimension, {
-              fit: 'inside',
-              withoutEnlargement: true
-            })
-            .jpeg({ quality: 85 })
-            .toBuffer()
-          uploadBuffer = Buffer.from(optimizedBuffer)
-          metadata.optimized = true
-          metadata.fileSize = uploadBuffer.length
-        }
-
-        // Generate thumbnail
-        const thumbnailBuffer = await sharp(uploadBuffer)
-          .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, {
-            fit: 'cover',
-            position: 'center'
-          })
-          .webp({ quality: 80 })
-          .toBuffer()
-
-        // Upload thumbnail
-        const { error: thumbError } = await supabase.storage
-          .from('gmb-media')
-          .upload(thumbnailName, thumbnailBuffer, {
-            contentType: 'image/webp',
-            upsert: false
-          })
-
-        if (!thumbError) {
-          const { data: { publicUrl: thumbPublicUrl } } = supabase.storage
-            .from('gmb-media')
-            .getPublicUrl(thumbnailName)
-          thumbnailUrl = thumbPublicUrl
-          metadata.thumbnailGenerated = true
-        }
-      } catch (sharpError) {
-        console.error('Sharp processing error:', sharpError)
-        // Continue with original file if Sharp fails
-      }
+    const context: UploadContext = {
+      supabase,
+      userId: user.id,
+      locationId: locationId ?? undefined
     }
 
-    // Upload main file
-    const { data, error } = await supabase.storage
-      .from('gmb-media')
-      .upload(fileName, uploadBuffer, { 
-        contentType: file.type, 
-        upsert: false 
+    const result = await processSingleUpload(file!, context)
+
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: result.status ?? 500 })
+    }
+
+    return NextResponse.json(result.body)
+  } catch (error: any) {
+    console.error('Upload error:', error)
+    return NextResponse.json({ error: error?.message || 'Upload failed' }, { status: 500 })
+  }
+}
+
+async function extractRequestPayload(formData: FormData): Promise<{
+  file?: File
+  locationId?: string
+  error?: string
+}> {
+  const file = formData.get('file')
+  const locationId = formData.get('locationId')
+
+  if (!(file instanceof File)) {
+    return { error: 'No file provided' }
+  }
+
+  if (file.size > MAX_SIZE) {
+    return { error: 'File too large (max 10MB)' }
+  }
+
+  if (!ALLOWED_TYPES.has(file.type)) {
+    return { error: 'Invalid file type' }
+  }
+
+  return {
+    file,
+    locationId: typeof locationId === 'string' ? locationId : undefined
+  }
+}
+
+async function processSingleUpload(file: File, context: UploadContext) {
+  try {
+    const paths = buildUploadPaths(file, context)
+    let buffer = Buffer.from(await file.arrayBuffer())
+    let metadata = buildBaseMetadata(file)
+    let thumbnailUrl: string | undefined
+
+    if (!paths.isVideo) {
+      const processed = await processImageAsset({
+        buffer,
+        paths,
+        metadata,
+        supabase: context.supabase
       })
+      buffer = processed.buffer
+      metadata = processed.metadata
+      thumbnailUrl = processed.thumbnailUrl
+    }
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    const primaryUpload = await uploadPrimaryAsset({
+      supabase: context.supabase,
+      objectPath: paths.objectPath,
+      buffer,
+      contentType: file.type
+    })
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('gmb-media')
-      .getPublicUrl(fileName)
-
-    // Save to database if locationId provided
-    if (locationId) {
-      const mediaType = isVideo ? 'VIDEO' : 'PHOTO'
-      
-      const { error: dbError } = await supabase
-        .from('gmb_media')
-        .insert({
-          user_id: user.id,
-          location_id: locationId,
-          url: publicUrl,
-          type: mediaType,
-          thumbnail_url: thumbnailUrl || (isVideo ? null : publicUrl),
-          metadata: metadata,
-          created_at: new Date().toISOString()
-        })
-
-      if (dbError) {
-        console.error('Database insert error:', dbError)
-        // Don't fail the request if DB insert fails, file is already uploaded
+    if (!primaryUpload.success || !primaryUpload.publicUrl) {
+      return {
+        success: false as const,
+        error: primaryUpload.error || 'Upload failed',
+        status: 500
       }
     }
 
-    return NextResponse.json({ 
-      url: publicUrl, 
-      thumbnailUrl,
-      path: fileName,
+    const effectiveThumbnail = thumbnailUrl ?? (!paths.isVideo ? primaryUpload.publicUrl : undefined)
+
+    if (context.locationId) {
+      await persistMediaRecord(context, {
+        locationId: context.locationId,
+        metadata,
+        isVideo: paths.isVideo,
+        fileUrl: primaryUpload.publicUrl,
+        thumbnailUrl: effectiveThumbnail
+      })
+    }
+
+    return {
+      success: true as const,
+      body: {
+        url: primaryUpload.publicUrl,
+        thumbnailUrl: effectiveThumbnail ?? null,
+        path: paths.objectPath,
+        metadata,
+        success: true
+      }
+    }
+  } catch (error: any) {
+    console.error('Single upload error:', error)
+    return {
+      success: false as const,
+      error: error?.message || 'Upload failed',
+      status: 500
+    }
+  }
+}
+
+function buildUploadPaths(file: File, context: UploadContext): UploadPaths {
+  const isVideo = file.type.startsWith('video/')
+  const inferredExtension = file.name.split('.').pop()
+  const fallbackExtension = isVideo ? 'mp4' : 'jpg'
+  const ext = (inferredExtension || fallbackExtension).toLowerCase()
+  const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const basePath = context.locationId
+    ? `${context.userId}/${context.locationId}`
+    : `${context.userId}/general`
+
+  return {
+    objectPath: `${basePath}/${uniqueSuffix}.${ext}`,
+    thumbnailPath: `${basePath}/${uniqueSuffix}_thumb.webp`,
+    isVideo
+  }
+}
+
+function buildBaseMetadata(file: File): MediaMetadata {
+  return {
+    fileSize: file.size,
+    originalSize: file.size,
+    fileType: file.type,
+    fileName: file.name,
+    optimized: false,
+    thumbnailGenerated: false,
+    uploadedAt: new Date().toISOString()
+  }
+}
+
+async function processImageAsset(params: {
+  buffer: Buffer
+  paths: UploadPaths
+  metadata: MediaMetadata
+  supabase: SupabaseServerClient
+}): Promise<{
+  buffer: Buffer
+  metadata: MediaMetadata
+  thumbnailUrl?: string
+}> {
+  const { buffer, paths, supabase } = params
+  const metadata = { ...params.metadata }
+  let workingBuffer = buffer
+
+  try {
+    const imageMetadata = await sharp(buffer).metadata()
+
+    if (imageMetadata.width) {
+      metadata.width = imageMetadata.width
+    }
+    if (imageMetadata.height) {
+      metadata.height = imageMetadata.height
+    }
+
+    if ((imageMetadata.width || 0) > MAX_IMAGE_DIMENSION || (imageMetadata.height || 0) > MAX_IMAGE_DIMENSION) {
+      workingBuffer = await sharp(buffer)
+        .resize(MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION, {
+          fit: 'inside',
+          withoutEnlargement: true
+        })
+        .jpeg({ quality: 85 })
+        .toBuffer()
+
+      metadata.optimized = true
+      metadata.fileSize = workingBuffer.length
+    }
+
+    const thumbnailBuffer = await sharp(workingBuffer)
+      .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, {
+        fit: 'cover',
+        position: 'center'
+      })
+      .webp({ quality: 80 })
+      .toBuffer()
+
+    const { thumbnailUrl, generated } = await uploadThumbnail(
+      supabase,
+      paths.thumbnailPath,
+      thumbnailBuffer
+    )
+
+    if (generated) {
+      metadata.thumbnailGenerated = true
+    }
+
+    return {
+      buffer: workingBuffer,
       metadata,
-      success: true 
+      thumbnailUrl
+    }
+  } catch (error) {
+    console.error('Sharp processing error:', error)
+    return {
+      buffer: workingBuffer,
+      metadata
+    }
+  }
+}
+
+async function uploadThumbnail(
+  supabase: SupabaseServerClient,
+  thumbnailPath: string,
+  thumbnailBuffer: Buffer
+): Promise<{ thumbnailUrl?: string; generated: boolean }> {
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(thumbnailPath, thumbnailBuffer, {
+      contentType: 'image/webp',
+      upsert: false
     })
-  } catch (e: any) {
-    console.error('Upload error:', e)
-    return NextResponse.json({ error: e?.message || 'Upload failed' }, { status: 500 })
+
+  if (error) {
+    console.error('Thumbnail upload error:', error)
+    return { generated: false }
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from(STORAGE_BUCKET)
+    .getPublicUrl(thumbnailPath)
+
+  return {
+    thumbnailUrl: publicUrl,
+    generated: true
+  }
+}
+
+async function uploadPrimaryAsset(params: {
+  supabase: SupabaseServerClient
+  objectPath: string
+  buffer: Buffer
+  contentType: string
+}): Promise<{ success: boolean; publicUrl?: string; error?: string }> {
+  const { supabase, objectPath, buffer, contentType } = params
+
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(objectPath, buffer, {
+      contentType,
+      upsert: false
+    })
+
+  if (error) {
+    console.error('Primary upload error:', error)
+    return {
+      success: false,
+      error: error.message
+    }
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from(STORAGE_BUCKET)
+    .getPublicUrl(objectPath)
+
+  return {
+    success: true,
+    publicUrl
+  }
+}
+
+async function persistMediaRecord(
+  context: UploadContext,
+  params: {
+    locationId: string
+    metadata: MediaMetadata
+    isVideo: boolean
+    fileUrl: string
+    thumbnailUrl?: string
+  }
+) {
+  const { error } = await context.supabase
+    .from('gmb_media')
+    .insert({
+      user_id: context.userId,
+      location_id: params.locationId,
+      url: params.fileUrl,
+      type: params.isVideo ? 'VIDEO' : 'PHOTO',
+      thumbnail_url: params.thumbnailUrl ?? null,
+      metadata: params.metadata,
+      created_at: new Date().toISOString()
+    })
+
+  if (error) {
+    console.error('Database insert error:', error)
   }
 }
 

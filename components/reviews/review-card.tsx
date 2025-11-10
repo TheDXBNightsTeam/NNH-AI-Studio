@@ -3,21 +3,22 @@
 import { Star, MapPin, Clock } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { GMBReview } from '@/lib/types/database';
+import { useCallback } from 'react';
 
 interface ReviewCardProps {
-  review: GMBReview & { location_name?: string };
-  isSelected?: boolean;
-  onClick?: () => void;
-  onReply?: () => void;
-  showCheckbox?: boolean;
-  isChecked?: boolean;
-  onCheckChange?: (checked: boolean) => void;
+  readonly review: GMBReview & { location_name?: string };
+  readonly isSelected?: boolean;
+  readonly onClick?: () => void;
+  readonly onReply?: () => void;
+  readonly showCheckbox?: boolean;
+  readonly isChecked?: boolean;
+  readonly onCheckChange?: (checked: boolean) => void;
 }
 
-export function ReviewCard({ 
-  review, 
-  isSelected, 
-  onClick, 
+export function ReviewCard({
+  review,
+  isSelected,
+  onClick,
   onReply,
   showCheckbox = false,
   isChecked = false,
@@ -26,10 +27,26 @@ export function ReviewCard({
   const needsResponse = !review.has_reply && !review.reply_text && !review.response_text;
   const isNegative = review.rating <= 2;
   const isPositive = review.rating >= 4;
+  const isInteractive = Boolean(onClick);
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!onClick) {
+        return;
+      }
+
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        onClick();
+      }
+    },
+    [onClick]
+  );
 
   return (
     <div
       onClick={onClick}
+      onKeyDown={handleKeyDown}
       className={`
         relative p-4 rounded-lg border-l-4 transition-all
         ${isSelected 
@@ -43,6 +60,9 @@ export function ReviewCard({
         ${onClick ? 'cursor-pointer' : ''}
         ${isChecked ? 'ring-2 ring-orange-500/70' : ''}
       `}
+      role={isInteractive ? 'button' : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
+      aria-pressed={isInteractive ? Boolean(isSelected) : undefined}
     >
       {/* Checkbox (absolute positioned in top-left) */}
       {showCheckbox && (
@@ -54,6 +74,7 @@ export function ReviewCard({
             checked={isChecked}
             onCheckedChange={(checked) => onCheckChange?.(checked === true)}
             className="border-zinc-600 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+            aria-label={`Select review from ${review.reviewer_name || 'Anonymous'}`}
           />
         </div>
       )}
@@ -87,6 +108,7 @@ export function ReviewCard({
               key={star}
               size={16}
               className={star <= review.rating ? 'fill-yellow-500 text-yellow-500' : 'text-gray-600'}
+              aria-hidden="true"
             />
           ))}
         </div>
@@ -134,6 +156,7 @@ export function ReviewCard({
               e.stopPropagation(); 
               onReply();
             }}
+            type="button"
             className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
               needsResponse
                 ? 'bg-orange-500 hover:bg-orange-600 text-white'
@@ -160,7 +183,6 @@ export function ReviewCard({
 
 function formatTimeAgo(date: string | undefined | null): string {
   if (!date) {
-    console.log('[formatTimeAgo] No date provided');
     return 'Unknown';
   }
   
@@ -183,28 +205,15 @@ function formatTimeAgo(date: string | undefined | null): string {
       reviewDate = new Date(date + 'Z');
     }
     
-    // DEBUG: Log the actual dates (only in development)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[formatTimeAgo] Review date string:', date);
-      console.log('[formatTimeAgo] Parsed review date:', reviewDate.toISOString());
-      console.log('[formatTimeAgo] Current date:', now.toISOString());
-    }
-    
     // Check if date is valid
     if (isNaN(reviewDate.getTime())) {
-      console.error('[formatTimeAgo] Invalid date:', date);
       return 'Unknown';
     }
     
     const diffMs = now.getTime() - reviewDate.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[formatTimeAgo] Difference in days:', diffDays);
-    }
-    
+
     if (diffDays < 0) {
-      console.warn('[formatTimeAgo] Future date detected:', date, 'Diff:', diffDays, 'days');
       return 'Recently';
     }
     if (diffDays === 0) return 'Today';
@@ -221,7 +230,6 @@ function formatTimeAgo(date: string | undefined | null): string {
     const years = Math.floor(diffDays / 365);
     return years === 1 ? '1 year ago' : `${years} years ago`;
   } catch (error) {
-    console.error('[formatTimeAgo] Date formatting error:', error, date);
     return 'Unknown';
   }
 }

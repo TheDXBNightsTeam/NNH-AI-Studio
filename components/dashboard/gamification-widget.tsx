@@ -7,16 +7,15 @@ import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
 interface GamificationWidgetProps {
-  stats: {
-    healthScore: number;
-    responseRate: number;
-    averageRating: number;
-    totalReviews: number;
-    pendingReviews: number;
+  readonly stats: {
+    readonly healthScore: number;
+    readonly responseRate: number;
+    readonly averageRating: number;
+    readonly totalReviews: number;
+    readonly pendingReviews: number;
   };
 }
 
-// Confetti animation component
 function ConfettiEffect() {
   const confettiPieces = Array.from({ length: 30 }, (_, i) => ({
     id: i,
@@ -26,7 +25,7 @@ function ConfettiEffect() {
   }));
 
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
       {confettiPieces.map((piece) => (
         <motion.div
           key={piece.id}
@@ -69,10 +68,10 @@ export function GamificationWidget({ stats }: GamificationWidgetProps) {
 
   // Show confetti for newly reached targets
   const [showConfetti, setShowConfetti] = useState(false);
-  const [hasShownConfetti, setHasShownConfetti] = useState(() => {
+  const [hasShownConfetti, setHasShownConfetti] = useState<Record<string, boolean>>(() => {
     if (typeof window === 'undefined') return {};
     try {
-      const stored = localStorage.getItem('gamification_confetti_shown');
+      const stored = window.localStorage.getItem('gamification_confetti_shown');
       return stored ? JSON.parse(stored) : {};
     } catch {
       return {};
@@ -82,21 +81,32 @@ export function GamificationWidget({ stats }: GamificationWidgetProps) {
   useEffect(() => {
     const anyTargetReached = responseReached || healthReached || ratingReached;
     const key = `${stats.responseRate}-${stats.healthScore}-${stats.averageRating}`;
-    
+
     if (anyTargetReached && !hasShownConfetti[key]) {
       setShowConfetti(true);
       const newShown = { ...hasShownConfetti, [key]: true };
       setHasShownConfetti(newShown);
-      
+
       if (typeof window !== 'undefined') {
-        localStorage.setItem('gamification_confetti_shown', JSON.stringify(newShown));
+        try {
+          window.localStorage.setItem('gamification_confetti_shown', JSON.stringify(newShown));
+        } catch (error) {
+          console.warn('Failed to persist confetti state', error);
+        }
       }
 
-      // Hide confetti after animation
-      const timer = setTimeout(() => setShowConfetti(false), 3000);
-      return () => clearTimeout(timer);
+      const timer = window.setTimeout(() => setShowConfetti(false), 3000);
+      return () => window.clearTimeout(timer);
     }
-  }, [responseReached, healthReached, ratingReached]);
+  }, [
+    responseReached,
+    healthReached,
+    ratingReached,
+    stats.responseRate,
+    stats.healthScore,
+    stats.averageRating,
+    hasShownConfetti,
+  ]);
 
   const badges: { icon: React.ReactNode; label: string }[] = [];
   if (stats.averageRating >= 4.7) badges.push({ icon: <Star className="w-4 h-4 text-warning fill-warning" />, label: 'Golden Rating' });

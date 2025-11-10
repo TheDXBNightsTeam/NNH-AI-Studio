@@ -19,13 +19,16 @@ export function DynamicThemeProvider({ children }: { children: React.ReactNode }
   const { profile, refetchProfile } = useBrandProfile();
 
   useEffect(() => {
-    // Listen for brand profile updates
     const handleBrandUpdate = () => {
       refetchProfile();
     };
 
-    window.addEventListener('brand-profile-updated', handleBrandUpdate);
-    return () => window.removeEventListener('brand-profile-updated', handleBrandUpdate);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('brand-profile-updated', handleBrandUpdate);
+      return () => window.removeEventListener('brand-profile-updated', handleBrandUpdate);
+    }
+
+    return undefined;
   }, [refetchProfile]);
 
   useEffect(() => {

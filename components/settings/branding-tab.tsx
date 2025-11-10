@@ -11,7 +11,7 @@ import { createClient } from '@/lib/supabase/client';
 import Image from 'next/image';
 
 interface BrandingTabProps {
-  onSave?: () => void;
+  readonly onSave?: () => void;
 }
 
 export function BrandingTab({ onSave }: BrandingTabProps) {
@@ -223,8 +223,9 @@ export function BrandingTab({ onSave }: BrandingTabProps) {
         onSave();
       }
 
-      // Trigger page refresh to apply branding
-      window.dispatchEvent(new Event('brand-profile-updated'));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('brand-profile-updated'));
+      }
     } catch (error) {
       console.error('Error saving branding:', error);
       const err = error as Error;

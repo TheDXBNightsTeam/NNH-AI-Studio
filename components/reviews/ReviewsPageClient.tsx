@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useInView } from 'react-intersection-observer';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,15 +26,21 @@ interface ReviewStats {
 }
 
 interface ReviewsPageClientProps {
-  locations: Array<{ id: string; location_name: string }>;
-  initialFilters?: {
-    locationId?: string;
-    rating?: number;
-    status?: 'pending' | 'replied' | 'responded' | 'flagged' | 'archived';
-    sentiment?: 'positive' | 'neutral' | 'negative';
-    search?: string;
+  readonly locations: ReadonlyArray<{ id: string; location_name: string }>;
+  readonly initialFilters?: {
+    readonly locationId?: string;
+    readonly rating?: number;
+    readonly status?: 'pending' | 'replied' | 'responded' | 'flagged' | 'archived';
+    readonly sentiment?: 'positive' | 'neutral' | 'negative';
+    readonly search?: string;
   };
 }
+
+type ViewMode = 'grid' | 'inbox';
+type ReviewsHookState = ReturnType<typeof useReviews>;
+type ReviewsFilters = ReviewsHookState['filters'];
+type UpdateFilterFn = ReviewsHookState['updateFilter'];
+type ReviewsPagination = ReviewsHookState['pagination'];
 
 export function ReviewsPageClient({ locations, initialFilters }: ReviewsPageClientProps) {
   const [selectedReview, setSelectedReview] = useState<GMBReview | null>(null);
@@ -49,7 +55,7 @@ export function ReviewsPageClient({ locations, initialFilters }: ReviewsPageClie
   const [selectedReviewIds, setSelectedReviewIds] = useState<Set<string>>(new Set());
   
   // View mode state (grid vs inbox)
-  const [viewMode, setViewMode] = useState<'grid' | 'inbox'>('grid');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
   // Use infinite scroll by default
   const {
@@ -171,7 +177,26 @@ export function ReviewsPageClient({ locations, initialFilters }: ReviewsPageClie
   };
 
   // Get selected review objects
-  const selectedReviews = reviews.filter(r => selectedReviewIds.has(r.id));
+  const selectedReviews = useMemo(
+    () => reviews.filter(r => selectedReviewIds.has(r.id)),
+    [reviews, selectedReviewIds]
+  );
+
+  const hasActiveFilters = Boolean(
+    filters.locationId ||
+    filters.rating ||
+    filters.status ||
+    filters.sentiment ||
+    filters.search
+  );
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode);
+    if (mode === 'inbox' && selectionMode) {
+      setSelectionMode(false);
+      clearSelection();
+    }
+  };
 
   // Handle bulk action complete
   const handleBulkActionComplete = () => {
@@ -182,348 +207,72 @@ export function ReviewsPageClient({ locations, initialFilters }: ReviewsPageClie
   return (
     <div className="flex flex-col h-full bg-zinc-950 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between p-6 border-b border-zinc-800 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-zinc-100">Reviews Management</h1>
-          <p className="text-sm text-zinc-400 mt-1">
-            Manage, analyze, and respond to customer reviews
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* View Mode Toggle */}
-          <div className="flex items-center bg-zinc-900 border border-zinc-700 rounded-lg p-1">
-            <Button
-              size="sm"
-              variant={viewMode === 'grid' ? 'default' : 'ghost'}
-              onClick={() => setViewMode('grid')}
-              className={`h-8 ${viewMode === 'grid' ? 'bg-orange-500 hover:bg-orange-600' : 'hover:bg-zinc-800'}`}
-            >
-              <LayoutGrid className="w-4 h-4 mr-2" />
-              Grid
-            </Button>
-            <Button
-              size="sm"
-              variant={viewMode === 'inbox' ? 'default' : 'ghost'}
-              onClick={() => setViewMode('inbox')}
-              className={`h-8 ${viewMode === 'inbox' ? 'bg-orange-500 hover:bg-orange-600' : 'hover:bg-zinc-800'}`}
-            >
-              <Inbox className="w-4 h-4 mr-2" />
-              Inbox
-            </Button>
-          </div>
+      <ReviewsHeaderSection
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
+        selectionMode={selectionMode}
+        onToggleSelectionMode={toggleSelectionMode}
+        canSelectAll={selectionMode && reviews.length > 0}
+        onSelectAll={selectAll}
+        reviewCount={reviews.length}
+        onOpenAiSidebar={() => setAiSidebarOpen(true)}
+        onSync={handleSync}
+        canSync={Boolean(filters.locationId)}
+        isSyncing={isSyncing}
+        showSelectionControls={viewMode === 'grid'}
+      />
 
-          {/* Selection Mode Toggle (only in grid view) */}
-          {viewMode === 'grid' && (
-            <Button
-              onClick={toggleSelectionMode}
-              variant="outline"
-              className={`border-zinc-700 text-zinc-300 hover:bg-zinc-800 ${selectionMode ? 'bg-orange-500/20 border-orange-500/50' : ''}`}
-            >
-              {selectionMode ? (
-                <>
-                  <CheckSquare className="w-4 h-4 mr-2" />
-                  Exit Selection
-                </>
-              ) : (
-                <>
-                  <Square className="w-4 h-4 mr-2" />
-                  Select Reviews
-                </>
-              )}
-            </Button>
-          )}
+      <ReviewsStatsSection stats={stats} />
 
-          {/* Select All (only show in selection mode) */}
-          {selectionMode && reviews.length > 0 && viewMode === 'grid' && (
-            <Button
-              onClick={selectAll}
-              variant="outline"
-              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-            >
-              Select All ({reviews.length})
-            </Button>
-          )}
+      <ReviewsFiltersSection
+        locations={locations}
+        filters={filters}
+        updateFilter={updateFilter}
+        searchInput={searchInput}
+        onSearchChange={setSearchInput}
+        onClearFilters={() => {
+          updateFilter('locationId', undefined);
+          updateFilter('rating', undefined);
+          updateFilter('status', undefined);
+          updateFilter('sentiment', undefined);
+          updateFilter('search', undefined);
+          setSearchInput('');
+        }}
+        hasActiveFilters={hasActiveFilters}
+      />
 
-          {/* Mobile AI Assistant Button (only in grid view) */}
-          {viewMode === 'grid' && (
-            <Button
-              onClick={() => setAiSidebarOpen(true)}
-              variant="outline"
-              className="lg:hidden border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
-            >
-              <Bot className="w-4 h-4 mr-2" />
-              AI Assistant
-            </Button>
-          )}
-          <Button
-            onClick={handleSync}
-            disabled={isSyncing || !filters.locationId}
-            variant="outline"
-            className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-            {isSyncing ? 'Syncing...' : 'Sync Reviews'}
-          </Button>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      {stats && (
-        <div className="p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <Card className="bg-zinc-900/50 border-orange-500/20">
-              <CardContent className="p-6">
-                <p className="text-zinc-400 text-sm mb-2">Total Reviews</p>
-                <p className="text-3xl font-bold text-zinc-100">{stats.total || 0}</p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-zinc-900/50 border-orange-500/20">
-              <CardContent className="p-6">
-                <p className="text-zinc-400 text-sm mb-2">Pending</p>
-                <p className="text-3xl font-bold text-orange-400">{stats.pending || 0}</p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-zinc-900/50 border-orange-500/20">
-              <CardContent className="p-6">
-                <p className="text-zinc-400 text-sm mb-2">Replied</p>
-                <p className="text-3xl font-bold text-green-400">{stats.replied || 0}</p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-zinc-900/50 border-orange-500/20">
-              <CardContent className="p-6">
-                <p className="text-zinc-400 text-sm mb-2">Avg Rating</p>
-                <p className="text-3xl font-bold text-zinc-100">
-                  {stats.averageRating?.toFixed(1) || '0.0'}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-zinc-900/50 border-orange-500/20">
-              <CardContent className="p-6">
-                <p className="text-zinc-400 text-sm mb-2">Response Rate</p>
-                <p className={`text-3xl font-bold ${stats.responseRate < 50 ? 'text-red-400' : 'text-green-400'}`}>
-                  {stats.responseRate?.toFixed(1) || '0'}%
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {/* Filters Bar */}
-      <div className="p-6 border-b border-zinc-800">
-        <div className="flex flex-col md:flex-row gap-4">
-          {/* Location Filter */}
-          <select
-            value={filters.locationId || ''}
-            onChange={(e) => updateFilter('locationId', e.target.value || undefined)}
-            className="px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-100 focus:border-orange-500 focus:outline-none"
-          >
-            <option value="">All Locations</option>
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.id}>
-                {loc.location_name}
-              </option>
-            ))}
-          </select>
-
-          {/* Rating Filter */}
-          <select
-            value={filters.rating || ''}
-            onChange={(e) => updateFilter('rating', e.target.value ? parseInt(e.target.value) : undefined)}
-            className="px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-100 focus:border-orange-500 focus:outline-none"
-          >
-            <option value="">All Ratings</option>
-            <option value="5">⭐⭐⭐⭐⭐ (5 stars)</option>
-            <option value="4">⭐⭐⭐⭐ (4 stars)</option>
-            <option value="3">⭐⭐⭐ (3 stars)</option>
-            <option value="2">⭐⭐ (2 stars)</option>
-            <option value="1">⭐ (1 star)</option>
-          </select>
-
-          {/* Status Filter */}
-          <select
-            value={filters.status || ''}
-            onChange={(e) => updateFilter('status', e.target.value || undefined)}
-            className="px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-100 focus:border-orange-500 focus:outline-none"
-          >
-            <option value="">All Statuses</option>
-            <option value="pending">Pending Reply</option>
-            <option value="replied">Replied</option>
-            <option value="responded">Responded</option>
-            <option value="flagged">Flagged</option>
-            <option value="archived">Archived</option>
-          </select>
-
-          {/* Sentiment Filter */}
-          <select
-            value={filters.sentiment || ''}
-            onChange={(e) => updateFilter('sentiment', e.target.value || undefined)}
-            className="px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-100 focus:border-orange-500 focus:outline-none"
-          >
-            <option value="">All Sentiments</option>
-            <option value="positive">Positive</option>
-            <option value="neutral">Neutral</option>
-            <option value="negative">Negative</option>
-          </select>
-
-          {/* Search */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-            <Input
-              type="text"
-              placeholder="Search reviews..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-10 bg-zinc-900 border-zinc-700 text-zinc-100 focus:border-orange-500"
-            />
-          </div>
-
-          {/* Clear Filters */}
-          {(filters.locationId || filters.rating || filters.status || filters.sentiment || filters.search) && (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                updateFilter('locationId', undefined);
-                updateFilter('rating', undefined);
-                updateFilter('status', undefined);
-                updateFilter('sentiment', undefined);
-                updateFilter('search', undefined);
-                setSearchInput('');
-              }}
-              className="text-zinc-400 hover:text-zinc-200"
-            >
-              Clear Filters
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Main Content - Conditional Layout Based on View Mode */}
       <div className="flex-1 flex gap-6 p-6 overflow-hidden">
         {viewMode === 'inbox' ? (
-          /* Inbox View */
-          <div className="flex-1">
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-4">
-                <p className="text-red-400">{error}</p>
-              </div>
-            )}
-
-            {loading && reviews.length === 0 ? (
-              <div className="flex items-center justify-center py-12">
-                <RefreshCw className="w-8 h-8 animate-spin text-orange-500" />
-              </div>
-            ) : reviews.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-zinc-500 text-lg mb-2">No reviews found</p>
-                <p className="text-zinc-600 text-sm">
-                  {filters.locationId
-                    ? 'Try syncing reviews or adjusting filters'
-                    : 'Select a location to view reviews'}
-                </p>
-              </div>
-            ) : (
-              <InboxView
-                reviews={reviews}
-                selectedReview={selectedReview}
-                onSelectReview={setSelectedReview}
-                onReplySuccess={refresh}
-              />
-            )}
-          </div>
+          <InboxContent
+            reviews={reviews}
+            loading={loading}
+            error={error}
+            filters={filters}
+            selectedReview={selectedReview}
+            onSelectReview={setSelectedReview}
+            onRefresh={refresh}
+          />
         ) : (
-          /* Grid View */
-          <>
-            {/* Reviews List - Left Side */}
-            <div className="flex-1 overflow-auto">
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-4">
-              <p className="text-red-400">{error}</p>
-            </div>
-          )}
-
-          {loading && reviews.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="w-8 h-8 animate-spin text-orange-500" />
-            </div>
-          ) : reviews.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-zinc-500 text-lg mb-2">No reviews found</p>
-              <p className="text-zinc-600 text-sm">
-                {filters.locationId
-                  ? 'Try syncing reviews or adjusting filters'
-                  : 'Select a location to view reviews'}
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-4">
-                {reviews.map((review) => (
-                  <ReviewCard
-                    key={review.id}
-                    review={review}
-                    onClick={() => !selectionMode && setSelectedReview(review)}
-                    isSelected={selectedReview?.id === review.id}
-                    onReply={() => handleReply(review)}
-                    showCheckbox={selectionMode}
-                    isChecked={selectedReviewIds.has(review.id)}
-                    onCheckChange={(checked) => handleCheckChange(review.id, checked)}
-                  />
-                ))}
-              </div>
-
-              {/* Infinite Scroll Trigger */}
-              {hasNextPage && (
-                <div ref={infiniteScrollRef} className="flex justify-center py-8">
-                  {isLoadingMore && (
-                    <Loader2 className="w-6 h-6 animate-spin text-orange-500" />
-                  )}
-                </div>
-              )}
-
-              {/* End of List Indicator */}
-              {!hasNextPage && reviews.length > 0 && (
-                <div className="text-center py-8">
-                  <p className="text-zinc-500 text-sm">
-                    You've reached the end of the list
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* AI Assistant Sidebar - Right Side (only in grid view) */}
-        {viewMode === 'grid' && (
-          <div className="w-80 flex-shrink-0 hidden lg:block">
-            <div className="sticky top-6 h-[calc(100vh-8rem)]">
-              <AIAssistantSidebar
-                selectedReview={selectedReview}
-                pendingReviewsCount={stats?.pending || 0}
-                locationId={filters.locationId}
-              />
-            </div>
-          </div>
-        )}
-      </>
+          <GridContent
+            reviews={reviews}
+            loading={loading}
+            error={error}
+            filters={filters}
+            selectionMode={selectionMode}
+            selectedReview={selectedReview}
+            selectedReviewIds={selectedReviewIds}
+            onSelectReview={setSelectedReview}
+            onReply={handleReply}
+            onCheckChange={handleCheckChange}
+            hasNextPage={hasNextPage}
+            infiniteScrollRef={infiniteScrollRef}
+            isLoadingMore={isLoadingMore}
+            stats={stats}
+          />
         )}
       </div>
 
-      {/* Pagination Info */}
-      {pagination && (
-        <div className="p-6 border-t border-zinc-800">
-          <div className="flex items-center justify-center">
-            <p className="text-zinc-400 text-sm">
-              Showing {reviews.length} of {pagination.total} reviews
-              {pagination.hasNextPage && ' (scroll for more)'}
-            </p>
-          </div>
-        </div>
-      )}
+      <PaginationInfo pagination={pagination} visibleCount={reviews.length} />
 
       {/* Reply Dialog */}
       <ReplyDialog
@@ -554,12 +303,459 @@ export function ReviewsPageClient({ locations, initialFilters }: ReviewsPageClie
         </SheetContent>
       </Sheet>
 
-      {/* Bulk Action Bar */}
       <BulkActionBar
         selectedReviews={selectedReviews}
         onClearSelection={clearSelection}
         onActionComplete={handleBulkActionComplete}
       />
+    </div>
+  );
+}
+
+interface ReviewsHeaderSectionProps {
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
+  selectionMode: boolean;
+  onToggleSelectionMode: () => void;
+  canSelectAll: boolean;
+  onSelectAll: () => void;
+  reviewCount: number;
+  onOpenAiSidebar: () => void;
+  onSync: () => void;
+  canSync: boolean;
+  isSyncing: boolean;
+  showSelectionControls: boolean;
+}
+
+function ReviewsHeaderSection({
+  viewMode,
+  onViewModeChange,
+  selectionMode,
+  onToggleSelectionMode,
+  canSelectAll,
+  onSelectAll,
+  reviewCount,
+  onOpenAiSidebar,
+  onSync,
+  canSync,
+  isSyncing,
+  showSelectionControls,
+}: ReviewsHeaderSectionProps) {
+  return (
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between p-6 border-b border-zinc-800 gap-4">
+      <div>
+        <h1 className="text-3xl font-bold text-zinc-100">Reviews Management</h1>
+        <p className="text-sm text-zinc-400 mt-1">
+          Manage, analyze, and respond to customer reviews
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center bg-zinc-900 border border-zinc-700 rounded-lg p-1">
+          <Button
+            size="sm"
+            variant={viewMode === 'grid' ? 'default' : 'ghost'}
+            onClick={() => onViewModeChange('grid')}
+            className={`h-8 ${viewMode === 'grid' ? 'bg-orange-500 hover:bg-orange-600' : 'hover:bg-zinc-800'}`}
+          >
+            <LayoutGrid className="w-4 h-4 mr-2" aria-hidden="true" />
+            Grid
+          </Button>
+          <Button
+            size="sm"
+            variant={viewMode === 'inbox' ? 'default' : 'ghost'}
+            onClick={() => onViewModeChange('inbox')}
+            className={`h-8 ${viewMode === 'inbox' ? 'bg-orange-500 hover:bg-orange-600' : 'hover:bg-zinc-800'}`}
+          >
+            <Inbox className="w-4 h-4 mr-2" aria-hidden="true" />
+            Inbox
+          </Button>
+        </div>
+
+        {showSelectionControls && (
+          <>
+            <Button
+              onClick={onToggleSelectionMode}
+              variant="outline"
+              className={`border-zinc-700 text-zinc-300 hover:bg-zinc-800 ${selectionMode ? 'bg-orange-500/20 border-orange-500/50' : ''}`}
+            >
+              {selectionMode ? (
+                <>
+                  <CheckSquare className="w-4 h-4 mr-2" aria-hidden="true" />
+                  Exit Selection
+                </>
+              ) : (
+                <>
+                  <Square className="w-4 h-4 mr-2" aria-hidden="true" />
+                  Select Reviews
+                </>
+              )}
+            </Button>
+
+            {canSelectAll && (
+              <Button
+                onClick={onSelectAll}
+                variant="outline"
+                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+              >
+                Select All ({reviewCount})
+              </Button>
+            )}
+          </>
+        )}
+
+        {showSelectionControls && (
+          <Button
+            onClick={onOpenAiSidebar}
+            variant="outline"
+            className="lg:hidden border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
+          >
+            <Bot className="w-4 h-4 mr-2" aria-hidden="true" />
+            AI Assistant
+          </Button>
+        )}
+
+        <Button
+          onClick={onSync}
+          disabled={isSyncing || !canSync}
+          variant="outline"
+          className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} aria-hidden="true" />
+          {isSyncing ? 'Syncing...' : 'Sync Reviews'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ReviewsStatsSection({ stats }: { stats: ReviewStats | null }) {
+  if (!stats) {
+    return null;
+  }
+
+  return (
+    <div className="p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard label="Total Reviews" value={stats.total ?? 0} />
+        <StatCard label="Pending" value={stats.pending ?? 0} accent="text-orange-400" />
+        <StatCard label="Replied" value={stats.replied ?? 0} accent="text-green-400" />
+        <StatCard label="Avg Rating" value={stats.averageRating?.toFixed(1) ?? '0.0'} />
+        <StatCard
+          label="Response Rate"
+          value={`${stats.responseRate?.toFixed(1) ?? '0'}%`}
+          accent={stats.responseRate < 50 ? 'text-red-400' : 'text-green-400'}
+        />
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
+  return (
+    <Card className="bg-zinc-900/50 border-orange-500/20">
+      <CardContent className="p-6">
+        <p className="text-zinc-400 text-sm mb-2">{label}</p>
+        <p className={`text-3xl font-bold ${accent ?? 'text-zinc-100'}`}>{value}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface ReviewsFiltersSectionProps {
+  locations: ReadonlyArray<{ id: string; location_name: string }>;
+  filters: ReviewsFilters;
+  updateFilter: UpdateFilterFn;
+  searchInput: string;
+  onSearchChange: (value: string) => void;
+  onClearFilters: () => void;
+  hasActiveFilters: boolean;
+}
+
+function ReviewsFiltersSection({
+  locations,
+  filters,
+  updateFilter,
+  searchInput,
+  onSearchChange,
+  onClearFilters,
+  hasActiveFilters,
+}: ReviewsFiltersSectionProps) {
+  return (
+    <div className="p-6 border-b border-zinc-800">
+      <div className="flex flex-col md:flex-row gap-4">
+        <select
+          value={filters.locationId || ''}
+          onChange={(e) => updateFilter('locationId', e.target.value || undefined)}
+          className="px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-100 focus:border-orange-500 focus:outline-none"
+        >
+          <option value="">All Locations</option>
+          {locations.map((loc) => (
+            <option key={loc.id} value={loc.id}>
+              {loc.location_name}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filters.rating || ''}
+          onChange={(e) => updateFilter('rating', e.target.value ? parseInt(e.target.value, 10) : undefined)}
+          className="px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-100 focus:border-orange-500 focus:outline-none"
+        >
+          <option value="">All Ratings</option>
+          <option value="5">⭐⭐⭐⭐⭐ (5 stars)</option>
+          <option value="4">⭐⭐⭐⭐ (4 stars)</option>
+          <option value="3">⭐⭐⭐ (3 stars)</option>
+          <option value="2">⭐⭐ (2 stars)</option>
+          <option value="1">⭐ (1 star)</option>
+        </select>
+
+        <select
+          value={filters.status || ''}
+          onChange={(e) => updateFilter('status', e.target.value || undefined)}
+          className="px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-100 focus:border-orange-500 focus:outline-none"
+        >
+          <option value="">All Statuses</option>
+          <option value="pending">Pending Reply</option>
+          <option value="replied">Replied</option>
+          <option value="responded">Responded</option>
+          <option value="flagged">Flagged</option>
+          <option value="archived">Archived</option>
+        </select>
+
+        <select
+          value={filters.sentiment || ''}
+          onChange={(e) => updateFilter('sentiment', e.target.value || undefined)}
+          className="px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-100 focus:border-orange-500 focus:outline-none"
+        >
+          <option value="">All Sentiments</option>
+          <option value="positive">Positive</option>
+          <option value="neutral">Neutral</option>
+          <option value="negative">Negative</option>
+        </select>
+
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" aria-hidden="true" />
+          <Input
+            type="text"
+            placeholder="Search reviews..."
+            value={searchInput}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="pl-10 bg-zinc-900 border-zinc-700 text-zinc-100 focus:border-orange-500"
+          />
+        </div>
+
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            onClick={onClearFilters}
+            className="text-zinc-400 hover:text-zinc-200"
+          >
+            Clear Filters
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface InboxContentProps {
+  reviews: ReadonlyArray<GMBReview>;
+  loading: boolean;
+  error: string | null;
+  filters: ReviewsFilters;
+  selectedReview: GMBReview | null;
+  onSelectReview: (review: GMBReview) => void;
+  onRefresh: () => void;
+}
+
+function InboxContent({
+  reviews,
+  loading,
+  error,
+  filters,
+  selectedReview,
+  onSelectReview,
+  onRefresh,
+}: InboxContentProps) {
+  const hasReviews = reviews.length > 0;
+
+  if (error) {
+    return (
+      <div className="flex-1">
+        <ErrorBanner message={error} />
+      </div>
+    );
+  }
+
+  if (loading && !hasReviews) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-12">
+        <RefreshCw className="w-8 h-8 animate-spin text-orange-500" aria-hidden="true" />
+      </div>
+    );
+  }
+
+  if (!hasReviews) {
+    return (
+      <div className="flex-1">
+        <EmptyState filters={filters} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1">
+      <InboxView
+        reviews={reviews}
+        selectedReview={selectedReview}
+        onSelectReview={onSelectReview}
+        onReplySuccess={onRefresh}
+      />
+    </div>
+  );
+}
+
+interface GridContentProps {
+  reviews: ReadonlyArray<GMBReview>;
+  loading: boolean;
+  error: string | null;
+  filters: ReviewsFilters;
+  selectionMode: boolean;
+  selectedReview: GMBReview | null;
+  selectedReviewIds: ReadonlySet<string>;
+  onSelectReview: (review: GMBReview) => void;
+  onReply: (review: GMBReview) => void;
+  onCheckChange: (reviewId: string, checked: boolean) => void;
+  hasNextPage: boolean;
+  infiniteScrollRef: (node?: Element | null) => void;
+  isLoadingMore: boolean;
+  stats: ReviewStats | null;
+}
+
+function GridContent({
+  reviews,
+  loading,
+  error,
+  filters,
+  selectionMode,
+  selectedReview,
+  selectedReviewIds,
+  onSelectReview,
+  onReply,
+  onCheckChange,
+  hasNextPage,
+  infiniteScrollRef,
+  isLoadingMore,
+  stats,
+}: GridContentProps) {
+  const hasReviews = reviews.length > 0;
+
+  return (
+    <>
+      <div className="flex-1 overflow-auto">
+        {error && <ErrorBanner message={error} />}
+
+        {loading && !hasReviews && (
+          <div className="flex items-center justify-center py-12">
+            <RefreshCw className="w-8 h-8 animate-spin text-orange-500" aria-hidden="true" />
+          </div>
+        )}
+
+        {!loading && !hasReviews && <EmptyState filters={filters} />}
+
+        {hasReviews && (
+          <>
+            <div className="space-y-4">
+              {reviews.map((review) => (
+                <ReviewCard
+                  key={review.id}
+                  review={review}
+                  onClick={() => {
+                    if (!selectionMode) {
+                      onSelectReview(review);
+                    }
+                  }}
+                  isSelected={selectedReview?.id === review.id}
+                  onReply={() => onReply(review)}
+                  showCheckbox={selectionMode}
+                  isChecked={selectedReviewIds.has(review.id)}
+                  onCheckChange={(checked) => onCheckChange(review.id, checked)}
+                />
+              ))}
+            </div>
+
+            {hasNextPage && (
+              <div ref={infiniteScrollRef} className="flex justify-center py-8">
+                {isLoadingMore && (
+                  <Loader2 className="w-6 h-6 animate-spin text-orange-500" aria-hidden="true" />
+                )}
+              </div>
+            )}
+
+            {!hasNextPage && (
+              <div className="text-center py-8">
+                <p className="text-zinc-500 text-sm">
+                  You&apos;ve reached the end of the list
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <div className="w-80 flex-shrink-0 hidden lg:block">
+        <div className="sticky top-6 h-[calc(100vh-8rem)]">
+          <AIAssistantSidebar
+            selectedReview={selectedReview}
+            pendingReviewsCount={stats?.pending || 0}
+            locationId={filters.locationId}
+          />
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ErrorBanner({ message }: { message: string }) {
+  return (
+    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-4">
+      <p className="text-red-400">{message}</p>
+    </div>
+  );
+}
+
+function EmptyState({ filters }: { filters: ReviewsFilters }) {
+  return (
+    <div className="text-center py-12">
+      <p className="text-zinc-500 text-lg mb-2">No reviews found</p>
+      <p className="text-zinc-600 text-sm">
+        {filters.locationId
+          ? 'Try syncing reviews or adjusting filters'
+          : 'Select a location to view reviews'}
+      </p>
+    </div>
+  );
+}
+
+function PaginationInfo({
+  pagination,
+  visibleCount,
+}: {
+  pagination: ReviewsPagination | null;
+  visibleCount: number;
+}) {
+  if (!pagination) {
+    return null;
+  }
+
+  return (
+    <div className="p-6 border-t border-zinc-800">
+      <div className="flex items-center justify-center">
+        <p className="text-zinc-400 text-sm">
+          Showing {visibleCount} of {pagination.total} reviews
+          {pagination.hasNextPage && ' (scroll for more)'}
+        </p>
+      </div>
     </div>
   );
 }

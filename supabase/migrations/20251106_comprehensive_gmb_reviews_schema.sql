@@ -52,151 +52,276 @@ CREATE TABLE IF NOT EXISTS public.gmb_reviews (
   synced_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Add missing columns if table already exists
-DO $$ 
+DO $$
+DECLARE
+  target_schema CONSTANT TEXT := 'public';
+  target_table  CONSTANT TEXT := 'gmb_reviews';
 BEGIN
   -- Google identifiers
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='external_review_id') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN external_review_id TEXT UNIQUE;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = target_schema
+      AND table_name = target_table
+      AND column_name = 'external_review_id'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN external_review_id TEXT UNIQUE;', target_schema, target_table);
   END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='google_my_business_name') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN google_my_business_name TEXT;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'google_my_business_name'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN google_my_business_name TEXT;', target_schema, target_table);
   END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='review_url') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN review_url TEXT;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'review_url'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN review_url TEXT;', target_schema, target_table);
   END IF;
-  
+
   -- Review details
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='review_date') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN review_date TIMESTAMPTZ;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'review_date'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN review_date TIMESTAMPTZ;', target_schema, target_table);
   END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='review_text') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN review_text TEXT;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'review_text'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN review_text TEXT;', target_schema, target_table);
   END IF;
-  
+
   -- Reviewer info
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='reviewer_name') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN reviewer_name TEXT;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'reviewer_name'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN reviewer_name TEXT;', target_schema, target_table);
   END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='reviewer_display_name') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN reviewer_display_name TEXT;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'reviewer_display_name'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN reviewer_display_name TEXT;', target_schema, target_table);
   END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='reviewer_profile_photo_url') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN reviewer_profile_photo_url TEXT;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'reviewer_profile_photo_url'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN reviewer_profile_photo_url TEXT;', target_schema, target_table);
   END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='is_verified_purchase') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN is_verified_purchase BOOLEAN DEFAULT false;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'is_verified_purchase'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN is_verified_purchase BOOLEAN DEFAULT false;', target_schema, target_table);
   END IF;
-  
+
   -- Reply info
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='response') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN response TEXT;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'response'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN response TEXT;', target_schema, target_table);
   END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='reply_date') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN reply_date TIMESTAMPTZ;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'reply_date'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN reply_date TIMESTAMPTZ;', target_schema, target_table);
   END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='responded_at') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN responded_at TIMESTAMPTZ;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'responded_at'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN responded_at TIMESTAMPTZ;', target_schema, target_table);
   END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='has_reply') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN has_reply BOOLEAN DEFAULT false;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'has_reply'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN has_reply BOOLEAN DEFAULT false;', target_schema, target_table);
   END IF;
-  
+
   -- AI features
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='ai_sentiment') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN ai_sentiment TEXT;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'ai_sentiment'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN ai_sentiment TEXT;', target_schema, target_table);
   END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='ai_sentiment_score') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN ai_sentiment_score DECIMAL(3,2);
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'ai_sentiment_score'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN ai_sentiment_score DECIMAL(3,2);', target_schema, target_table);
   END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='ai_generated_response') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN ai_generated_response TEXT;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'ai_generated_response'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN ai_generated_response TEXT;', target_schema, target_table);
   END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='ai_reply_generated') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN ai_reply_generated BOOLEAN DEFAULT false;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'ai_reply_generated'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN ai_reply_generated BOOLEAN DEFAULT false;', target_schema, target_table);
   END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='ai_confidence_score') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN ai_confidence_score DECIMAL(3,2);
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'ai_confidence_score'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN ai_confidence_score DECIMAL(3,2);', target_schema, target_table);
   END IF;
-  
+
   -- Status
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='status') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN status TEXT DEFAULT 'pending';
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'status'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN status TEXT DEFAULT ''pending'';', target_schema, target_table);
   END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='response_priority') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN response_priority TEXT;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'response_priority'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN response_priority TEXT;', target_schema, target_table);
   END IF;
-  
+
   -- Internal management
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='internal_notes') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN internal_notes TEXT;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'internal_notes'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN internal_notes TEXT;', target_schema, target_table);
   END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='flagged_reason') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN flagged_reason TEXT;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'flagged_reason'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN flagged_reason TEXT;', target_schema, target_table);
   END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='tags') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN tags TEXT[];
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'tags'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN tags TEXT[];', target_schema, target_table);
   END IF;
-  
+
   -- Timestamps
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gmb_reviews' AND column_name='synced_at') THEN
-    ALTER TABLE public.gmb_reviews ADD COLUMN synced_at TIMESTAMPTZ DEFAULT NOW();
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = target_schema AND table_name = target_table AND column_name = 'synced_at'
+  ) THEN
+    EXECUTE format('ALTER TABLE %I.%I ADD COLUMN synced_at TIMESTAMPTZ DEFAULT NOW();', target_schema, target_table);
   END IF;
 END $$;
 
 -- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_gmb_reviews_location ON public.gmb_reviews(location_id);
-CREATE INDEX IF NOT EXISTS idx_gmb_reviews_user ON public.gmb_reviews(user_id);
-CREATE INDEX IF NOT EXISTS idx_gmb_reviews_rating ON public.gmb_reviews(rating);
-CREATE INDEX IF NOT EXISTS idx_gmb_reviews_has_reply ON public.gmb_reviews(has_reply);
-CREATE INDEX IF NOT EXISTS idx_gmb_reviews_status ON public.gmb_reviews(status);
-CREATE INDEX IF NOT EXISTS idx_gmb_reviews_review_date ON public.gmb_reviews(review_date DESC);
-CREATE INDEX IF NOT EXISTS idx_gmb_reviews_sentiment ON public.gmb_reviews(ai_sentiment);
-CREATE INDEX IF NOT EXISTS idx_gmb_reviews_external_id ON public.gmb_reviews(external_review_id);
-CREATE INDEX IF NOT EXISTS idx_gmb_reviews_created_at ON public.gmb_reviews(created_at DESC);
+DO $$
+DECLARE
+  target_schema CONSTANT TEXT := 'public';
+  target_table  CONSTANT TEXT := 'gmb_reviews';
+BEGIN
+  EXECUTE format('CREATE INDEX IF NOT EXISTS idx_gmb_reviews_location ON %I.%I(location_id);', target_schema, target_table);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS idx_gmb_reviews_user ON %I.%I(user_id);', target_schema, target_table);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS idx_gmb_reviews_rating ON %I.%I(rating);', target_schema, target_table);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS idx_gmb_reviews_has_reply ON %I.%I(has_reply);', target_schema, target_table);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS idx_gmb_reviews_status ON %I.%I(status);', target_schema, target_table);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS idx_gmb_reviews_review_date ON %I.%I(review_date DESC);', target_schema, target_table);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS idx_gmb_reviews_sentiment ON %I.%I(ai_sentiment);', target_schema, target_table);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS idx_gmb_reviews_external_id ON %I.%I(external_review_id);', target_schema, target_table);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS idx_gmb_reviews_created_at ON %I.%I(created_at DESC);', target_schema, target_table);
+END $$;
 
 -- Enable Row Level Security
-ALTER TABLE public.gmb_reviews ENABLE ROW LEVEL SECURITY;
+DO $$
+DECLARE
+  target_schema CONSTANT TEXT := 'public';
+  target_table  CONSTANT TEXT := 'gmb_reviews';
+BEGIN
+  EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY;', target_schema, target_table);
+END $$;
 
 -- Drop existing policies if they exist
-DROP POLICY IF EXISTS "Users can view their own reviews" ON public.gmb_reviews;
-DROP POLICY IF EXISTS "Users can insert their own reviews" ON public.gmb_reviews;
-DROP POLICY IF EXISTS "Users can update their own reviews" ON public.gmb_reviews;
-DROP POLICY IF EXISTS "Users can delete their own reviews" ON public.gmb_reviews;
+DO $$
+DECLARE
+  target_schema CONSTANT TEXT := 'public';
+  target_table  CONSTANT TEXT := 'gmb_reviews';
+BEGIN
+  EXECUTE format('DROP POLICY IF EXISTS "Users can view their own reviews" ON %I.%I;', target_schema, target_table);
+  EXECUTE format('DROP POLICY IF EXISTS "Users can insert their own reviews" ON %I.%I;', target_schema, target_table);
+  EXECUTE format('DROP POLICY IF EXISTS "Users can update their own reviews" ON %I.%I;', target_schema, target_table);
+  EXECUTE format('DROP POLICY IF EXISTS "Users can delete their own reviews" ON %I.%I;', target_schema, target_table);
+END $$;
 
 -- RLS Policies
-CREATE POLICY "Users can view their own reviews"
-  ON public.gmb_reviews FOR SELECT
-  USING (auth.uid() = user_id);
+DO $$
+DECLARE
+  target_schema CONSTANT TEXT := 'public';
+  target_table  CONSTANT TEXT := 'gmb_reviews';
+BEGIN
+  EXECUTE format(
+    $policy$
+      CREATE POLICY "Users can view their own reviews"
+        ON %I.%I FOR SELECT
+        USING (auth.uid() = user_id);
+    $policy$,
+    target_schema,
+    target_table
+  );
 
-CREATE POLICY "Users can insert their own reviews"
-  ON public.gmb_reviews FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+  EXECUTE format(
+    $policy$
+      CREATE POLICY "Users can insert their own reviews"
+        ON %I.%I FOR INSERT
+        WITH CHECK (auth.uid() = user_id);
+    $policy$,
+    target_schema,
+    target_table
+  );
 
-CREATE POLICY "Users can update their own reviews"
-  ON public.gmb_reviews FOR UPDATE
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  EXECUTE format(
+    $policy$
+      CREATE POLICY "Users can update their own reviews"
+        ON %I.%I FOR UPDATE
+        USING (auth.uid() = user_id)
+        WITH CHECK (auth.uid() = user_id);
+    $policy$,
+    target_schema,
+    target_table
+  );
 
-CREATE POLICY "Users can delete their own reviews"
-  ON public.gmb_reviews FOR DELETE
-  USING (auth.uid() = user_id);
+  EXECUTE format(
+    $policy$
+      CREATE POLICY "Users can delete their own reviews"
+        ON %I.%I FOR DELETE
+        USING (auth.uid() = user_id);
+    $policy$,
+    target_schema,
+    target_table
+  );
+END $$;
 
 -- Create updated_at trigger
 CREATE OR REPLACE FUNCTION public.update_gmb_reviews_updated_at()
@@ -207,17 +332,63 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trigger_update_gmb_reviews_updated_at ON public.gmb_reviews;
-
-CREATE TRIGGER trigger_update_gmb_reviews_updated_at
-  BEFORE UPDATE ON public.gmb_reviews
-  FOR EACH ROW
-  EXECUTE FUNCTION public.update_gmb_reviews_updated_at();
+DO $$
+DECLARE
+  target_schema CONSTANT TEXT := 'public';
+  target_table  CONSTANT TEXT := 'gmb_reviews';
+BEGIN
+  EXECUTE format('DROP TRIGGER IF EXISTS trigger_update_gmb_reviews_updated_at ON %I.%I;', target_schema, target_table);
+  EXECUTE format(
+    $trigger$
+      CREATE TRIGGER trigger_update_gmb_reviews_updated_at
+        BEFORE UPDATE ON %I.%I
+        FOR EACH ROW
+        EXECUTE FUNCTION public.update_gmb_reviews_updated_at();
+    $trigger$,
+    target_schema,
+    target_table
+  );
+END $$;
 
 -- Add comments for documentation
-COMMENT ON TABLE public.gmb_reviews IS 'Stores Google My Business reviews with AI analysis and reply management';
-COMMENT ON COLUMN public.gmb_reviews.external_review_id IS 'Unique review ID from Google My Business API';
-COMMENT ON COLUMN public.gmb_reviews.ai_sentiment IS 'AI-analyzed sentiment: positive, neutral, or negative';
-COMMENT ON COLUMN public.gmb_reviews.ai_generated_response IS 'AI-suggested reply text for this review';
-COMMENT ON COLUMN public.gmb_reviews.response_priority IS 'Priority level for responding to this review';
+DO $$
+DECLARE
+  target_schema CONSTANT TEXT := 'public';
+  target_table  CONSTANT TEXT := 'gmb_reviews';
+BEGIN
+  EXECUTE format(
+    'COMMENT ON TABLE %I.%I IS %L;',
+    target_schema,
+    target_table,
+    'Stores Google My Business reviews with AI analysis and reply management'
+  );
+
+  EXECUTE format(
+    'COMMENT ON COLUMN %I.%I.external_review_id IS %L;',
+    target_schema,
+    target_table,
+    'Unique review ID from Google My Business API'
+  );
+
+  EXECUTE format(
+    'COMMENT ON COLUMN %I.%I.ai_sentiment IS %L;',
+    target_schema,
+    target_table,
+    'AI-analyzed sentiment: positive, neutral, or negative'
+  );
+
+  EXECUTE format(
+    'COMMENT ON COLUMN %I.%I.ai_generated_response IS %L;',
+    target_schema,
+    target_table,
+    'AI-suggested reply text for this review'
+  );
+
+  EXECUTE format(
+    'COMMENT ON COLUMN %I.%I.response_priority IS %L;',
+    target_schema,
+    target_table,
+    'Priority level for responding to this review'
+  );
+END $$;
 

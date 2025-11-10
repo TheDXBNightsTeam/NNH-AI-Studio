@@ -44,10 +44,13 @@ export function BulkLabelDialog({
   const [newLabelColor, setNewLabelColor] = useState('#3b82f6'); // Default blue
   const [creatingLabel, setCreatingLabel] = useState(false);
 
-  // Fetch available labels
   useEffect(() => {
     if (open) {
-      fetchLabels();
+      void fetchLabels();
+    } else {
+      setSelectedLabelIds(new Set());
+      setNewLabelName('');
+      setNewLabelColor('#3b82f6');
     }
   }, [open]);
 
@@ -67,7 +70,8 @@ export function BulkLabelDialog({
   };
 
   const handleCreateLabel = async () => {
-    if (!newLabelName.trim()) {
+    const trimmedName = newLabelName.trim();
+    if (!trimmedName) {
       toast.error('Please enter a label name');
       return;
     }
@@ -78,7 +82,7 @@ export function BulkLabelDialog({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: newLabelName.trim(),
+          name: trimmedName,
           color: newLabelColor,
         }),
       });
@@ -89,10 +93,10 @@ export function BulkLabelDialog({
       }
 
       const data = await response.json();
-      const newLabel = data.label;
+      const newLabel = data.label as Label;
 
-      setLabels([...labels, newLabel]);
-      setSelectedLabelIds(new Set([...selectedLabelIds, newLabel.id]));
+      setLabels((prev) => [...prev, newLabel]);
+      setSelectedLabelIds((prev) => new Set([...prev, newLabel.id]));
       setNewLabelName('');
       setNewLabelColor('#3b82f6');
       toast.success('Label created successfully');
@@ -105,13 +109,15 @@ export function BulkLabelDialog({
   };
 
   const handleToggleLabel = (labelId: string) => {
-    const newSet = new Set(selectedLabelIds);
-    if (newSet.has(labelId)) {
-      newSet.delete(labelId);
-    } else {
-      newSet.add(labelId);
-    }
-    setSelectedLabelIds(newSet);
+    setSelectedLabelIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(labelId)) {
+        next.delete(labelId);
+      } else {
+        next.add(labelId);
+      }
+      return next;
+    });
   };
 
   const handleApplyLabels = async () => {
@@ -138,6 +144,7 @@ export function BulkLabelDialog({
 
       toast.success(`Labels applied to ${locationIds.length} location${locationIds.length > 1 ? 's' : ''}`);
       onSuccess();
+      onOpenChange(false);
     } catch (error) {
       console.error('Error applying labels:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to apply labels');
@@ -170,16 +177,22 @@ export function BulkLabelDialog({
                 No labels yet. Create one below.
               </p>
             ) : (
-              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+              <ul className="space-y-2 max-h-[200px] overflow-y-auto" role="listbox" aria-label="Available labels">
                 {labels.map((label) => (
-                  <div
+                  <li
                     key={label.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent cursor-pointer"
-                    onClick={() => handleToggleLabel(label.id)}
+                    className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent"
                   >
+                    <button
+                      type="button"
+                      onClick={() => handleToggleLabel(label.id)}
+                      className="flex items-center gap-3 w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-orange-500 rounded-md py-1 px-1"
+                      aria-pressed={selectedLabelIds.has(label.id)}
+                    >
                     <Checkbox
                       checked={selectedLabelIds.has(label.id)}
-                      onCheckedChange={() => handleToggleLabel(label.id)}
+                        onCheckedChange={() => handleToggleLabel(label.id)}
+                        aria-label={`Toggle label ${label.name}`}
                     />
                     <Badge
                       style={{
@@ -189,9 +202,10 @@ export function BulkLabelDialog({
                     >
                       {label.name}
                     </Badge>
-                  </div>
+                    </button>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
           </div>
 
@@ -209,16 +223,25 @@ export function BulkLabelDialog({
                   }
                 }}
               />
-              <Input
-                type="color"
-                value={newLabelColor}
-                onChange={(e) => setNewLabelColor(e.target.value)}
-                className="w-16"
-              />
+              <div className="flex flex-col items-center gap-1">
+                <Label htmlFor="label-color" className="sr-only">
+                  Label color
+                </Label>
+                <Input
+                  id="label-color"
+                  type="color"
+                  value={newLabelColor}
+                  onChange={(e) => setNewLabelColor(e.target.value)}
+                  className="w-16 h-10 p-1"
+                  aria-label="Select label color"
+                />
+              </div>
               <Button
                 onClick={handleCreateLabel}
                 disabled={creatingLabel || !newLabelName.trim()}
                 size="icon"
+                type="button"
+                aria-label="Create label"
               >
                 {creatingLabel ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
