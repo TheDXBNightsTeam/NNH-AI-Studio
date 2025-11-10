@@ -402,16 +402,29 @@ export function CreatePostDialog({ isOpen, onClose, locations, onSuccess }: Crea
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
-                {mediaUrl && !uploadedFile && (
-                  <img
-                    src={mediaUrl}
-                    alt="Preview"
-                    className="mt-2 max-h-40 rounded-md object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                )}
+                {mediaUrl && !uploadedFile && (() => {
+                  // Sanitize URL to prevent XSS
+                  try {
+                    const url = new URL(mediaUrl);
+                    // Only allow http/https protocols
+                    if (url.protocol === 'http:' || url.protocol === 'https:') {
+                      return (
+                        <img
+                          src={url.href}
+                          alt="Preview"
+                          className="mt-2 max-h-40 rounded-md object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      );
+                    }
+                  } catch {
+                    // Invalid URL, don't render
+                    return null;
+                  }
+                  return null;
+                })()}
               </div>
             )}
           </div>
