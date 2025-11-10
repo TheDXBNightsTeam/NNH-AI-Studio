@@ -7,6 +7,7 @@ import { HorizontalLocationCard } from '@/components/locations/horizontal-locati
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -17,6 +18,7 @@ import {
 import { Search, X, AlertCircle, Star, Loader2 } from 'lucide-react';
 import { LocationCardSkeleton } from '@/components/locations/location-card-skeleton';
 import { Location } from '@/components/locations/location-types';
+import { BulkActionBar } from './bulk-action-bar';
 
 interface LocationsStats {
   totalLocations: number;
@@ -43,6 +45,9 @@ export function LocationsListView() {
   );
   const [stats, setStats] = useState<LocationsStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+
+  // Bulk selection state
+  const [selectedLocationIds, setSelectedLocationIds] = useState<Set<string>>(new Set());
 
   // Debounce search input (300ms delay)
   useEffect(() => {
@@ -283,6 +288,37 @@ export function LocationsListView() {
 
   const hasActiveFilters = debouncedSearchQuery || categoryFilter !== 'all' || statusFilter !== 'all' || quickFilter !== 'none';
 
+  // Bulk selection handlers
+  const handleToggleLocation = (locationId: string) => {
+    const newSet = new Set(selectedLocationIds);
+    if (newSet.has(locationId)) {
+      newSet.delete(locationId);
+    } else {
+      newSet.add(locationId);
+    }
+    setSelectedLocationIds(newSet);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedLocationIds.size === filteredLocations.length) {
+      // Deselect all
+      setSelectedLocationIds(new Set());
+    } else {
+      // Select all visible locations
+      setSelectedLocationIds(new Set(filteredLocations.map(loc => loc.id)));
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedLocationIds(new Set());
+  };
+
+  const handleRefresh = () => {
+    // Clear selection and refresh data
+    setSelectedLocationIds(new Set());
+    window.location.reload();
+  };
+
   if (error) {
     return (
       <Card>
@@ -386,13 +422,28 @@ export function LocationsListView() {
         )}
       </div>
 
-      {/* Results Count */}
-      {!loading && (
-        <div className="text-sm text-muted-foreground">
-          Showing {filteredLocations.length} of {locationsWithStats.length} location{locationsWithStats.length !== 1 ? 's' : ''}
-          {hasActiveFilters && filteredLocations.length !== locationsWithStats.length && (
-            <span className="ml-2 text-xs">(filtered from {locationsWithStats.length} total)</span>
-          )}
+      {/* Results Count and Select All */}
+      {!loading && filteredLocations.length > 0 && (
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            Showing {filteredLocations.length} of {locationsWithStats.length} location{locationsWithStats.length !== 1 ? 's' : ''}
+            {hasActiveFilters && filteredLocations.length !== locationsWithStats.length && (
+              <span className="ml-2 text-xs">(filtered from {locationsWithStats.length} total)</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={selectedLocationIds.size === filteredLocations.length && filteredLocations.length > 0}
+              onCheckedChange={handleSelectAll}
+              id="select-all"
+            />
+            <label
+              htmlFor="select-all"
+              className="text-sm font-medium cursor-pointer select-none"
+            >
+              Select All ({filteredLocations.length})
+            </label>
+          </div>
         </div>
       )}
 
@@ -405,15 +456,25 @@ export function LocationsListView() {
         </div>
       )}
 
-      {/* Locations List - Horizontal Cards */}
+      {/* Locations List - Horizontal Cards with Checkboxes */}
       {!loading && filteredLocations.length > 0 && (
         <div className="flex flex-col gap-4">
           {filteredLocations.map((location) => (
-            <HorizontalLocationCard
-              key={location.id}
-              location={location}
-              onViewDetails={(id) => router.push(`/locations/${id}`)}
-            />
+            <div key={location.id} className="flex items-start gap-3">
+              <div className="pt-4">
+                <Checkbox
+                  checked={selectedLocationIds.has(location.id)}
+                  onCheckedChange={() => handleToggleLocation(location.id)}
+                  id={`select-${location.id}`}
+                />
+              </div>
+              <div className="flex-1">
+                <HorizontalLocationCard
+                  location={location}
+                  onViewDetails={(id) => router.push(`/locations/${id}`)}
+                />
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -440,6 +501,14 @@ export function LocationsListView() {
           </CardContent>
         </Card>
       )}
+
+      {/* Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedLocationIds.size}
+        selectedLocationIds={Array.from(selectedLocationIds)}
+        onClearSelection={handleClearSelection}
+        onRefresh={handleRefresh}
+      />
     </div>
   );
 }
