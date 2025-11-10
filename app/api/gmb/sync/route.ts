@@ -1208,10 +1208,14 @@ export async function POST(request: NextRequest) {
               canOperateLodgingData: metadata.canOperateLodgingData,
               canModifyServiceList: metadata.canModifyServiceList,
             };
+            // Generate normalized_location_id as per architecture requirements
+            const normalizedLocationId = location.name.replace(/[^a-zA-Z0-9]/g, '_');
+            
             return {
               gmb_account_id: accountId,
               user_id: userId,
               location_id: location.name,
+              normalized_location_id: normalizedLocationId,
               location_name: location.title || 'Unnamed Location',
               address: addressStr,
               phone: location.phoneNumbers?.primaryPhone || null,
@@ -1222,6 +1226,7 @@ export async function POST(request: NextRequest) {
               longitude: latlng?.longitude ?? null,
               metadata: enhancedMetadata,
               updated_at: new Date().toISOString(),
+              last_synced_at: new Date().toISOString(),
             };
           });
           for (const chunk of chunks(locationRows)) {
