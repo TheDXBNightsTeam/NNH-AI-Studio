@@ -86,29 +86,22 @@ export function LocationMiniDashboard({ location, isExpanded, onToggle, metrics 
           return [Math.max(trailing, 0), baseline];
         })();
 
-  const lastUpdatedRaw =
-    location.lastSync ??
-    metadata.last_sync ??
-    metadata.lastSync ??
-    metadata.updatedAt ??
-    metadata.updated_at ??
-    null;
+  const lastUpdatedRaw = location.lastSync ?? metadata.last_sync ?? metadata.lastSync ?? metadata.updatedAt ?? metadata.updated_at ?? null;
 
-  const lastUpdatedLabel =
-    lastUpdatedRaw != null
-      ? (() => {
-          try {
-            const date =
-              lastUpdatedRaw instanceof Date
-                ? lastUpdatedRaw
-                : new Date(lastUpdatedRaw);
-            if (Number.isNaN(date.getTime())) return 'Not synced yet';
-            return formatDistanceToNow(date, { addSuffix: true });
-          } catch {
-            return 'Not synced yet';
-          }
-        })()
-      : 'Not synced yet';
+  const lastUpdatedLabel = (() => {
+    if (!lastUpdatedRaw) return 'Not synced yet';
+    try {
+      const date = lastUpdatedRaw instanceof Date
+        ? lastUpdatedRaw
+        : typeof lastUpdatedRaw === 'string' || typeof lastUpdatedRaw === 'number'
+        ? new Date(lastUpdatedRaw)
+        : null;
+      if (!date || Number.isNaN(date.getTime())) return 'Not synced yet';
+      return formatDistanceToNow(date, { addSuffix: true });
+    } catch {
+      return 'Not synced yet';
+    }
+  })();
 
   // Simple sparkline chart component
   const Sparkline = ({ data }: { data: number[] }) => {
