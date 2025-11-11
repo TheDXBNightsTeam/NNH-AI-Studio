@@ -43,7 +43,7 @@ export async function getDashboardStats() {
       ? (reviews.reduce((acc, r) => acc + (r.rating || 0), 0) / reviews.length).toFixed(1)
       : "0.0"
 
-  const respondedReviews = reviews?.filter((r) => r.status === "responded").length || 0
+  const respondedReviews = reviews?.filter((r) => typeof r.review_reply === "string" && r.review_reply.trim() !== "").length || 0
   const responseRate = totalReviews > 0 ? Math.round((respondedReviews / totalReviews) * 100) : 0
 
   return {

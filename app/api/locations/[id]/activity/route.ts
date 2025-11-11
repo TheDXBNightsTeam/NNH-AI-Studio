@@ -187,7 +187,7 @@ export async function GET(
     // Get recent reviews for this location
     const { data: recentReviews, error: reviewsError } = await supabase
       .from('gmb_reviews')
-      .select('id, rating, reviewer_name, review_text, created_at, status')
+      .select('id, rating, reviewer_name, review_text, created_at, status, review_reply')
       .eq('location_id', locationId)
       .order('created_at', { ascending: false })
       .limit(10);
@@ -255,20 +255,20 @@ export async function GET(
         // Only add if not already in activity_logs
         const exists = activities.some(a => a.metadata?.review_id === review.id);
         if (!exists) {
+          const hasReply = Boolean(review.review_reply && review.review_reply.trim() !== '');
           activities.push({
             id: `review-${review.id}`,
             type: 'review',
-            title: review.status === 'new' 
-              ? `New ${review.rating}-star review from ${review.reviewer_name}`
-              : review.status === 'responded'
+            title: hasReply
               ? `Review from ${review.reviewer_name} responded`
-              : `Review from ${review.reviewer_name} needs response`,
+              : `New ${review.rating}-star review from ${review.reviewer_name}`,
             description: review.review_text || undefined,
             timestamp: new Date(review.created_at),
             metadata: {
               review_id: review.id,
               rating: review.rating,
               reviewer_name: review.reviewer_name,
+              has_reply: hasReply,
               status: review.status
             }
           });

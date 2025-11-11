@@ -1355,7 +1355,7 @@ export async function POST(request: NextRequest) {
                     review.reviewReply?.updateTime || null;
                   const replyComment = review.reviewReply?.comment?.trim() || null;
                   const hasReply = Boolean(replyComment);
-                  const normalizedStatus = hasReply ? 'responded' : 'new';
+                  const normalizedStatus = hasReply ? 'responded' : 'pending';
 
                   return {
                     gmb_account_id: accountId,
@@ -1824,7 +1824,7 @@ export async function POST(request: NextRequest) {
       redis,
       usingRedis,
       syncLocks,
-      accountId,
+      accountId: accountId,
     });
   }
 }
