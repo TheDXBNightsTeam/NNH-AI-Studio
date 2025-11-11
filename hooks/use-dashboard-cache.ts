@@ -77,7 +77,7 @@ export function useCachedFetch<T>(
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const latestRequestRef = useRef(0);
 
   const key = cacheKey || url;
 
@@ -92,19 +92,13 @@ export function useCachedFetch<T>(
       }
     }
 
-    // Cancel previous request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    abortControllerRef.current = new AbortController();
+    const requestId = ++latestRequestRef.current;
     setLoading(true);
     setError(null);
 
     try {
       const response = await fetch(url, {
         ...options,
-        signal: abortControllerRef.current.signal,
       });
 
       if (!response.ok) {
@@ -115,19 +109,19 @@ export function useCachedFetch<T>(
       
       // Cache the data
       dashboardCache.set(key, responseData, expiry);
-      setData(responseData);
+      if (requestId === latestRequestRef.current) {
+        setData(responseData);
+      }
       
       return responseData;
     } catch (err: any) {
-      if (err.name === 'AbortError') {
-        return; // Request was cancelled
-      }
-      
       const errorMsg = err.message || 'An error occurred';
       setError(errorMsg);
       throw err;
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestRef.current) {
+        setLoading(false);
+      }
     }
   }, [url, key, options, expiry]);
 
