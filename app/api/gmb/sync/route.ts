@@ -1802,7 +1802,7 @@ interface ReleaseLockParams {
   request: Request
   redis: typeof redis | null
   usingRedis: boolean
-  syncLocks: Map<string, boolean>
+  syncLocks: Map<string, number>
 }
 
 async function releaseSyncLock({
