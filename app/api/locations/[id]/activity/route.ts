@@ -199,7 +199,7 @@ export async function GET(
     // Get recent posts for this location
     const { data: recentPosts, error: postsError } = await supabase
       .from('gmb_posts')
-      .select('id, title, state, created_at')
+      .select('id, title, status, created_at')
       .eq('location_id', locationId)
       .order('created_at', { ascending: false })
       .limit(10);
@@ -211,7 +211,7 @@ export async function GET(
     // Get recent media for this location
     const { data: recentMedia, error: mediaError } = await supabase
       .from('gmb_media')
-      .select('id, media_format, created_at')
+      .select('id, type, created_at')
       .eq('location_id', locationId)
       .order('created_at', { ascending: false })
       .limit(10);
@@ -223,7 +223,7 @@ export async function GET(
     // Get recent questions for this location
     const { data: recentQuestions, error: questionsError } = await supabase
       .from('gmb_questions')
-      .select('id, text, created_at, answer')
+      .select('id, question_text, created_at, answer_text, answer_status')
       .eq('location_id', locationId)
       .order('created_at', { ascending: false })
       .limit(10);
@@ -284,14 +284,14 @@ export async function GET(
           activities.push({
             id: `post-${post.id}`,
             type: 'post',
-            title: post.state === 'LIVE' 
+            title: post.status === 'published' 
               ? `Post "${post.title || 'Untitled'}" published`
-              : `Post "${post.title || 'Untitled'}" ${post.state?.toLowerCase()}`,
+              : `Post "${post.title || 'Untitled'}" ${post.status ?? 'updated'}`,
             timestamp: new Date(post.created_at),
             metadata: {
               post_id: post.id,
               title: post.title,
-              state: post.state
+              status: post.status
             }
           });
         }
@@ -306,11 +306,11 @@ export async function GET(
           activities.push({
             id: `media-${media.id}`,
             type: 'photo',
-            title: `New ${media.media_format || 'photo'} uploaded`,
+            title: `New ${(media.type || 'PHOTO').toLowerCase()} uploaded`,
             timestamp: new Date(media.created_at),
             metadata: {
               media_id: media.id,
-              format: media.media_format
+              type: media.type
             }
           });
         }
@@ -325,15 +325,16 @@ export async function GET(
           activities.push({
             id: `question-${question.id}`,
             type: 'question',
-            title: question.answer 
-              ? `Question answered: "${question.text.substring(0, 50)}${question.text.length > 50 ? '...' : ''}"`
-              : `New question: "${question.text.substring(0, 50)}${question.text.length > 50 ? '...' : ''}"`,
-            description: question.text,
+            title: question.answer_text 
+              ? `Question answered: "${question.question_text.substring(0, 50)}${question.question_text.length > 50 ? '...' : ''}"`
+              : `New question: "${question.question_text.substring(0, 50)}${question.question_text.length > 50 ? '...' : ''}"`,
+            description: question.question_text,
             timestamp: new Date(question.created_at),
             metadata: {
               question_id: question.id,
-              text: question.text,
-              has_answer: !!question.answer
+              text: question.question_text,
+              has_answer: !!question.answer_text,
+              answer_status: question.answer_status
             }
           });
         }
