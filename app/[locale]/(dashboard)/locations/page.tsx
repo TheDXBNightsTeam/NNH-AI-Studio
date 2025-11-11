@@ -13,6 +13,19 @@ import { LocationFormDialog } from '@/components/locations/location-form-dialog'
 import { GMBConnectionBanner } from '@/components/locations/gmb-connection-banner';
 import { useGmbStatus } from '@/hooks/use-gmb-status';
 import { useIsMobile } from '@/components/locations/responsive-locations-layout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useRouter } from 'next/navigation';
+
+const QuickActionButton = ({ icon: Icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) => (
+  <Button
+    variant="outline"
+    className="flex w-full items-center justify-center gap-2 border-white/10 bg-white/5 text-white hover:border-white/30 hover:bg-white/10"
+    onClick={onClick}
+  >
+    {Icon}
+    {label}
+  </Button>
+);
 
 export default function LocationsPage() {
   const t = useTranslations('Locations');
@@ -23,6 +36,7 @@ export default function LocationsPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const { connected, activeAccount } = useGmbStatus();
   const gmbAccountId = activeAccount?.id || null;
+  const router = useRouter();
 
   useEffect(() => {
     if (!isMobile) {
@@ -315,11 +329,49 @@ export default function LocationsPage() {
             <LocationsListView />
           )
         ) : (
-          <div className="grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-6">
-            <div className="relative min-h-[620px] overflow-hidden rounded-2xl border border-primary/10 bg-background/40 shadow-sm">
-              <LocationsMapTab />
-            </div>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
             <div className="space-y-4">
+              <div className="overflow-hidden rounded-2xl border border-white/10 bg-background/40 shadow">
+                <LocationsMapTab />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card className="border-white/10 bg-white/5 text-white">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-xs text-white/80">
+                    <p>No recent activity captured yet.</p>
+                    <p className="text-white/50">Run a sync to pull latest reviews and questions.</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-white/10 bg-white/5 text-white">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    <QuickActionButton
+                      icon={<span className="text-base">💬</span>}
+                      label="Reply to Reviews"
+                      onClick={() => router.push('/reviews')}
+                    />
+                    <QuickActionButton
+                      icon={<span className="text-base">📝</span>}
+                      label="Create Post"
+                      onClick={() => router.push('/posts')}
+                    />
+                    <QuickActionButton
+                      icon={<span className="text-base">📊</span>}
+                      label="View Analytics"
+                      onClick={() => router.push('/analytics')}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            <div>
               <LocationsListView />
             </div>
           </div>
