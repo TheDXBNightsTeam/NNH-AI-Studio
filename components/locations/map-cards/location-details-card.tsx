@@ -26,6 +26,8 @@ export function LocationDetailsCard({
 }: LocationDetailsCardProps) {
   const router = useRouter();
   const [healthBarWidth, setHealthBarWidth] = useState('0%');
+  const coverImageUrl = location?.coverImageUrl || (location?.metadata?.profile?.coverPhotoUrl as string | undefined);
+  const logoImageUrl = location?.logoImageUrl || (location?.metadata?.profile?.logoUrl as string | undefined);
 
   // Animate health bar after component mounts
   useEffect(() => {
@@ -83,11 +85,34 @@ export function LocationDetailsCard({
   return (
     <FloatingCard position="top-right" delay={0.2} mobilePosition="top" className="w-full md:w-[400px]">
       <div className="space-y-4">
+        {coverImageUrl && (
+          <div className="relative h-32 w-full overflow-hidden rounded-2xl border border-white/5 bg-black/30">
+            <img
+              src={coverImageUrl}
+              alt={`${location.name} cover`}
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-start gap-3">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-sm">
-            {getInitials(location.name)}
-          </div>
+          {logoImageUrl ? (
+            <div className="h-12 w-12 overflow-hidden rounded-full border border-white/20 bg-black/40">
+              <img
+                src={logoImageUrl}
+                alt={`${location.name} logo`}
+                loading="lazy"
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-sm font-bold text-white">
+              {getInitials(location.name)}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-white text-lg truncate">
               {location.name}

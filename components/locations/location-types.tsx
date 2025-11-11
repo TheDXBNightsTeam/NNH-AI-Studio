@@ -43,6 +43,8 @@ export interface Location {
   responseRate?: number;
   ratingTrend?: number;
   metadata?: Record<string, any>;
+  coverImageUrl?: string | null;
+  logoImageUrl?: string | null;
   // Extended fields for comprehensive health score
   additionalCategories?: string[];
   menuLink?: string;

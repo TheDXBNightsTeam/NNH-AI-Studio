@@ -121,35 +121,60 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
     reviewCountType: typeof reviewCount,
   });
   
-  const healthColor = healthScore !== undefined && healthScore !== null
-    ? getHealthColor(healthScore)
-    : 'gray';
+  const coverImageUrl =
+    location.coverImageUrl ??
+    (location.metadata?.profile?.coverPhotoUrl as string | undefined) ??
+    null;
+  const logoImageUrl =
+    location.logoImageUrl ??
+    (location.metadata?.profile?.logoUrl as string | undefined) ??
+    null;
+
+  const hasImage = Boolean(coverImageUrl);
 
   return (
-    <div className="flex flex-col p-6 bg-black/40 backdrop-blur-xl border border-orange-500/30 rounded-2xl transition-all duration-300 hover:translate-y-[-4px] hover:border-orange-500/60 hover:shadow-[0_8px_32px_rgba(255,127,0,0.2)]">
-      <div className="flex flex-col md:flex-row gap-6 min-h-[150px]">
-        {/* Left Side: Cover Image with Logo */}
-        <div className="relative w-full md:w-[200px] h-[150px] md:h-[150px] flex-shrink-0 rounded-xl overflow-hidden">
-          {/* Cover Image */}
-          <div className="w-full h-full bg-gradient-to-br from-orange-500 to-orange-600" />
-          
-          {/* Logo Overlay */}
-          <div className="absolute bottom-[-20px] left-1/2 transform -translate-x-1/2 w-16 h-16 rounded-full border-[3px] border-black bg-white overflow-hidden shadow-lg">
-            <div className="w-full h-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white text-2xl font-bold">
-              {location.name[0]?.toUpperCase() || '?'}
+    <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/40 backdrop-blur-lg shadow-[0_16px_40px_rgba(0,0,0,0.35)] transition-transform duration-300 hover:-translate-y-1">
+      <div className="grid gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="relative min-h-[200px] overflow-hidden">
+          <div
+            className={`absolute inset-0 ${
+              hasImage ? 'bg-black/20' : 'bg-gradient-to-br from-primary/70 to-accent/70'
+            }`}
+          >
+            {hasImage && (
+              <img
+                src={coverImageUrl!}
+                alt={`${location.name} cover`}
+                loading="lazy"
+                className="h-full w-full object-cover"
+              />
+            )}
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+
+          <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-3">
+            <div className="h-20 w-20 overflow-hidden rounded-full border-2 border-white/60 bg-black/60 shadow-lg">
+              {logoImageUrl ? (
+                <img
+                  src={logoImageUrl}
+                  alt={`${location.name} logo`}
+                  loading="lazy"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-accent text-2xl font-semibold text-white">
+                  {location.name[0]?.toUpperCase() || '—'}
+                </div>
+              )}
             </div>
           </div>
         </div>
-        
-        {/* Right Side: Content */}
-        <div className="flex-1 flex flex-col gap-3 pt-2 min-w-0">
-          {/* Header */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <h3 className="text-xl font-semibold text-white m-0 break-words">
-              {location.name || 'Unnamed Location'}
-            </h3>
+
+        <div className="flex min-w-0 flex-col gap-4 p-6 md:p-8">
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="text-xl font-semibold text-white">{location.name || 'Unnamed Location'}</h3>
             {location.status === 'verified' && (
-              <Badge className="inline-flex items-center gap-1 px-3 py-1 bg-green-500/20 border border-green-500/40 text-green-500 text-xs rounded-full">
+              <Badge className="inline-flex items-center gap-1 border border-emerald-500/40 bg-emerald-500/15 px-3 py-1 text-xs text-emerald-400">
                 ✓ Verified
               </Badge>
             )}
@@ -159,52 +184,49 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
               </Badge>
             )}
           </div>
-          
-          {/* Address */}
+
           {location.address && (
-            <p className="text-sm text-gray-400 m-0 flex items-center gap-1">
-              <MapPin className="w-4 h-4" />
-              {location.address}
+            <p className="flex items-start gap-2 text-sm text-gray-300">
+              <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" />
+              <span className="line-clamp-2">{location.address}</span>
             </p>
           )}
-          
-          {/* Stats Row */}
-          <div className="flex items-center gap-3 text-sm flex-wrap">
+
+          <div className="flex flex-wrap items-center gap-3 text-sm">
             {rating != null && rating > 0 ? (
-              <span className="text-white flex items-center gap-1">
+              <span className="flex items-center gap-1 text-white">
                 <span className="text-yellow-500">⭐</span>
                 {typeof rating === 'number' ? rating.toFixed(1) : rating}
                 {reviewCount != null && reviewCount > 0 && (
-                  <span className="text-gray-400 ml-1">
+                  <span className="ml-1 text-gray-400">
                     ({formatLargeNumber(reviewCount)} reviews)
                   </span>
                 )}
               </span>
             ) : (
-              <span className="text-gray-400 text-sm">No rating yet</span>
+              <span className="text-gray-400">No rating yet</span>
             )}
             {rating != null && rating > 0 && healthScore != null && healthScore > 0 && (
               <span className="text-gray-500">•</span>
             )}
             {healthScore != null && healthScore > 0 ? (
               <span className={`font-medium ${getHealthScoreColor(healthScore)}`}>
-                💚 Health: {healthScore}%
+                Health: {healthScore}%
               </span>
             ) : (
-              <span className="text-gray-400 text-sm">No health score</span>
+              <span className="text-gray-400">No health score</span>
             )}
           </div>
-          
-          {/* Actions */}
-          <div className="flex gap-2 mt-auto flex-wrap">
+
+          <div className="flex flex-wrap gap-2">
             {location.phone && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleCall}
-                className="bg-white/5 border-orange-500/30 text-white hover:bg-orange-500/10 hover:border-orange-500/50"
+                className="border-white/10 bg-white/5 text-white hover:border-white/30 hover:bg-white/10"
               >
-                <Phone className="w-4 h-4 mr-2" />
+                <Phone className="mr-2 h-4 w-4" />
                 Call
               </Button>
             )}
@@ -213,9 +235,9 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
                 variant="outline"
                 size="sm"
                 onClick={handleDirections}
-                className="bg-white/5 border-orange-500/30 text-white hover:bg-orange-500/10 hover:border-orange-500/50"
+                className="border-white/10 bg-white/5 text-white hover:border-white/30 hover:bg-white/10"
               >
-                <MapPin className="w-4 h-4 mr-2" />
+                <MapPin className="mr-2 h-4 w-4" />
                 Directions
               </Button>
             )}
@@ -223,36 +245,35 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
               variant="outline"
               size="sm"
               onClick={handleViewDetails}
-              className="bg-orange-500/20 border-orange-500/50 text-white hover:bg-orange-500/30"
+              className="border-white/20 bg-primary/20 text-white hover:border-white/40 hover:bg-primary/30"
             >
-              <Eye className="w-4 h-4 mr-2" />
+              <Eye className="mr-2 h-4 w-4" />
               View Details
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => router.push(`/locations/${location.id}/edit`)}
-              className="bg-white/5 border-orange-500/30 text-white hover:bg-orange-500/10 hover:border-orange-500/50"
+              className="border-white/10 bg-white/5 text-white hover:border-white/30 hover:bg-white/10"
             >
-              <Settings className="w-4 h-4 mr-2" />
+              <Settings className="mr-2 h-4 w-4" />
               Settings
             </Button>
-            {/* Expand/Collapse Button */}
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="ml-auto bg-white/5 border-orange-500/30 text-white hover:bg-orange-500/10 hover:border-orange-500/50"
+              className="ml-auto text-sm text-white/80 hover:text-white"
             >
               {isExpanded ? (
                 <>
-                  <ChevronUp className="w-4 h-4 mr-2" />
-                  Hide Details
+                  <ChevronUp className="mr-2 h-4 w-4" />
+                  Hide insights
                 </>
               ) : (
                 <>
-                  <ChevronDown className="w-4 h-4 mr-2" />
-                  Show Details
+                  <ChevronDown className="mr-2 h-4 w-4" />
+                  Show insights
                 </>
               )}
             </Button>
@@ -260,12 +281,15 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
         </div>
       </div>
 
-      {/* Mini Dashboard */}
-      <LocationMiniDashboard
-        location={location}
-        isExpanded={isExpanded}
-        onToggle={() => setIsExpanded(!isExpanded)}
-      />
+      {isExpanded && (
+        <div className="border-t border-white/10 bg-black/40 px-6 pb-6 pt-4 md:px-8">
+          <LocationMiniDashboard
+            location={location}
+            isExpanded={isExpanded}
+            onToggle={() => setIsExpanded(!isExpanded)}
+          />
+        </div>
+      )}
     </div>
   );
 }

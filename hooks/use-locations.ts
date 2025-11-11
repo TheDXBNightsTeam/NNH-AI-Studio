@@ -55,6 +55,63 @@ function coerceNumber(value: unknown): number | undefined {
   return undefined;
 }
 
+const coerceString = (value: unknown): string | undefined => {
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return value.trim();
+  }
+  return undefined;
+};
+
+function extractImageFromMetadata(
+  metadata: Record<string, any>,
+  preferredKeys: string[]
+): string | undefined {
+  for (const key of preferredKeys) {
+    const value = metadata?.[key];
+    const url =
+      typeof value === 'string'
+        ? value
+        : typeof value === 'object' && value !== null
+        ? (value.url as string | undefined) ??
+          (value.src as string | undefined) ??
+          (value.value as string | undefined)
+        : undefined;
+    const parsed = coerceString(url);
+    if (parsed) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
+
+function extractFirstMediaUrl(metadata: Record<string, any>): string | undefined {
+  const mediaCollections = [
+    metadata.mediaItems,
+    metadata.media,
+    metadata.photos,
+    metadata.gallery,
+    metadata.images,
+  ];
+
+  for (const collection of mediaCollections) {
+    if (Array.isArray(collection)) {
+      for (const item of collection) {
+        const candidate =
+          coerceString(item?.coverUrl) ??
+          coerceString(item?.cover_photo_url) ??
+          coerceString(item?.photoUrl) ??
+          coerceString(item?.url) ??
+          coerceString(item?.thumbnailUrl) ??
+          coerceString(item?.imageUrl);
+        if (candidate) {
+          return candidate;
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
 export function useLocations(
   filters: LocationFilters = {},
   pageSize: number = 20
@@ -218,6 +275,7 @@ export function useLocations(
             loc && typeof loc.metadata === 'object' && loc.metadata !== null
               ? (loc.metadata as Record<string, any>)
               : {};
+          const profile = (metadata.profile as Record<string, any>) || {};
 
           const rating =
             coerceNumber(loc.rating) ?? coerceNumber(metadata.rating);
@@ -308,6 +366,38 @@ export function useLocations(
             loc.updated_at ||
             null;
 
+          const logoCandidates = [
+            coerceString(profile.logoUrl),
+            coerceString(profile.logo_url),
+            coerceString(profile.logo?.url),
+            coerceString(profile.iconUrl),
+            coerceString(profile.profilePhotoUrl),
+            coerceString(metadata.logoUrl),
+            coerceString(metadata.logo_url),
+          ];
+
+          const coverCandidates = [
+            coerceString(profile.coverPhotoUrl),
+            coerceString(profile.cover_photo_url),
+            coerceString(profile.coverPhoto?.url),
+            coerceString(metadata.coverPhotoUrl),
+            coerceString(metadata.cover_photo_url),
+            coerceString(metadata.heroImageUrl),
+            coerceString(metadata.hero_image_url),
+          ];
+
+          const logoImageUrl =
+            logoCandidates.find(Boolean) ??
+            extractImageFromMetadata(metadata, ['logo', 'brandLogo']) ??
+            extractFirstMediaUrl(
+              (profile as Record<string, any>) ?? {}
+            );
+
+          const coverImageUrl =
+            coverCandidates.find(Boolean) ??
+            extractImageFromMetadata(metadata, ['coverPhoto', 'cover', 'heroImage']) ??
+            extractFirstMediaUrl(metadata);
+
           return {
             id: loc.id,
             name: loc.location_name || 'Unnamed Location',
@@ -341,6 +431,8 @@ export function useLocations(
               typeof metadata.profileProtection === 'boolean'
                 ? metadata.profileProtection
                 : undefined,
+            coverImageUrl: coverImageUrl ?? null,
+            logoImageUrl: logoImageUrl ?? null,
           };
         });
 

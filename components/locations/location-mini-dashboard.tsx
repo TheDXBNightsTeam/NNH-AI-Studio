@@ -171,8 +171,8 @@ export function LocationMiniDashboard({ location, isExpanded, onToggle }: Locati
   if (!isExpanded) return null;
 
   return (
-    <div className="mt-4 pt-4 border-t border-border/50 animate-in slide-in-from-top-2 duration-300">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="animate-in slide-in-from-top-2 duration-300">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* Rating Trend */}
         <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/20">
           <CardContent className="p-4">
