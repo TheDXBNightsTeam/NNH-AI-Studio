@@ -1168,6 +1168,30 @@ export async function POST(request: NextRequest) {
           accountResource,
           locationsNextPageToken
         );
+        // Fetch cover photo for each location using Google My Business v4 API
+        for (const loc of locations) {
+          const locationId = loc.name.split('/').pop();
+          const mediaUrl = `${GMB_V4_BASE}/${accountResource}/locations/${locationId}/media`;
+          let coverPhotoUrl = null;
+
+          try {
+            const res = await fetch(mediaUrl, {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const cover = data.mediaItems?.find((m: any) => m.mediaFormat === 'COVER');
+              coverPhotoUrl = cover?.googleUrl || null;
+            } else {
+              console.warn(`[GMB Sync API] Failed to fetch media for location ${locationId}`);
+            }
+          } catch (err) {
+            console.error(`[GMB Sync API] Error fetching cover photo for location ${locationId}:`, err);
+          }
+
+          // Attach cover photo URL to location object for database insert
+          loc.cover_photo_url = coverPhotoUrl;
+        }
         if (locations.length > 0) {
           console.log('[GMB Sync API] Sample location from Google API:', {
             name: locations[0].name,
@@ -1224,6 +1248,8 @@ export async function POST(request: NextRequest) {
               is_active: true,
               latitude: latlng?.latitude ?? null,
               longitude: latlng?.longitude ?? null,
+              // Store cover photo url
+              cover_photo_url: location.cover_photo_url || null,
               metadata: enhancedMetadata,
               updated_at: new Date().toISOString(),
               last_synced_at: new Date().toISOString(),
