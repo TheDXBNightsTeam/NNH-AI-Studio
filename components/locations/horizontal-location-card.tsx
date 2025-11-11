@@ -97,7 +97,14 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
   const hasLogo = Boolean(logoImageUrl);
 
   const { data: snapshot } = useDashboardSnapshot();
-  const metrics = getLocationMetricsFromSnapshot(snapshot, location.id, location);
+  const metrics = getLocationMetricsFromSnapshot(snapshot, location.id, {
+    id: location.id,
+    rating: location.rating,
+    ratingTrend: location.ratingTrend,
+    responseRate: location.responseRate,
+    healthScore: location.healthScore,
+    insights: location.insights,
+  });
 
   const ratingValue = rating != null ? rating.toFixed(1) : location.rating != null ? location.rating.toFixed(1) : '—';
   const ratingTrend = metrics?.ratingTrend ?? location.ratingTrend ?? 0;
