@@ -7,13 +7,14 @@ import { LocationsMapTab } from '@/components/locations/locations-map-tab-new';
 import { LocationsStatsCardsAPI } from '@/components/locations/locations-stats-cards-api';
 import { LocationsListView } from '@/components/locations/locations-list-view';
 import { Button } from '@/components/ui/button';
-import { MapPin, List, RefreshCw, Download, Plus, Loader2 } from 'lucide-react';
+import { MapPin, List, RefreshCw, Download, Plus, Loader2, MessageSquare, FilePlus2, BarChart3, RefreshCw as RefreshIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { LocationFormDialog } from '@/components/locations/location-form-dialog';
 import { GMBConnectionBanner } from '@/components/locations/gmb-connection-banner';
 import { useGmbStatus } from '@/hooks/use-gmb-status';
 import { useIsMobile } from '@/components/locations/responsive-locations-layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useDashboardSnapshot } from '@/hooks/use-dashboard-cache';
 import { useRouter } from 'next/navigation';
 
 const QuickActionButton = ({ icon: Icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) => (
@@ -36,6 +37,8 @@ export default function LocationsPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const { connected, activeAccount } = useGmbStatus();
   const gmbAccountId = activeAccount?.id || null;
+  const { data: overviewSnapshot } = useDashboardSnapshot();
+  const recentHighlights = overviewSnapshot?.reviewStats?.recentHighlights ?? [];
   const router = useRouter();
 
   useEffect(() => {
@@ -339,30 +342,58 @@ export default function LocationsPage() {
                 <Card className="border-white/10 bg-white/5 text-white">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
+                    <CardDescription className="text-xs text-white/60">
+                      Latest highlights from synced reviews.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3 text-xs text-white/80">
-                    <p>No recent activity captured yet.</p>
-                    <p className="text-white/50">Run a sync to pull latest reviews and questions.</p>
+                    {recentHighlights.length === 0 ? (
+                      <>
+                        <p>No recent highlights yet.</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-dashed border-white/20 text-white hover:border-white/40 hover:bg-white/10"
+                          onClick={handleSync}
+                        >
+                          <RefreshIcon className="mr-2 h-4 w-4" />
+                          Run sync
+                        </Button>
+                      </>
+                    ) : (
+                      recentHighlights.slice(0, 3).map((highlight) => (
+                        <div key={highlight.reviewId} className="rounded-xl border border-white/10 bg-black/40 p-3">
+                          <div className="text-sm text-white">{highlight.reviewer}</div>
+                          <div className="text-xs text-white/60">
+                            {new Date(highlight.createdAt).toLocaleString()}
+                          </div>
+                          <p className="mt-2 line-clamp-3 text-sm text-white/80">{highlight.locationId}</p>
+                        </div>
+                      ))
+                    )}
                   </CardContent>
                 </Card>
 
                 <Card className="border-white/10 bg-white/5 text-white">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
+                    <CardDescription className="text-xs text-white/60">
+                      Jump into everyday workflows.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     <QuickActionButton
-                      icon={<span className="text-base">💬</span>}
+                      icon={<MessageSquare className="h-4 w-4" />}
                       label="Reply to Reviews"
                       onClick={() => router.push('/reviews')}
                     />
                     <QuickActionButton
-                      icon={<span className="text-base">📝</span>}
+                      icon={<FilePlus2 className="h-4 w-4" />}
                       label="Create Post"
                       onClick={() => router.push('/posts')}
                     />
                     <QuickActionButton
-                      icon={<span className="text-base">📊</span>}
+                      icon={<BarChart3 className="h-4 w-4" />}
                       label="View Analytics"
                       onClick={() => router.push('/analytics')}
                     />

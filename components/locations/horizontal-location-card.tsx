@@ -111,9 +111,9 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
             </>
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/60 to-accent/60">
-              <div className="rounded-full border border-white/30 bg-black/60 px-4 py-2 text-xs text-white">
-                Add cover photo in Branding settings
-              </div>
+              <span className="rounded-full border border-white/30 bg-black/60 px-3 py-1 text-[11px] text-white">
+                No cover photo
+              </span>
             </div>
           )}
 
@@ -128,7 +128,7 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-white">
-                  Add logo
+                  No logo
                 </div>
               )}
             </div>
@@ -146,6 +146,25 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
             {location.category && (
               <Badge variant="outline" className="text-xs">
                 {location.category}
+              </Badge>
+            )}
+
+            {!hasCover && (
+              <Badge
+                variant="outline"
+                className="cursor-pointer border-dashed border-white/30 text-[11px] text-white/80 hover:border-white/60 hover:text-white"
+                onClick={() => router.push('/settings/branding')}
+              >
+                Add cover photo
+              </Badge>
+            )}
+            {!hasLogo && (
+              <Badge
+                variant="outline"
+                className="cursor-pointer border-dashed border-white/30 text-[11px] text-white/80 hover:border-white/60 hover:text-white"
+                onClick={() => router.push('/settings/branding')}
+              >
+                Add logo
               </Badge>
             )}
           </div>
