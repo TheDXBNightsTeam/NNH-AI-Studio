@@ -21,7 +21,6 @@ import {
   LazyAIInsights, 
   LazyGamificationWidget 
 } from '@/components/dashboard/lazy-dashboard-components';
-import { useDashboardStats, cacheUtils } from '@/hooks/use-dashboard-cache';
 import { 
   type DashboardWidgetPreferences, 
   getDashboardPreferences 
@@ -40,6 +39,8 @@ import { DashboardHeader } from './components/DashboardHeader';
 import { GMBConnectionBanner } from './components/GMBConnectionBanner';
 import { HealthScoreCard } from './components/HealthScoreCard';
 import { DashboardBanner } from '@/components/dashboard/dashboard-banner';
+import { useDashboardSnapshot, cacheUtils } from '@/hooks/use-dashboard-cache';
+import type { DashboardSnapshot } from '@/types/dashboard';
 
 interface DashboardStats {
   totalLocations: number;
@@ -94,8 +95,27 @@ export default function DashboardPage() {
   const [dateRange, setDateRange] = useState<DateRange>({ preset: '30d', start: null, end: null });
   const [widgetPreferences, setWidgetPreferences] = useState<DashboardWidgetPreferences>(getDashboardPreferences());
 
-  // استخدام الـ cached data fetching
-  const { data: stats, loading, error, fetchData, invalidate } = useDashboardStats(dateRange);
+  const { data: snapshot, loading, error, fetchData } = useDashboardSnapshot();
+
+  const mapSnapshotToDashboardStats = (data: DashboardSnapshot): DashboardStats => ({
+    totalLocations: data.locationSummary.totalLocations,
+    locationsTrend: 0,
+    averageRating: data.reviewStats.averageRating ?? 0,
+    allTimeAverageRating: data.reviewStats.averageRating ?? 0,
+    ratingTrend: data.kpis.ratingTrendPct ?? 0,
+    totalReviews: data.reviewStats.totals.total ?? 0,
+    reviewsTrend: data.kpis.reviewTrendPct ?? 0,
+    responseRate: data.reviewStats.responseRate ?? 0,
+    responseTarget: 100,
+    healthScore: data.kpis.healthScore ?? 0,
+    pendingReviews: data.reviewStats.totals.pending ?? 0,
+    unansweredQuestions: data.questionStats.totals.unanswered ?? 0,
+    monthlyComparison: undefined,
+    locationHighlights: undefined,
+    bottlenecks: data.bottlenecks ?? [],
+  });
+
+  const snapshotData = snapshot ?? null;
 
   // Default stats في حالة عدم وجود بيانات
   const defaultStats: DashboardStats = {
@@ -114,10 +134,18 @@ export default function DashboardPage() {
     bottlenecks: [],
   };
 
-  const currentStats: DashboardStats = stats ? {
-    ...defaultStats,
-    ...stats
-  } : defaultStats;
+  const currentStats: DashboardStats = snapshotData
+    ? {
+        ...defaultStats,
+        ...mapSnapshotToDashboardStats(snapshotData),
+      }
+    : defaultStats;
+
+  useEffect(() => {
+    if (snapshotData?.locationSummary.lastGlobalSync) {
+      setLastDataUpdate(new Date(snapshotData.locationSummary.lastGlobalSync));
+    }
+  }, [snapshotData?.locationSummary.lastGlobalSync]);
 
   // Get detailed comparison period for stats cards
   const comparisonDetails = getDetailedComparisonPeriod(dateRange);
@@ -159,7 +187,7 @@ export default function DashboardPage() {
     }
 
     const handleSyncComplete = () => {
-      cacheUtils.invalidateStats();
+      cacheUtils.invalidateOverview();
       fetchData(true); // Force refresh
     };
 
@@ -171,7 +199,7 @@ export default function DashboardPage() {
 
   // Callback بعد نجاح عمليات GMB (sync/connect/disconnect)
   const handleGMBSuccess = async () => {
-    cacheUtils.invalidateStats();
+    cacheUtils.invalidateOverview();
     await fetchData(true);
     await fetchConnectionStatus();
     router.refresh();

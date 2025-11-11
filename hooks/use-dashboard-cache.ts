@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import type { DashboardSnapshot } from '@/types/dashboard';
 
 interface CacheEntry<T> {
   data: T;
@@ -167,11 +168,21 @@ export function useDashboardStats(dateRange?: any) {
   return useCachedFetch(url, undefined, cacheKey, 3 * 60 * 1000); // 3 minutes cache
 }
 
+export function useDashboardSnapshot() {
+  return useCachedFetch<DashboardSnapshot>(
+    '/api/dashboard/overview',
+    undefined,
+    'dashboard-overview',
+    3 * 60 * 1000,
+  );
+}
+
 // Cache management utilities
 export const cacheUtils = {
   clear: () => dashboardCache.clear(),
   invalidatePattern: (pattern: string) => dashboardCache.invalidate(pattern),
   invalidateStats: () => dashboardCache.invalidate('dashboard-stats'),
+  invalidateOverview: () => dashboardCache.invalidate('dashboard-overview'),
   invalidateAll: () => dashboardCache.clear(),
 };
 
