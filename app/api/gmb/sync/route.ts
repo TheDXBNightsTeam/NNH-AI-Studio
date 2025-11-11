@@ -1353,6 +1353,9 @@ export async function POST(request: NextRequest) {
                     review.createTime || new Date().toISOString();
                   const replyUpdateTime =
                     review.reviewReply?.updateTime || null;
+                  const replyComment = review.reviewReply?.comment?.trim() || null;
+                  const hasReply = Boolean(replyComment);
+                  const normalizedStatus = hasReply ? 'responded' : 'new';
 
                   return {
                     gmb_account_id: accountId,
@@ -1366,11 +1369,13 @@ export async function POST(request: NextRequest) {
                     reviewer_display_name: reviewerName,
                     reviewer_profile_photo_url:
                       review.reviewer?.profilePhotoUrl || null,
-                    response: review.reviewReply?.comment || null,
+                    review_reply: replyComment,
+                    response_text: replyComment,
                     reply_date: replyUpdateTime,
                     responded_at: replyUpdateTime,
-                    has_reply: !!review.reviewReply,
-                    status: review.reviewReply ? 'replied' : 'pending',
+                    has_reply: hasReply,
+                    has_response: hasReply,
+                    status: normalizedStatus,
                     google_my_business_name: review.name || null,
                     review_url: review.reviewUrl || null,
                     synced_at: new Date().toISOString(),
@@ -1819,6 +1824,7 @@ export async function POST(request: NextRequest) {
       redis,
       usingRedis,
       syncLocks,
+      accountId,
     });
   }
 }
@@ -1829,6 +1835,7 @@ interface ReleaseLockParams {
   redis: Redis | null
   usingRedis: boolean
   syncLocks: Map<string, number>
+  accountId?: string | null
 }
 
 async function releaseSyncLock({
@@ -1837,14 +1844,22 @@ async function releaseSyncLock({
   redis,
   usingRedis,
   syncLocks,
+  accountId: accountIdFromContext,
 }: ReleaseLockParams) {
   if (!acquiredLock) {
     return
   }
 
   try {
-    const body = await request.clone().json().catch(() => ({} as any))
-    const accountId = body?.accountId || body?.account_id
+    let accountId = accountIdFromContext || null
+
+    if (!accountId) {
+      const clonedBody = await request
+        .clone()
+        .json()
+        .catch(() => ({} as any))
+      accountId = clonedBody?.accountId || clonedBody?.account_id || null
+    }
 
     if (!accountId) {
       return
