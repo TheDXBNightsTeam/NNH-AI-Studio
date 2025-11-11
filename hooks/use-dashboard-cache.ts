@@ -204,21 +204,20 @@ export function useCacheStatus() {
 export const getLocationMetricsFromSnapshot = (
   snapshot: DashboardSnapshot | null | undefined,
   locationId: string | undefined,
+  location?: Partial<Location>
 ) => {
-  if (!snapshot || !locationId) {
+  if (!locationId) {
     return null;
   }
 
-  const highlight = snapshot.reviewStats.recentHighlights.find(
-    (item) => item.locationId === locationId,
-  );
+  const reviewTotals = snapshot?.reviewStats?.totals;
+  const locationEntry = snapshot?.locationSummary?.locations?.find((loc) => loc.id === locationId);
 
   return {
-    ratingTrend: snapshot.kpis.ratingTrendPct ?? 0,
-    viewsThisMonth: snapshot.postStats.thisWeek ?? 0,
-    responseRate: snapshot.reviewStats.responseRate ?? 0,
-    pendingReviews: snapshot.reviewStats.totals.pending ?? 0,
-    healthScore: snapshot.kpis.healthScore ?? 0,
-    highlight,
+    ratingTrend: snapshot?.kpis?.ratingTrendPct ?? location?.ratingTrend ?? 0,
+    viewsThisMonth: snapshot?.postStats?.thisWeek ?? Number(location?.insights?.views ?? 0),
+    responseRate: snapshot?.reviewStats?.responseRate ?? Number(location?.responseRate ?? location?.insights?.responseRate ?? 0),
+    pendingReviews: reviewTotals?.pending ?? Number(location?.insights?.pendingReviews ?? 0),
+    healthScore: locationEntry?.rating ?? snapshot?.kpis?.healthScore ?? Number(location?.healthScore ?? 0),
   };
 };

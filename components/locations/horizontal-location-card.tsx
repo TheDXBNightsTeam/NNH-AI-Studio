@@ -97,24 +97,25 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
   const hasLogo = Boolean(logoImageUrl);
 
   const { data: snapshot } = useDashboardSnapshot();
-  const metrics = getLocationMetricsFromSnapshot(snapshot, location.id);
+  const metrics = getLocationMetricsFromSnapshot(snapshot, location.id, location);
 
-  const ratingTrend = metrics?.ratingTrend ?? 0;
-  const viewsThisMonth = metrics?.viewsThisMonth ?? 0;
-  const responseRate = metrics?.responseRate ?? 0;
-  const pendingReviews = metrics?.pendingReviews ?? 0;
-  const effectiveHealthScore = metrics?.healthScore ?? healthScore ?? 0;
+  const ratingValue = rating != null ? rating.toFixed(1) : location.rating != null ? location.rating.toFixed(1) : '—';
+  const ratingTrend = metrics?.ratingTrend ?? location.ratingTrend ?? 0;
+  const viewsThisMonth = metrics?.viewsThisMonth ?? Number(location.insights?.views ?? 0);
+  const responseRate = metrics?.responseRate ?? Number(location.responseRate ?? location.insights?.responseRate ?? 0);
+  const pendingReviews = metrics?.pendingReviews ?? Number(location.insights?.pendingReviews ?? 0);
+  const healthComposite = metrics?.healthScore ?? Number(location.healthScore ?? 0);
 
   const statChips = [
     {
       label: 'Rating Trend (30d)',
-      value: rating?.toFixed(1) ?? '—',
+      value: ratingValue,
       delta: `${ratingTrend >= 0 ? '+' : ''}${ratingTrend.toFixed(1)} vs last month`,
     },
     {
       label: 'Views This Month',
       value: viewsThisMonth.toLocaleString(),
-      delta: `${responseRate.toFixed(0)}% response rate`,
+      delta: `${Math.round(responseRate)}% response rate`,
     },
     {
       label: 'Pending Reviews',
