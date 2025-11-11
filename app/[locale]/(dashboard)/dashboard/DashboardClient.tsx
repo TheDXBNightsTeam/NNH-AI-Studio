@@ -12,6 +12,7 @@ import { CreatePostModal } from '@/components/dashboard/CreatePostModal';
 import { ConfirmationModal } from '@/components/dashboard/ConfirmationModal';
 import { ProfileProtectionModal } from '@/components/dashboard/ProfileProtectionModal';
 import { toast } from 'sonner';
+import { cacheUtils } from '@/hooks/use-dashboard-cache';
 
 export function RefreshButton() {
   const router = useRouter();
@@ -39,7 +40,11 @@ export function RefreshButton() {
 
       setCooldownSeconds(10);
 
-      window.dispatchEvent(new Event('dashboard:refresh'));
+      cacheUtils.invalidateOverview();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('gmb-sync-complete'));
+        window.dispatchEvent(new Event('dashboard:refresh'));
+      }
       router.refresh();
     } catch (error) {
       console.error('[RefreshButton] Error:', error);
@@ -122,7 +127,11 @@ export function SyncAllButton() {
 
         setCooldownSeconds(60);
 
-        window.dispatchEvent(new Event('dashboard:refresh'));
+        cacheUtils.invalidateOverview();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('gmb-sync-complete'));
+          window.dispatchEvent(new Event('dashboard:refresh'));
+        }
         router.refresh();
       } else {
         toast.error(`❌ ${data.error || 'Failed to sync locations'}`);
@@ -178,7 +187,11 @@ export function SyncButton({ locationId }: { locationId: string }) {
       const result = await syncLocation(locationId);
       if (result.success) {
         toast.success(result.message || 'Location synced successfully!');
-        window.dispatchEvent(new Event('dashboard:refresh'));
+        cacheUtils.invalidateOverview();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('gmb-sync-complete'));
+          window.dispatchEvent(new Event('dashboard:refresh'));
+        }
         router.refresh();
       } else {
         toast.error(result.error || 'Failed to sync location');
@@ -217,7 +230,11 @@ export function DisconnectButton({ locationId }: { locationId: string }) {
       if (result.success) {
         toast.success(result.message || 'Location disconnected successfully');
         setOpen(false);
-        window.dispatchEvent(new Event('dashboard:refresh'));
+        cacheUtils.invalidateOverview();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('gmb-sync-complete'));
+          window.dispatchEvent(new Event('dashboard:refresh'));
+        }
         router.refresh();
       } else {
         toast.error(result.error || 'Failed to disconnect location');
@@ -270,7 +287,11 @@ export function GenerateTasksButton({ locationId }: { locationId: string | null 
       const result = await generateWeeklyTasks(locationId);
       if (result.success) {
         toast.success('Weekly tasks generated!');
-        window.dispatchEvent(new Event('dashboard:refresh'));
+        cacheUtils.invalidateOverview();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('gmb-sync-complete'));
+          window.dispatchEvent(new Event('dashboard:refresh'));
+        }
         router.refresh();
       } else {
         toast.error('Failed to generate tasks');
