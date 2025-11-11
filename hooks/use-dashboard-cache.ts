@@ -202,7 +202,7 @@ export function useCacheStatus() {
 }
 
 export const getLocationMetricsFromSnapshot = (
-  snapshot: DashboardSnapshot | undefined,
+  snapshot: DashboardSnapshot | null | undefined,
   locationId: string | undefined,
 ) => {
   if (!snapshot || !locationId) {
