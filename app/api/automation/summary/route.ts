@@ -6,7 +6,6 @@ export const dynamic = 'force-dynamic';
 interface LocationRecord {
   id: string;
   location_name?: string | null;
-  location_alias?: string | null;
 }
 
 interface ApiAutomationSettings {
@@ -55,7 +54,7 @@ export async function GET(request: NextRequest) {
 
     const locationsQuery = supabase
       .from('gmb_locations')
-      .select('id, location_name, location_alias')
+      .select('id, location_name')
       .eq('user_id', user.id)
       .order('location_name', { ascending: true });
 
@@ -177,10 +176,7 @@ export async function GET(request: NextRequest) {
         reportFrequency: typed.report_frequency,
         createdAt: typed.created_at,
         updatedAt: typed.updated_at,
-        locationName:
-          locationDetails?.location_name ??
-          locationDetails?.location_alias ??
-          'Unassigned location',
+        locationName: locationDetails?.location_name ?? 'Unassigned location',
       };
     });
 
@@ -196,10 +192,7 @@ export async function GET(request: NextRequest) {
         details: typed.details,
         errorMessage: typed.error_message,
         createdAt: typed.created_at,
-        locationName:
-          locationDetails?.location_name ??
-          locationDetails?.location_alias ??
-          'Unknown location',
+        locationName: locationDetails?.location_name ?? 'Unknown location',
       };
     });
 
