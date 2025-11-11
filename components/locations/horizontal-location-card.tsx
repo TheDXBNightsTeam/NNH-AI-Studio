@@ -180,24 +180,16 @@ export function HorizontalLocationCard({ location, onViewDetails }: HorizontalLo
             </p>
           )}
 
-          <div className="grid gap-3 text-sm md:grid-cols-3">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-              <div className="text-xs uppercase tracking-wide text-white/50">Average Rating</div>
-              <div className="mt-2 text-2xl font-semibold text-white">{ratingValue ?? '—'} </div>
-              <div className="text-xs text-white/60">
-                {reviewCount ? `${formatLargeNumber(reviewCount)} reviews` : 'No reviews yet'}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-              <div className="text-xs uppercase tracking-wide text-white/50">Views This Month</div>
-              <div className="mt-2 text-2xl font-semibold text-white">{views.toLocaleString()}</div>
-              <div className="text-xs text-white/60">Response rate {Math.round(responseRate)}%</div>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-              <div className="text-xs uppercase tracking-wide text-white/50">Pending Reviews</div>
-              <div className="mt-2 text-2xl font-semibold text-white">{pendingReviews}</div>
-              <div className="text-xs text-white/60">Need your response</div>
-            </div>
+          <div className="flex flex-wrap gap-4 text-sm text-white/70">
+            {ratingValue !== '—' && (
+              <span>
+                ⭐ {ratingValue}
+                {reviewCount ? ` • ${formatLargeNumber(reviewCount)} reviews` : ''}
+              </span>
+            )}
+            {views > 0 && <span>👁️ {views.toLocaleString()} views this month</span>}
+            {responseRate > 0 && <span>💬 Response rate {Math.round(responseRate)}%</span>}
+            {pendingReviews > 0 && <span>⏳ {pendingReviews} pending reviews</span>}
           </div>
 
           <div className="flex flex-wrap gap-2">
