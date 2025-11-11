@@ -343,47 +343,13 @@ export function LocationsMapTab() {
               </div>
             </div>
           ) : stats ? (
-            <>
-              {/* Desktop Layout: All 4 cards in corners */}
-              {!isMobile && (
-                <>
-                  <StatsOverviewCard
-                    totalLocations={stats.totalLocations}
-                    avgRating={stats.avgRating}
-                    totalReviews={stats.reviewCount}
-                    healthScore={stats.healthScore}
-                  />
-                  <LocationDetailsCard location={selectedLocation} />
-                  <ActivityFeedCard locationId={selectedLocationId} />
-                  <QuickActionsCard locationId={selectedLocationId} />
-                </>
-              )}
-
-              {/* Mobile Layout: Stacked cards */}
-              {isMobile && (
-                <>
-                  {/* Top cards */}
-                  <StatsOverviewCard
-                    totalLocations={stats.totalLocations}
-                    avgRating={stats.avgRating}
-                    totalReviews={stats.reviewCount}
-                    healthScore={stats.healthScore}
-                  />
-                  <LocationDetailsCard
-                    location={selectedLocation}
-                  />
-                  
-                  {/* Bottom cards */}
-                  <ActivityFeedCard locationId={selectedLocationId} />
-                  <QuickActionsCard locationId={selectedLocationId} />
-                </>
-              )}
-            </>
+            <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
+              Failed to load location stats.
+            </div>
           ) : (
-            // Error state - show at least location details even if stats fail
-            <LocationDetailsCard
-              location={selectedLocation}
-            />
+            <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
+              Failed to load location stats.
+            </div>
           )}
         </>
       )}
