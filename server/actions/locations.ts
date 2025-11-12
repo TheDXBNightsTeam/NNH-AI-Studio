@@ -483,17 +483,35 @@ export async function bulkSyncLocations(locationIds: string[]) {
   return payload
 }
 
-export async function getCompetitors({ lat, lng }: { lat: number; lng: number }) {
+export async function getCompetitors({
+  lat,
+  lng,
+  categoryId,
+  categoryName,
+  keywords,
+}: {
+  lat: number
+  lng: number
+  categoryId?: string | null
+  categoryName?: string | null
+  keywords?: string[] | null
+}) {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
   if (!apiKey) {
     return { competitors: [], error: 'Google Maps API key not configured' }
   }
 
+  const normalizedKeywords = Array.from(new Set((keywords ?? []).map((value) => value.toLowerCase()).filter(Boolean)))
+  const inferredType = derivePlacesType({ categoryId, categoryName, keywords: normalizedKeywords })
+
   const url = new URL('https://maps.googleapis.com/maps/api/place/nearbysearch/json')
   url.searchParams.set('location', `${lat},${lng}`)
   url.searchParams.set('radius', '3000')
-  url.searchParams.set('type', 'point_of_interest')
+  url.searchParams.set('type', inferredType ?? 'point_of_interest')
+  if (normalizedKeywords.length > 0) {
+    url.searchParams.set('keyword', normalizedKeywords.slice(0, 3).join(' '))
+  }
   url.searchParams.set('key', apiKey)
 
   const response = await fetch(url.toString(), { cache: 'no-store' })
@@ -508,7 +526,13 @@ export async function getCompetitors({ lat, lng }: { lat: number; lng: number })
     throw new Error(data.error_message || `Google Places returned status ${data.status}`)
   }
 
-  const competitors = (data.results ?? []).map((result: any) => ({
+  const results = Array.isArray(data.results) ? data.results : []
+  const filteredResults = filterPlacesByRelevance(results, {
+    type: inferredType,
+    keywordList: normalizedKeywords,
+  })
+
+  const competitors = filteredResults.slice(0, 10).map((result: any) => ({
     placeId: result.place_id,
     name: result.name,
     rating: result.rating ?? null,
@@ -528,4 +552,178 @@ function calculateTrend(current: number, previous: number) {
   }
 
   return Math.round(((current - previous) / Math.abs(previous)) * 100)
+}
+
+const CATEGORY_TYPE_MAP: Record<string, string> = {
+  night_club: 'night_club',
+  nightclub: 'night_club',
+  bar: 'bar',
+  cocktail_bar: 'bar',
+  lounge: 'bar',
+  pub: 'bar',
+  restaurant: 'restaurant',
+  steak_house: 'restaurant',
+  dining: 'restaurant',
+  cafe: 'cafe',
+  coffee_shop: 'cafe',
+  coffee: 'cafe',
+  hotel: 'lodging',
+  lodging: 'lodging',
+  resort: 'lodging',
+  spa: 'spa',
+  beauty_salon: 'beauty_salon',
+  hair_salon: 'beauty_salon',
+  nail_salon: 'beauty_salon',
+  gym: 'gym',
+  fitness_center: 'gym',
+  shopping_mall: 'shopping_mall',
+  mall: 'shopping_mall',
+  store: 'store',
+  retail: 'store',
+  clothing_store: 'clothing_store',
+  electronics_store: 'electronics_store',
+  supermarket: 'supermarket',
+  grocery: 'supermarket',
+  pet_store: 'pet_store',
+  veterinary_care: 'veterinary_care',
+  dentist: 'dentist',
+  doctor: 'doctor',
+  clinic: 'doctor',
+  hospital: 'hospital',
+  pharmacy: 'pharmacy',
+  lawyer: 'lawyer',
+  law_firm: 'lawyer',
+  real_estate_agency: 'real_estate_agency',
+  real_estate: 'real_estate_agency',
+  accounting: 'accounting',
+  travel_agency: 'travel_agency',
+  art_gallery: 'art_gallery',
+  gallery: 'art_gallery',
+  museum: 'museum',
+  school: 'school',
+  university: 'university',
+}
+
+const TYPE_KEYWORDS: Array<{ type: string; keywords: string[] }> = [
+  { type: 'night_club', keywords: ['night club', 'club', 'discotheque'] },
+  { type: 'bar', keywords: ['bar', 'pub', 'lounge', 'cocktail'] },
+  { type: 'restaurant', keywords: ['restaurant', 'dining', 'eatery', 'bistro', 'steakhouse'] },
+  { type: 'cafe', keywords: ['cafe', 'coffee shop', 'coffee'] },
+  { type: 'lodging', keywords: ['hotel', 'lodging', 'resort', 'inn'] },
+  { type: 'spa', keywords: ['spa'] },
+  { type: 'beauty_salon', keywords: ['beauty salon', 'salon', 'hair salon', 'nail salon'] },
+  { type: 'gym', keywords: ['gym', 'fitness', 'fitness center'] },
+  { type: 'shopping_mall', keywords: ['shopping mall', 'mall', 'shopping center'] },
+  { type: 'store', keywords: ['store', 'shop', 'retail'] },
+  { type: 'pet_store', keywords: ['pet store', 'pet shop'] },
+  { type: 'veterinary_care', keywords: ['vet', 'veterinary'] },
+  { type: 'dentist', keywords: ['dentist', 'dental'] },
+  { type: 'doctor', keywords: ['doctor', 'clinic', 'medical'] },
+  { type: 'hospital', keywords: ['hospital'] },
+  { type: 'pharmacy', keywords: ['pharmacy', 'drugstore'] },
+  { type: 'lawyer', keywords: ['lawyer', 'law firm'] },
+  { type: 'real_estate_agency', keywords: ['real estate', 'property agent'] },
+  { type: 'accounting', keywords: ['accounting', 'accountant'] },
+  { type: 'travel_agency', keywords: ['travel agency', 'travel agent'] },
+  { type: 'art_gallery', keywords: ['art gallery', 'gallery'] },
+  { type: 'museum', keywords: ['museum'] },
+  { type: 'school', keywords: ['school', 'academy'] },
+  { type: 'university', keywords: ['university', 'college'] },
+]
+
+function derivePlacesType({
+  categoryId,
+  categoryName,
+  keywords,
+}: {
+  categoryId?: string | null
+  categoryName?: string | null
+  keywords?: string[]
+}): string | null {
+  const candidates: string[] = []
+
+  const normalizedCategoryId = normalizeToken(categoryId)
+  if (normalizedCategoryId) {
+    candidates.push(normalizedCategoryId)
+  }
+
+  const normalizedCategoryName = normalizeToken(categoryName)
+  if (normalizedCategoryName) {
+    candidates.push(normalizedCategoryName)
+  }
+
+  ;(keywords ?? []).forEach((keyword) => {
+    const normalized = normalizeToken(keyword)
+    if (normalized) {
+      candidates.push(normalized)
+    }
+  })
+
+  for (const candidate of candidates) {
+    const compact = candidate.replace(/\s+/g, '_')
+    if (CATEGORY_TYPE_MAP[compact]) {
+      return CATEGORY_TYPE_MAP[compact]
+    }
+
+    for (const entry of TYPE_KEYWORDS) {
+      if (entry.keywords.some((keyword) => candidate.includes(keyword))) {
+        return entry.type
+      }
+    }
+  }
+
+  return null
+}
+
+function normalizeToken(value?: string | null) {
+  if (!value) return null
+  return value
+    .toString()
+    .toLowerCase()
+    .replace(/categories\/gcid:/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+function filterPlacesByRelevance(
+  results: any[],
+  {
+    type,
+    keywordList,
+  }: {
+    type?: string | null
+    keywordList: string[]
+  }
+) {
+  const normalizedType = type?.toLowerCase() ?? null
+  const normalizedKeywords = keywordList.map((keyword) => keyword.toLowerCase())
+
+  const filtered = results.filter((result) => {
+    const types: string[] = Array.isArray(result.types)
+      ? result.types.map((value: string) => value.toLowerCase())
+      : []
+    const name = (result.name ?? '').toLowerCase()
+    const vicinity = (result.vicinity ?? result.formatted_address ?? '').toLowerCase()
+
+    const typeMatches = normalizedType
+      ? types.includes(normalizedType) || types.some((value) => value.includes(normalizedType))
+      : true
+
+    const keywordMatches = normalizedKeywords.length
+      ? normalizedKeywords.some((keyword) => {
+          const sanitizedKeyword = keyword.replace(/[^a-z0-9]+/g, ' ').trim()
+          if (!sanitizedKeyword) return false
+          const underscored = sanitizedKeyword.replace(/\s+/g, '_')
+          return (
+            name.includes(sanitizedKeyword) ||
+            vicinity.includes(sanitizedKeyword) ||
+            types.some((value) => value.includes(underscored))
+          )
+        })
+      : true
+
+    return typeMatches && keywordMatches
+  })
+
+  return filtered.length > 0 ? filtered : results
 }

@@ -103,6 +103,7 @@ export function LocationsMapTab() {
   }, [locations]);
 
   const aiLocation = aiContextLocation ?? selectedLocation ?? null;
+  const aiStatusDisplay = useMemo(() => deriveDisplayStatus(aiLocation), [aiLocation]);
   const aiRecommendations = useMemo(() => {
     const suggestions: string[] = [];
 
@@ -184,6 +185,33 @@ export function LocationsMapTab() {
         lat: lat.toString(),
         lng: lng.toString(),
       });
+
+      const primaryCategory = aiContextLocation?.metadata?.categories?.primaryCategory;
+      const additionalCategories: Array<{ displayName?: string | null }> = Array.isArray(
+        aiContextLocation?.metadata?.categories?.additionalCategories
+      )
+        ? aiContextLocation?.metadata?.categories?.additionalCategories
+        : [];
+
+      if (primaryCategory?.name) {
+        params.set('categoryId', String(primaryCategory.name));
+      }
+
+      const categoryLabel = primaryCategory?.displayName ?? aiContextLocation?.category;
+      if (categoryLabel) {
+        params.set('categoryName', categoryLabel);
+      }
+
+      const keywordSet = new Set<string>();
+      if (primaryCategory?.displayName) keywordSet.add(primaryCategory.displayName);
+      additionalCategories.forEach((item) => {
+        if (item?.displayName) keywordSet.add(item.displayName);
+      });
+      if (aiContextLocation?.category) keywordSet.add(aiContextLocation.category);
+
+      if (keywordSet.size > 0) {
+        params.set('keywords', Array.from(keywordSet).slice(0, 5).join(','));
+      }
 
       const response = await fetch(`/api/locations/competitors?${params.toString()}`, {
         method: 'GET',
@@ -1000,12 +1028,8 @@ export function LocationsMapTab() {
                 : 0;
               const isSelected = selectedLocationId === location.id;
               const addressLine = location.address ?? 'No address available';
-              const statusLabel = location.isActive === false
-                ? { label: '🔴 Inactive', tone: 'text-red-400' }
-                : location.hasIssues
-                ? { label: '🟡 Needs attention', tone: 'text-amber-400' }
-                : { label: '🟢 Active', tone: 'text-green-400' };
-
+              const statusDisplay = deriveDisplayStatus(location);
+ 
               return (
                 <div
                   key={location.id}
@@ -1018,7 +1042,7 @@ export function LocationsMapTab() {
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         <p className="truncate font-semibold">{location.name}</p>
-                        <span className={cn('text-xs font-medium', statusLabel.tone)}>{statusLabel.label}</span>
+                        <span className={cn('text-xs font-medium', statusDisplay.textClass)}>{statusDisplay.emojiText}</span>
                       </div>
                       <div className="space-y-1 text-xs text-white/70">
                         <p>⭐ {rating} ({reviewCount} reviews)</p>
@@ -1027,8 +1051,8 @@ export function LocationsMapTab() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-2">
-                      <Badge variant="outline" className={cn('text-xs', badgeTone(location.status))}>
-                        {location.status === 'verified' ? 'Verified' : location.status === 'suspended' ? 'Suspended' : 'Pending'}
+                      <Badge variant="outline" className={cn('text-xs', statusDisplay.badgeClass)}>
+                        {statusDisplay.badgeLabel}
                       </Badge>
                       <button
                         type="button"
@@ -1150,8 +1174,8 @@ export function LocationsMapTab() {
                       <p className="text-sm font-semibold text-white">{aiLocation.name}</p>
                       <p className="text-xs text-white/60">{aiLocation.address ?? 'No address on file'}</p>
                     </div>
-                    <Badge variant="outline" className={cn('text-xs', badgeTone(aiLocation.status))}>
-                      {aiLocation.status === 'verified' ? 'Verified' : aiLocation.status === 'suspended' ? 'Suspended' : 'Pending'}
+                    <Badge variant="outline" className={cn('text-xs', aiStatusDisplay.badgeClass)}>
+                      {aiStatusDisplay.badgeLabel}
                     </Badge>
                   </div>
                 </div>
@@ -1393,13 +1417,56 @@ function formatPeriodTime(time: { hours?: number; minutes?: number } | Record<st
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-function badgeTone(status: Location['status']) {
-  switch (status) {
-    case 'verified':
-      return 'border-emerald-500/30 text-emerald-200';
-    case 'suspended':
-      return 'border-destructive/30 text-destructive';
-    default:
-      return 'border-amber-400/30 text-amber-300';
+function deriveDisplayStatus(location: Location | null | undefined) {
+  if (!location) {
+    return {
+      emojiText: '⚪ Unknown',
+      badgeLabel: 'Unknown',
+      badgeClass: 'border-white/20 text-white/70',
+      textClass: 'text-white/70',
+    };
   }
+
+  if (location.status === 'suspended') {
+    return {
+      emojiText: '🔴 Suspended',
+      badgeLabel: 'Suspended',
+      badgeClass: 'border-red-500/40 text-red-200',
+      textClass: 'text-red-300',
+    };
+  }
+
+  if (location.isActive === false) {
+    return {
+      emojiText: '🔴 Inactive',
+      badgeLabel: 'Inactive',
+      badgeClass: 'border-red-500/40 text-red-200',
+      textClass: 'text-red-300',
+    };
+  }
+
+  if (location.hasIssues) {
+    return {
+      emojiText: '🟡 Needs attention',
+      badgeLabel: 'Needs attention',
+      badgeClass: 'border-amber-400/40 text-amber-200',
+      textClass: 'text-amber-200',
+    };
+  }
+
+  if (location.status === 'verified') {
+    return {
+      emojiText: '🟢 Active',
+      badgeLabel: 'Verified',
+      badgeClass: 'border-emerald-400/40 text-emerald-200',
+      textClass: 'text-emerald-200',
+    };
+  }
+
+  return {
+    emojiText: '🟢 Active',
+    badgeLabel: 'Active',
+    badgeClass: 'border-emerald-400/40 text-emerald-200',
+    textClass: 'text-emerald-200',
+  };
 }
