@@ -132,6 +132,24 @@ export function ReviewsPageClient({ locations, initialFilters }: ReviewsPageClie
     return () => clearTimeout(timer);
   }, [searchInput, filters.search, updateFilter]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const handleGlobalRefresh = () => {
+      refresh();
+    };
+
+    window.addEventListener('dashboard:refresh', handleGlobalRefresh);
+    window.addEventListener('gmb-sync-complete', handleGlobalRefresh);
+
+    return () => {
+      window.removeEventListener('dashboard:refresh', handleGlobalRefresh);
+      window.removeEventListener('gmb-sync-complete', handleGlobalRefresh);
+    };
+  }, [refresh]);
+
   // Handle sync
   const handleSync = async () => {
     if (!filters.locationId) {
@@ -149,6 +167,9 @@ export function ReviewsPageClient({ locations, initialFilters }: ReviewsPageClie
           description: result.message,
         });
         await refresh();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('dashboard:refresh'));
+        }
       } else {
         toast.error('Sync failed', {
           description: result.error,
@@ -318,6 +339,9 @@ export function ReviewsPageClient({ locations, initialFilters }: ReviewsPageClie
 
       toast.success('AI drafts generated');
       refresh();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('dashboard:refresh'));
+      }
     } catch (error) {
       console.error('[Reviews] Bulk AI draft failure:', error);
       toast.error('Failed to generate AI drafts');
