@@ -27,6 +27,8 @@ export async function GET(request: NextRequest) {
     const searchQuery = searchParams.get('search');
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
+    const exportFormat = searchParams.get('export');
+    const isCsvExport = exportFormat === 'csv';
     
     // Parse pagination parameters
     const page = parseInt(searchParams.get('page') || '1', 10);
@@ -176,7 +178,49 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ 
+    if (isCsvExport) {
+      const escapeCsv = (value: unknown) => {
+        if (value === null || value === undefined) {
+          return '""';
+        }
+        const stringValue = String(value);
+        const escaped = stringValue.replace(/"/g, '""');
+        return `"${escaped}"`;
+      };
+
+      const headerRow = [
+        'Review ID',
+        'Reviewer',
+        'Rating',
+        'Comment',
+        'Status',
+        'Location',
+        'Review Date',
+        'Reply',
+      ];
+
+      const csvRows = transformedReviews.map((review) => [
+        escapeCsv(review.id),
+        escapeCsv(review.reviewer_name),
+        escapeCsv(review.rating),
+        escapeCsv(review.comment),
+        escapeCsv(review.status ?? 'pending'),
+        escapeCsv(review.location_name),
+        escapeCsv(review.review_date ?? ''),
+        escapeCsv(review.reply_text ?? ''),
+      ]);
+
+      const csvContent = [headerRow, ...csvRows].map((row) => row.join(',')).join('\n');
+
+      return new NextResponse(csvContent, {
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': 'attachment; filename="reviews-export.csv"',
+        },
+      });
+    }
+
+    return NextResponse.json({
       reviews: transformedReviews,
       pagination: {
         total: totalCount,
@@ -184,8 +228,8 @@ export async function GET(request: NextRequest) {
         pageSize: validPageSize,
         totalPages,
         hasNextPage,
-        hasPreviousPage
-      }
+        hasPreviousPage,
+      },
     });
 
   } catch (error: any) {

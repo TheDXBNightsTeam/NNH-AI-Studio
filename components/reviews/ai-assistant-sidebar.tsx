@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Settings, Lightbulb, Sparkles, Bot, ChevronRight, Zap, Shield, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -62,7 +62,20 @@ export function AIAssistantSidebar({ selectedReview, pendingReviewsCount, locati
   // Load auto-reply settings
   useEffect(() => {
     loadSettings();
-  }, [locationId]);
+  }, [loadSettings]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const handler = () => {
+      loadSettings();
+    };
+    window.addEventListener('ai:auto-reply:refresh', handler);
+    return () => {
+      window.removeEventListener('ai:auto-reply:refresh', handler);
+    };
+  }, [loadSettings]);
 
   // Rotate tips every 5 seconds
   useEffect(() => {
@@ -72,7 +85,7 @@ export function AIAssistantSidebar({ selectedReview, pendingReviewsCount, locati
     return () => clearInterval(interval);
   }, []);
 
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     setLoading(true);
     try {
       const result = await getAutoReplySettings(locationId);
@@ -85,7 +98,7 @@ export function AIAssistantSidebar({ selectedReview, pendingReviewsCount, locati
     } finally {
       setLoading(false);
     }
-  };
+  }, [locationId]);
 
   const handleToggleAutoReply = async (enabled: boolean) => {
     if (!settings) {

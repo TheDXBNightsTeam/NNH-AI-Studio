@@ -48,23 +48,40 @@ export async function saveAutoReplySettings(
       };
     }
 
-    // Save settings to user profile or location-specific settings
-    // For now, we'll use a simple approach: store in user settings JSON
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("settings")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError) {
+      console.error("Error fetching profile settings:", profileError);
+      return {
+        success: false,
+        error: profileError.message,
+      };
+    }
+
+    const existingSettings = (profileData?.settings as Record<string, any>) || {};
+
+    const updatedSettings = {
+      ...existingSettings,
+      auto_reply: {
+        enabled: settings.enabled,
+        min_rating: settings.minRating,
+        reply_to_positive: settings.replyToPositive,
+        reply_to_neutral: settings.replyToNeutral,
+        reply_to_negative: settings.replyToNegative,
+        require_approval: settings.requireApproval,
+        tone: settings.tone,
+        location_id: settings.locationId || null,
+      },
+    };
+
     const { error: updateError } = await supabase
       .from("profiles")
       .update({
-        settings: {
-          auto_reply: {
-            enabled: settings.enabled,
-            min_rating: settings.minRating,
-            reply_to_positive: settings.replyToPositive,
-            reply_to_neutral: settings.replyToNeutral,
-            reply_to_negative: settings.replyToNegative,
-            require_approval: settings.requireApproval,
-            tone: settings.tone,
-            location_id: settings.locationId || null,
-          },
-        },
+        settings: updatedSettings,
       })
       .eq("id", user.id);
 
@@ -130,7 +147,8 @@ export async function getAutoReplySettings(locationId?: string) {
       };
     }
 
-    const autoReplySettings = profile?.settings?.auto_reply || {};
+    const rawAutoReplySettings =
+      (profile?.settings?.auto_reply as Record<string, any>) || {};
     const defaultSettings: AutoReplySettings = {
       enabled: false,
       minRating: 4,
@@ -141,13 +159,55 @@ export async function getAutoReplySettings(locationId?: string) {
       tone: "friendly",
       locationId: locationId || undefined,
     };
-
+    const normalizedSettings: Partial<AutoReplySettings> = {
+      enabled: typeof rawAutoReplySettings.enabled === "boolean" ? rawAutoReplySettings.enabled : defaultSettings.enabled,
+      minRating:
+        typeof rawAutoReplySettings.min_rating === "number"
+          ? rawAutoReplySettings.min_rating
+          : (typeof rawAutoReplySettings.minRating === "number"
+              ? rawAutoReplySettings.minRating
+              : defaultSettings.minRating),
+      replyToPositive:
+        typeof rawAutoReplySettings.reply_to_positive === "boolean"
+          ? rawAutoReplySettings.reply_to_positive
+          : (typeof rawAutoReplySettings.replyToPositive === "boolean"
+              ? rawAutoReplySettings.replyToPositive
+              : defaultSettings.replyToPositive),
+      replyToNeutral:
+        typeof rawAutoReplySettings.reply_to_neutral === "boolean"
+          ? rawAutoReplySettings.reply_to_neutral
+          : (typeof rawAutoReplySettings.replyToNeutral === "boolean"
+              ? rawAutoReplySettings.replyToNeutral
+              : defaultSettings.replyToNeutral),
+      replyToNegative:
+        typeof rawAutoReplySettings.reply_to_negative === "boolean"
+          ? rawAutoReplySettings.reply_to_negative
+          : (typeof rawAutoReplySettings.replyToNegative === "boolean"
+              ? rawAutoReplySettings.replyToNegative
+              : defaultSettings.replyToNegative),
+      requireApproval:
+        typeof rawAutoReplySettings.require_approval === "boolean"
+          ? rawAutoReplySettings.require_approval
+          : (typeof rawAutoReplySettings.requireApproval === "boolean"
+              ? rawAutoReplySettings.requireApproval
+              : defaultSettings.requireApproval),
+      tone:
+        typeof rawAutoReplySettings.tone === "string"
+          ? rawAutoReplySettings.tone
+          : (typeof rawAutoReplySettings.tone_preference === "string"
+              ? rawAutoReplySettings.tone_preference
+              : defaultSettings.tone),
+      locationId:
+        locationId ||
+        rawAutoReplySettings.location_id ||
+        rawAutoReplySettings.locationId ||
+        defaultSettings.locationId,
+    };
     return {
       success: true,
       data: {
         ...defaultSettings,
-        ...autoReplySettings,
-        locationId: locationId || autoReplySettings.location_id || undefined,
+        ...normalizedSettings,
       } as AutoReplySettings,
     };
   } catch (error) {
