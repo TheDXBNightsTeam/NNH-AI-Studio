@@ -45,7 +45,7 @@ export function QuickActionsBar({
       count: pendingReviews,
       href: '/reviews',
       color: 'text-info',
-      gradient: 'from-info/10 to-info/5',
+      gradient: 'bg-info/5',
       description: 'Respond to pending reviews'
     },
     {
@@ -55,7 +55,7 @@ export function QuickActionsBar({
       count: unansweredQuestions,
       href: '/questions',
       color: 'text-primary',
-      gradient: 'from-primary/10 to-primary/5',
+      gradient: 'bg-primary/5',
       description: 'Reply to customer questions'
     },
     {
@@ -64,13 +64,13 @@ export function QuickActionsBar({
       icon: <FileText className="w-5 h-5" />,
       href: '/posts',
       color: 'text-success',
-      gradient: 'from-success/10 to-success/5',
+      gradient: 'bg-success/5',
       description: 'Share updates with customers'
     }
   ];
 
   return (
-    <Card className="p-6 border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-background">
+    <Card className="p-6 border border-primary/20 bg-background/80 backdrop-blur-sm">
       <div className="mb-4">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Zap className="w-5 h-5 text-primary" />
@@ -97,9 +97,9 @@ export function QuickActionsBar({
               <Card 
                 className={cn(
                 "p-4 hover:shadow-lg transition-all duration-300 cursor-pointer group",
-                "border-2 border-transparent hover:border-primary/30",
+                "border border-border/50 hover:border-primary/40",
                 "focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2",
-                `bg-gradient-to-br ${action.gradient}`
+                action.gradient
                 )}
                 role="button"
                 tabIndex={0}

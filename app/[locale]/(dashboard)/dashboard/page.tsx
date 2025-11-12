@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
@@ -110,12 +110,22 @@ export default function DashboardPage() {
     healthScore: data.kpis.healthScore ?? 0,
     pendingReviews: data.reviewStats.totals.pending ?? 0,
     unansweredQuestions: data.questionStats.totals.unanswered ?? 0,
-    monthlyComparison: undefined,
-    locationHighlights: undefined,
+    monthlyComparison: data.monthlyComparison ?? undefined,
+    locationHighlights: data.locationHighlights ?? undefined,
     bottlenecks: data.bottlenecks ?? [],
   });
 
   const snapshotData = snapshot ?? null;
+
+  const syncDetails = useMemo(() => {
+    if (!snapshotData) return [];
+    return [
+      { label: 'Reviews', timestamp: snapshotData.reviewStats.lastSync },
+      { label: 'Posts', timestamp: snapshotData.postStats.lastSync },
+      { label: 'Questions', timestamp: snapshotData.questionStats.lastSync },
+      { label: 'Automation', timestamp: snapshotData.automationStats.lastSync },
+    ];
+  }, [snapshotData]);
 
   // Default stats في حالة عدم وجود بيانات
   const defaultStats: DashboardStats = {
@@ -225,6 +235,7 @@ export default function DashboardPage() {
             onRefresh={() => fetchData(true)}
             isRefreshing={loading}
             autoRefreshInterval={5}
+            syncDetails={syncDetails}
           />
         </DashboardSection>
       )}
@@ -290,12 +301,14 @@ export default function DashboardPage() {
       {/* Stats Cards - Lazy Loaded */}
       {gmbConnected && (
         <DashboardSection section="Statistics">
-          <LazyStatsCards 
-            loading={loading} 
-            data={currentStats} 
-            dateRange={dateRange}
-            comparisonDetails={comparisonDetails}
-          />
+          <ResponsiveGrid type="stats" className="gap-4">
+            <LazyStatsCards 
+              loading={loading} 
+              data={currentStats} 
+              dateRange={dateRange}
+              comparisonDetails={comparisonDetails}
+            />
+          </ResponsiveGrid>
         </DashboardSection>
       )}
 

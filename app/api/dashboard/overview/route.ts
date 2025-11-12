@@ -4,6 +4,7 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { getReviewStats } from '@/server/actions/reviews-management';
 import { getPostStats } from '@/server/actions/posts-management';
 import { getQuestionStats } from '@/server/actions/questions-management';
+import { getMonthlyStats } from '@/server/actions/dashboard';
 import type { DashboardSnapshot, LocationStatus } from '@/types/dashboard';
 
 export const dynamic = 'force-dynamic';
@@ -108,6 +109,18 @@ function computeHealthScore(params: {
 
   const clampedScore = Math.max(0, Math.min(100, Math.round(score)));
   return { score: clampedScore, bottlenecks };
+}
+
+function calculatePercentChange(current: number, previous: number): number {
+  const prev = Number.isFinite(previous) ? previous : 0;
+  const curr = Number.isFinite(current) ? current : 0;
+
+  if (prev === 0) {
+    return curr === 0 ? 0 : 100;
+  }
+
+  const change = ((curr - prev) / Math.abs(prev)) * 100;
+  return Number.isFinite(change) ? Number(change.toFixed(1)) : 0;
 }
 
 export async function GET(request: Request) {
@@ -366,6 +379,76 @@ export async function GET(request: Request) {
       recentQuestions: [],
     };
 
+    const monthlyStatsResult = await getMonthlyStats();
+    const monthlyData = monthlyStatsResult.data ?? [];
+
+    let monthlyComparison: DashboardSnapshot['monthlyComparison'] = null;
+    let reviewTrendPct = 0;
+    let ratingTrendPct = 0;
+
+    if (monthlyData.length > 0) {
+      const latestEntry = monthlyData[monthlyData.length - 1];
+      const previousEntry = monthlyData.length > 1 ? monthlyData[monthlyData.length - 2] : null;
+
+      monthlyComparison = {
+        current: {
+          reviews: latestEntry?.reviews ?? 0,
+          rating: latestEntry?.rating ?? 0,
+          questions: questionStatsSnapshot.totals.total ?? 0,
+        },
+        previous: {
+          reviews: previousEntry?.reviews ?? latestEntry?.reviews ?? 0,
+          rating: previousEntry?.rating ?? latestEntry?.rating ?? 0,
+          questions: questionStatsSnapshot.totals.total ?? 0,
+        },
+      };
+
+      const currentReviewTotal = monthlyComparison.current.reviews ?? 0;
+      const previousReviewTotal = monthlyComparison.previous?.reviews ?? 0;
+      reviewTrendPct = calculatePercentChange(currentReviewTotal, previousReviewTotal);
+
+      const currentAverageRating = monthlyComparison.current.rating ?? 0;
+      const previousAverageRating = monthlyComparison.previous?.rating ?? 0;
+      const ratingDelta = currentAverageRating - previousAverageRating;
+      ratingTrendPct = Number((((ratingDelta / 5) * 100)).toFixed(1));
+    }
+
+    const activeLocationsList = locationSummaries.filter((loc) => loc.status === 'active');
+    const highlights: NonNullable<DashboardSnapshot['locationHighlights']> = [];
+
+    const rankedByRating = [...activeLocationsList].filter((loc) => typeof loc.rating === 'number').sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+    const rankedByLowestRating = [...activeLocationsList].filter((loc) => typeof loc.rating === 'number').sort((a, b) => (a.rating ?? 5) - (b.rating ?? 5));
+    const rankedByReviews = [...activeLocationsList].sort((a, b) => b.reviewCount - a.reviewCount);
+
+    const ensureHighlight = (
+      location: (typeof locationSummaries)[number] | undefined,
+      category: 'top' | 'attention' | 'improved',
+      ratingDelta?: number,
+    ) => {
+      if (!location) return;
+      if (highlights.some((highlight) => highlight?.id === location.id)) {
+        return;
+      }
+
+      highlights.push({
+        id: location.id,
+        name: location.name,
+        rating: typeof location.rating === 'number' ? location.rating : reviewStatsSnapshot.averageRating,
+        reviewCount: location.reviewCount,
+        pendingReviews: 0,
+        category,
+        ratingChange: ratingDelta,
+      });
+    };
+
+    const ratingTrendDelta = monthlyComparison
+      ? (monthlyComparison.current.rating ?? 0) - (monthlyComparison.previous?.rating ?? 0)
+      : undefined;
+
+    ensureHighlight(rankedByRating[0], 'top', ratingTrendDelta);
+    ensureHighlight(rankedByLowestRating[0], 'attention');
+    ensureHighlight(rankedByReviews.find((loc) => loc.reviewCount > 0), 'improved');
+
     const [recentReviewsQuery, recentPostsQuery, recentQuestionsQuery] = await Promise.all([
       supabase
         .from('gmb_reviews')
@@ -543,8 +626,8 @@ export async function GET(request: Request) {
       kpis: {
         healthScore,
         responseRate: reviewStatsSnapshot.responseRate,
-        reviewTrendPct: 0,
-        ratingTrendPct: 0,
+        reviewTrendPct,
+        ratingTrendPct,
         totalReviews: reviewStatsSnapshot.totals.total,
         unansweredQuestions: questionStatsSnapshot.totals.unanswered,
         pendingReviews: reviewStatsSnapshot.totals.pending,
@@ -553,6 +636,8 @@ export async function GET(request: Request) {
       reviewStats: reviewStatsSnapshot,
       postStats: postStatsSnapshot,
       questionStats: questionStatsSnapshot,
+      monthlyComparison,
+      locationHighlights: highlights.length > 0 ? highlights : undefined,
       automationStats: automationStatsSnapshot,
       tasksSummary,
       bottlenecks: computedBottlenecks,

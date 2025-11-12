@@ -7,18 +7,25 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState, useRef } from 'react';
 
+interface SyncDetail {
+  label: string;
+  timestamp: string | null;
+}
+
 interface RealtimeUpdatesIndicatorProps {
   lastUpdated: Date | null;
   onRefresh: () => void;
   isRefreshing: boolean;
   autoRefreshInterval?: number; // minutes
+  syncDetails?: SyncDetail[];
 }
 
 export function RealtimeUpdatesIndicator({
   lastUpdated,
   onRefresh,
   isRefreshing,
-  autoRefreshInterval = 5
+  autoRefreshInterval = 5,
+  syncDetails = [],
 }: RealtimeUpdatesIndicatorProps) {
   const [timeAgo, setTimeAgo] = useState<string>('');
   const [nextRefresh, setNextRefresh] = useState<number>(autoRefreshInterval * 60);
@@ -89,6 +96,18 @@ export function RealtimeUpdatesIndicator({
       return `${minutes}:${secs.toString().padStart(2, '0')} min`;
     }
     return `${secs}s`;
+  };
+
+  const formatTimestamp = (timestamp: string | null) => {
+    if (!timestamp) return 'Never';
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return 'Unknown';
+    return new Intl.DateTimeFormat(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date);
   };
 
   return (
@@ -170,6 +189,17 @@ export function RealtimeUpdatesIndicator({
           transition={{ duration: 0.5, ease: 'easeInOut' }}
         />
       </motion.div>
+
+      {syncDetails.length > 0 && (
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          {syncDetails.map((detail) => (
+            <div key={detail.label} className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{detail.label}</span>
+              <span className="font-mono">{formatTimestamp(detail.timestamp)}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }

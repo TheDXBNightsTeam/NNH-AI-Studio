@@ -91,6 +91,27 @@ export interface DashboardSnapshot {
       upvoteCount: number;
     }>;
   };
+  monthlyComparison?: {
+    current: {
+      reviews: number;
+      rating: number;
+      questions: number;
+    };
+    previous: {
+      reviews: number;
+      rating: number;
+      questions: number;
+    };
+  } | null;
+  locationHighlights?: Array<{
+    id: string;
+    name: string;
+    rating: number;
+    reviewCount: number;
+    pendingReviews: number;
+    ratingChange?: number;
+    category: 'top' | 'attention' | 'improved';
+  }>;
   automationStats: {
     totalAutomations: number;
     activeAutomations: number;
