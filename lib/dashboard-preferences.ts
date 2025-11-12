@@ -18,14 +18,7 @@ const DEFAULT_PREFERENCES: DashboardWidgetPreferences = {
   showAIInsights: true,
 };
 
-const NEW_USER_PREFERENCES: DashboardWidgetPreferences = {
-  showPerformanceComparison: false,
-  showLocationHighlights: false,
-  showWeeklyTasks: false,
-  showBottlenecks: false,
-  showAchievements: false,
-  showAIInsights: false,
-};
+const NEW_USER_PREFERENCES: DashboardWidgetPreferences = DEFAULT_PREFERENCES;
 
 const PREFERENCES_KEY = 'dashboard_widget_preferences';
 const HAS_CUSTOMIZED_KEY = 'dashboard_has_customized';
@@ -37,7 +30,7 @@ export function getDashboardPreferences(): DashboardWidgetPreferences {
     const hasCustomized = localStorage.getItem(HAS_CUSTOMIZED_KEY);
     const stored = localStorage.getItem(PREFERENCES_KEY);
     
-    // If user hasn't customized yet, show simplified view for new users
+    // If user hasn't customized yet, we show the full dashboard by default
     if (!hasCustomized) {
       return NEW_USER_PREFERENCES;
     }

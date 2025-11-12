@@ -17,6 +17,7 @@ export interface DashboardSnapshot {
       rating: number | null;
       reviewCount: number;
       profileCompleteness?: number | null;
+      pendingReviews?: number | null;
       lastSync: {
         reviews: string | null;
         posts: string | null;

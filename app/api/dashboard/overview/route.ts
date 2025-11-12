@@ -183,6 +183,7 @@ export async function GET(request: Request) {
     const locationSummaries =
       locationsData?.map((loc) => {
         const metadata = parseMetadata((loc as any).metadata);
+        const insights = parseMetadata(metadata.insights ?? metadata.insights_json ?? metadata.insightsJson);
         const profileCompletenessFromColumn = typeof (loc as any).profile_completeness === 'number'
           ? (loc as any).profile_completeness
           : null;
@@ -192,6 +193,17 @@ export async function GET(request: Request) {
           ? metadata.profile_completeness
           : null;
         const profileCompleteness = profileCompletenessFromColumn ?? profileCompletenessFromMetadata;
+        const pendingReviewsFromMetadata = typeof metadata.pendingReviews === 'number'
+          ? metadata.pendingReviews
+          : typeof metadata.pending_reviews === 'number'
+          ? metadata.pending_reviews
+          : null;
+        const pendingReviewsFromInsights = typeof insights.pendingReviews === 'number'
+          ? insights.pendingReviews
+          : typeof insights.pending_reviews === 'number'
+          ? insights.pending_reviews
+          : null;
+        const pendingReviews = pendingReviewsFromMetadata ?? pendingReviewsFromInsights;
 
         const status: LocationStatus = loc.is_archived
           ? 'archived'
@@ -238,6 +250,7 @@ export async function GET(request: Request) {
           rating,
           reviewCount,
           profileCompleteness,
+          pendingReviews,
           lastSync: {
             reviews: reviewsSync ?? coerceIso(loc.last_synced_at),
             posts: postsSync,
@@ -436,9 +449,16 @@ export async function GET(request: Request) {
     const activeLocationsList = locationSummaries.filter((loc) => loc.status === 'active');
     const highlights: NonNullable<DashboardSnapshot['locationHighlights']> = [];
 
-    const rankedByRating = [...activeLocationsList].filter((loc) => typeof loc.rating === 'number').sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
-    const rankedByLowestRating = [...activeLocationsList].filter((loc) => typeof loc.rating === 'number').sort((a, b) => (a.rating ?? 5) - (b.rating ?? 5));
-    const rankedByReviews = [...activeLocationsList].sort((a, b) => b.reviewCount - a.reviewCount);
+    const getRatingValue = (location: (typeof locationSummaries)[number]) => {
+      if (typeof location.rating === 'number') {
+        return location.rating;
+      }
+      return reviewStatsSnapshot.averageRating ?? 0;
+    };
+
+    const rankedByRating = [...activeLocationsList].sort((a, b) => getRatingValue(b) - getRatingValue(a));
+    const rankedByLowestRating = [...activeLocationsList].sort((a, b) => getRatingValue(a) - getRatingValue(b));
+    const rankedByReviews = [...activeLocationsList].sort((a, b) => (b.reviewCount ?? 0) - (a.reviewCount ?? 0));
 
     const ensureHighlight = (
       location: (typeof locationSummaries)[number] | undefined,
@@ -455,7 +475,7 @@ export async function GET(request: Request) {
         name: location.name,
         rating: typeof location.rating === 'number' ? location.rating : reviewStatsSnapshot.averageRating,
         reviewCount: location.reviewCount,
-        pendingReviews: 0,
+        pendingReviews: typeof location.pendingReviews === 'number' ? location.pendingReviews : 0,
         category,
         ratingChange: ratingDelta,
       });
@@ -467,7 +487,11 @@ export async function GET(request: Request) {
 
     ensureHighlight(rankedByRating[0], 'top', ratingTrendDelta);
     ensureHighlight(rankedByLowestRating[0], 'attention');
-    ensureHighlight(rankedByReviews.find((loc) => loc.reviewCount > 0), 'improved');
+    ensureHighlight(rankedByReviews.find((loc) => (loc.reviewCount ?? 0) > 0) ?? rankedByReviews[0], 'improved');
+
+    if (highlights.length === 0 && activeLocationsList.length > 0) {
+      ensureHighlight(activeLocationsList[0], 'top', ratingTrendDelta);
+    }
 
     const [recentReviewsQuery, recentPostsQuery, recentQuestionsQuery] = await Promise.all([
       supabase
