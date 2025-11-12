@@ -8,6 +8,7 @@ type PriorityLevel = "high" | "medium" | "low"
 interface WeeklyTaskInsert {
   user_id: string
   week_start_date: string
+  week_end_date: string
   title: string
   description: string
   category: string
@@ -40,6 +41,14 @@ function calculateWeekStart(date = new Date()): string {
   result.setDate(result.getDate() + diff)
   result.setHours(0, 0, 0, 0)
   return result.toISOString().split("T")[0]!
+}
+
+function calculateWeekEnd(weekStartIso: string): string {
+  const start = new Date(weekStartIso)
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6)
+  end.setHours(23, 59, 59, 999)
+  return end.toISOString().split("T")[0]!
 }
 
 async function requireAuthenticatedUser(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -110,7 +119,12 @@ async function tasksAlreadyExist(
   return Boolean(existingTasks?.length)
 }
 
-function buildReviewTask(userId: string, weekStartDate: string, reviews: WeeklyTaskSeeds["pendingReviews"]) {
+function buildReviewTask(
+  userId: string,
+  weekStartDate: string,
+  weekEndDate: string,
+  reviews: WeeklyTaskSeeds["pendingReviews"]
+) {
   if (reviews.length === 0) {
     return null
   }
@@ -133,6 +147,7 @@ function buildReviewTask(userId: string, weekStartDate: string, reviews: WeeklyT
   return {
     user_id: userId,
     week_start_date: weekStartDate,
+    week_end_date: weekEndDate,
     title,
     description:
       hasUrgentReviews
@@ -152,6 +167,7 @@ function buildReviewTask(userId: string, weekStartDate: string, reviews: WeeklyT
 function buildQuestionTask(
   userId: string,
   weekStartDate: string,
+  weekEndDate: string,
   questions: WeeklyTaskSeeds["unansweredQuestions"]
 ) {
   if (questions.length === 0) {
@@ -164,6 +180,7 @@ function buildQuestionTask(
   return {
     user_id: userId,
     week_start_date: weekStartDate,
+    week_end_date: weekEndDate,
     title: `Answer ${count} customer question${pluralSuffix}`,
     description: "Help potential customers by answering their questions about your business.",
     category: "questions",
@@ -177,7 +194,12 @@ function buildQuestionTask(
   }
 }
 
-function buildContentTask(userId: string, weekStartDate: string, recentPosts: WeeklyTaskSeeds["recentPosts"]) {
+function buildContentTask(
+  userId: string,
+  weekStartDate: string,
+  weekEndDate: string,
+  recentPosts: WeeklyTaskSeeds["recentPosts"]
+) {
   const latestPublishedAt = recentPosts[0]?.published_at
   const daysSinceLastPost = latestPublishedAt
     ? Math.floor((Date.now() - new Date(latestPublishedAt).getTime()) / (1000 * 60 * 60 * 24))
@@ -192,6 +214,7 @@ function buildContentTask(userId: string, weekStartDate: string, recentPosts: We
   return {
     user_id: userId,
     week_start_date: weekStartDate,
+    week_end_date: weekEndDate,
     title,
     description:
       "Share updates, offers, or news to keep your profile active and visible in search results.",
@@ -206,10 +229,11 @@ function buildContentTask(userId: string, weekStartDate: string, recentPosts: We
   }
 }
 
-function buildPhotoTask(userId: string, weekStartDate: string): WeeklyTaskInsert {
+function buildPhotoTask(userId: string, weekStartDate: string, weekEndDate: string): WeeklyTaskInsert {
   return {
     user_id: userId,
     week_start_date: weekStartDate,
+    week_end_date: weekEndDate,
     title: "Upload 3-5 new photos",
     description: "Fresh, high-quality photos attract more customers and improve your profile's appeal.",
     category: "media",
@@ -222,10 +246,11 @@ function buildPhotoTask(userId: string, weekStartDate: string): WeeklyTaskInsert
   }
 }
 
-function buildInfoTask(userId: string, weekStartDate: string): WeeklyTaskInsert {
+function buildInfoTask(userId: string, weekStartDate: string, weekEndDate: string): WeeklyTaskInsert {
   return {
     user_id: userId,
     week_start_date: weekStartDate,
+    week_end_date: weekEndDate,
     title: "Verify business hours and contact info",
     description: "Ensure all business information is accurate, especially for holidays or special events.",
     category: "info_management",
@@ -263,6 +288,7 @@ export async function generateWeeklyTasks(locationId?: string) {
     }
 
     const weekStartDate = calculateWeekStart()
+    const weekEndDate = calculateWeekEnd(weekStartDate)
     const seeds = await loadTaskSeeds(supabase, user.id, locationId)
 
     if (await tasksAlreadyExist(supabase, user.id, weekStartDate)) {
@@ -274,11 +300,11 @@ export async function generateWeeklyTasks(locationId?: string) {
     }
 
     const generatedTasks: WeeklyTaskInsert[] = [
-      buildReviewTask(user.id, weekStartDate, seeds.pendingReviews),
-      buildQuestionTask(user.id, weekStartDate, seeds.unansweredQuestions),
-      buildContentTask(user.id, weekStartDate, seeds.recentPosts),
-      buildPhotoTask(user.id, weekStartDate),
-      buildInfoTask(user.id, weekStartDate),
+      buildReviewTask(user.id, weekStartDate, weekEndDate, seeds.pendingReviews),
+      buildQuestionTask(user.id, weekStartDate, weekEndDate, seeds.unansweredQuestions),
+      buildContentTask(user.id, weekStartDate, weekEndDate, seeds.recentPosts),
+      buildPhotoTask(user.id, weekStartDate, weekEndDate),
+      buildInfoTask(user.id, weekStartDate, weekEndDate),
     ].filter(Boolean) as WeeklyTaskInsert[]
 
     const tasksToInsert = selectTasksForInsertion(generatedTasks)
@@ -392,6 +418,7 @@ export async function getWeeklyTasks(locationId?: string) {
     weekStart.setHours(0, 0, 0, 0)
 
     const weekStartDate = weekStart.toISOString().split("T")[0]
+    const weekEndDate = calculateWeekEnd(weekStartDate)
 
     const { data, error } = await supabase
       .from("weekly_task_recommendations")
@@ -412,7 +439,7 @@ export async function getWeeklyTasks(locationId?: string) {
 
     return {
       success: true,
-      data: data || [],
+      data: (data ?? []).map((task) => ({ ...task, week_end_date: task.week_end_date ?? weekEndDate })),
     }
   } catch (error: any) {
     console.error("[Weekly Tasks] Error fetching tasks:", error)
