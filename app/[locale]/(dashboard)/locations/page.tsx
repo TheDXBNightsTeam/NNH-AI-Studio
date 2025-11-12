@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { LocationsMapTab } from '@/components/locations/locations-map-tab-new';
@@ -39,6 +39,18 @@ export default function LocationsPage() {
   const gmbAccountId = activeAccount?.id || null;
   const { data: overviewSnapshot } = useDashboardSnapshot();
   const recentHighlights = overviewSnapshot?.reviewStats?.recentHighlights ?? [];
+
+  const locationNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (overviewSnapshot?.locationSummary?.locations) {
+      overviewSnapshot.locationSummary.locations.forEach((loc) => {
+        if (loc?.id) {
+          map.set(loc.id, loc.name ?? 'Untitled location');
+        }
+      });
+    }
+    return map;
+  }, [overviewSnapshot]);
  
   const formatHighlightDate = (value?: string | null) => {
     if (!value) return '—';
@@ -369,15 +381,47 @@ export default function LocationsPage() {
                         </Button>
                       </>
                     ) : (
-                      recentHighlights.slice(0, 3).map((highlight) => (
-                        <div key={highlight.reviewId} className="rounded-xl border border-white/10 bg-black/40 p-3">
-                          <div className="text-sm text-white">{highlight.reviewer}</div>
-                          <div className="text-xs text-white/60">
-                            {formatHighlightDate(highlight.createdAt)}
+                      recentHighlights.slice(0, 3).map((highlight) => {
+                        const locationName = locationNameMap.get(highlight.locationId) ?? 'Unknown location';
+                        const ratingValue = typeof highlight.rating === 'number' ? highlight.rating.toFixed(1) : null;
+                        const reviewerName = highlight.reviewer || 'Recent review';
+                        const isPositive = typeof highlight.rating === 'number' ? highlight.rating >= 4 : true;
+                        const message = isPositive
+                          ? 'Great feedback! Reply to keep the momentum going.'
+                          : 'Review needs attention. Consider replying soon.';
+
+                        return (
+                          <div
+                            key={highlight.reviewId}
+                            className="rounded-xl border border-white/10 bg-black/40 p-3"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="text-sm font-semibold text-white line-clamp-1" title={locationName}>
+                                {locationName}
+                              </div>
+                              {ratingValue && (
+                                <span className="flex items-center gap-1 text-xs text-yellow-400">
+                                  <span>⭐</span>
+                                  {ratingValue}
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-1 text-xs text-white/60">
+                              by {reviewerName} · {formatHighlightDate(highlight.createdAt)}
+                            </div>
+                            <p className="mt-2 text-xs text-white/70">{message}</p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="mt-3 h-8 w-full justify-start border border-white/10 bg-white/5 text-xs text-white hover:border-white/20 hover:bg-white/10"
+                              onClick={() => router.push(`/reviews?location=${highlight.locationId}`)}
+                            >
+                              <MessageSquare className="mr-2 h-3.5 w-3.5" />
+                              Open in Reviews
+                            </Button>
                           </div>
-                          <p className="mt-2 line-clamp-3 text-sm text-white/80">{highlight.locationId}</p>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </CardContent>
                 </Card>

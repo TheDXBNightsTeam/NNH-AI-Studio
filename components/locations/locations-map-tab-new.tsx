@@ -9,12 +9,8 @@ import { useLocationMapData } from '@/hooks/use-location-map-data';
 import { useIsMobile } from '@/components/locations/responsive-locations-layout';
 import { Loader2, MapPin } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  StatsOverviewCard,
-  LocationDetailsCard,
-  ActivityFeedCard,
-  QuickActionsCard,
-} from '@/components/locations/map-cards';
+import { StatsOverviewCard, LocationDetailsCard, FloatingCard } from '@/components/locations/map-cards';
+import { useDashboardSnapshot } from '@/hooks/use-dashboard-cache';
 
 /**
  * Custom hook to track previous value
@@ -48,6 +44,7 @@ export function LocationsMapTab() {
   const [selectedLocationId, setSelectedLocationId] = useState<string | undefined>(undefined);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const isMobile = useIsMobile();
+  const { data: snapshot } = useDashboardSnapshot();
   
   // Store locations in ref to avoid re-renders
   const locationsRef = useRef<Location[]>([]);
@@ -140,7 +137,6 @@ export function LocationsMapTab() {
     }
   }, [locations.length, selectedLocationId]); // Only depend on length and selection
 
-  // Get selected location directly - no useMemo needed
   const selectedLocation = locations.find(loc => loc.id === selectedLocationId);
 
   // Filter locations with coordinates - calculate directly, no useMemo
@@ -184,6 +180,41 @@ export function LocationsMapTab() {
   const handleMarkerClick = useCallback((location: Location) => {
     setSelectedLocationId(location.id);
   }, []); // Empty deps - stable function
+
+  const aggregatedStats = useMemo(() => {
+    if (stats) {
+      return {
+        totalLocations: typeof stats.totalLocations === 'number' ? stats.totalLocations : locations.length,
+        avgRating: typeof stats.avgRating === 'number' ? stats.avgRating : 0,
+        totalReviews: typeof stats.reviewCount === 'number' ? stats.reviewCount : 0,
+        healthScore: typeof stats.healthScore === 'number' ? stats.healthScore : 0,
+      };
+    }
+
+    if (snapshot) {
+      return {
+        totalLocations: snapshot.locationSummary.totalLocations ?? locations.length,
+        avgRating: snapshot.reviewStats.averageRating ?? 0,
+        totalReviews: snapshot.reviewStats.totals.total ?? 0,
+        healthScore: snapshot.kpis.healthScore ?? 0,
+      };
+    }
+
+    if (selectedLocation) {
+      const rating = typeof selectedLocation.rating === 'number' ? selectedLocation.rating : 0;
+      const reviewCount = typeof selectedLocation.reviewCount === 'number' ? selectedLocation.reviewCount : 0;
+      const healthScore = typeof selectedLocation.healthScore === 'number' ? selectedLocation.healthScore : 0;
+
+      return {
+        totalLocations: locations.length,
+        avgRating: rating,
+        totalReviews: reviewCount,
+        healthScore,
+      };
+    }
+
+    return null;
+  }, [stats, snapshot, selectedLocation, locations.length]);
 
   // Handle locations error
   if (locationsError) {
@@ -333,23 +364,47 @@ export function LocationsMapTab() {
       {/* Floating Cards */}
       {selectedLocation && (
         <>
-          {/* Show cards only if stats are loaded (or show loading state) */}
-          {statsLoading ? (
-            // Loading state for cards
-            <div className="absolute top-4 left-4 glass-strong rounded-[20px] p-6 z-10">
-              <div className="flex items-center gap-3">
-                <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                <span className="text-sm text-muted-foreground">Loading location data...</span>
-              </div>
-            </div>
-          ) : stats ? (
-            <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
-              Failed to load location stats.
-            </div>
+          {aggregatedStats ? (
+            <StatsOverviewCard
+              totalLocations={Math.max(aggregatedStats.totalLocations, locations.length)}
+              avgRating={aggregatedStats.avgRating}
+              totalReviews={Math.max(aggregatedStats.totalReviews, 0)}
+              healthScore={Math.max(aggregatedStats.healthScore, 0)}
+            />
           ) : (
-            <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
-              Failed to load location stats.
-            </div>
+            <FloatingCard
+              position="top-left"
+              delay={0.1}
+              mobilePosition="top"
+              className="bg-destructive/10 border-destructive/20 text-destructive"
+            >
+              <p className="text-sm font-medium">No statistics available for this location.</p>
+            </FloatingCard>
+          )}
+
+          <LocationDetailsCard location={selectedLocation} />
+
+          {statsLoading && !stats && (
+            <FloatingCard
+              position="bottom-left"
+              delay={0.3}
+              mobilePosition="bottom"
+              className="flex items-center gap-3"
+            >
+              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              <span className="text-sm text-muted-foreground">Refreshing location insight…</span>
+            </FloatingCard>
+          )}
+
+          {statsError && (
+            <FloatingCard
+              position="bottom-left"
+              delay={0.4}
+              mobilePosition="bottom"
+              className="bg-destructive/10 border-destructive/20 text-destructive"
+            >
+              <p className="text-sm font-medium">Couldn’t load live stats. Showing cached dashboard totals.</p>
+            </FloatingCard>
           )}
         </>
       )}
