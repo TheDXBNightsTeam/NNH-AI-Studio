@@ -159,6 +159,20 @@ export async function getAutoReplySettings(locationId?: string) {
       tone: "friendly",
       locationId: locationId || undefined,
     };
+    const toneCandidate =
+      typeof rawAutoReplySettings.tone === "string"
+        ? rawAutoReplySettings.tone
+        : typeof rawAutoReplySettings.tone_preference === "string"
+          ? rawAutoReplySettings.tone_preference
+          : undefined;
+
+    const allowedTones: AutoReplySettings["tone"][] = [
+      "friendly",
+      "professional",
+      "apologetic",
+      "marketing",
+    ];
+
     const normalizedSettings: Partial<AutoReplySettings> = {
       enabled: typeof rawAutoReplySettings.enabled === "boolean" ? rawAutoReplySettings.enabled : defaultSettings.enabled,
       minRating:
@@ -192,11 +206,9 @@ export async function getAutoReplySettings(locationId?: string) {
               ? rawAutoReplySettings.requireApproval
               : defaultSettings.requireApproval),
       tone:
-        typeof rawAutoReplySettings.tone === "string"
-          ? rawAutoReplySettings.tone
-          : (typeof rawAutoReplySettings.tone_preference === "string"
-              ? rawAutoReplySettings.tone_preference
-              : defaultSettings.tone),
+        toneCandidate && allowedTones.includes(toneCandidate as AutoReplySettings["tone"])
+          ? (toneCandidate as AutoReplySettings["tone"])
+          : defaultSettings.tone,
       locationId:
         locationId ||
         rawAutoReplySettings.location_id ||
