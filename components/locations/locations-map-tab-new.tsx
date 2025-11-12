@@ -65,6 +65,21 @@ export function LocationsMapTab() {
     locationsRef.current = locations;
   }, [locations.length]); // Only depend on length
 
+  useEffect(() => {
+    const handleLocationSelect = (event: Event) => {
+      const customEvent = event as CustomEvent<{ id?: string }>;
+      const nextId = customEvent.detail?.id;
+      if (nextId) {
+        setSelectedLocationId(nextId);
+      }
+    };
+
+    window.addEventListener('location:select', handleLocationSelect as EventListener);
+    return () => {
+      window.removeEventListener('location:select', handleLocationSelect as EventListener);
+    };
+  }, []);
+
   // Map View specific logging
   useEffect(() => {
     console.log('🗺️ [MapView] Component state:', {

@@ -455,7 +455,7 @@ export default function LocationsPage() {
             </div>
 
             <div>
-              <LocationsListView />
+              <LocationsListView variant="compact" />
             </div>
           </div>
         )}

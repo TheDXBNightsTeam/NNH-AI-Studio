@@ -15,10 +15,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, X, AlertCircle, Star, Loader2 } from 'lucide-react';
+import { Search, X, AlertCircle, Star, Loader2, MapPin } from 'lucide-react';
 import { LocationCardSkeleton } from '@/components/locations/location-card-skeleton';
 import { Location } from '@/components/locations/location-types';
 import { BulkActionBar } from './bulk-action-bar';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface LocationsStats {
   totalLocations: number;
@@ -27,7 +29,11 @@ interface LocationsStats {
   avgHealthScore: number;
 }
 
-export function LocationsListView() {
+interface LocationsListViewProps {
+  variant?: 'standard' | 'compact';
+}
+
+export function LocationsListView({ variant = 'standard' }: LocationsListViewProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -45,6 +51,7 @@ export function LocationsListView() {
   );
   const [stats, setStats] = useState<LocationsStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [focusedLocationId, setFocusedLocationId] = useState<string | null>(null);
 
   // Bulk selection state
   const [selectedLocationIds, setSelectedLocationIds] = useState<Set<string>>(new Set());
@@ -447,17 +454,18 @@ export function LocationsListView() {
         </div>
       )}
 
-      {/* Loading State */}
       {loading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <div className={cn(
+          'grid gap-4',
+          variant === 'standard' ? 'md:grid-cols-2 lg:grid-cols-3 grid-cols-1' : 'grid-cols-1'
+        )}>
+          {Array.from({ length: variant === 'standard' ? 6 : 4 }).map((_, i) => (
             <LocationCardSkeleton key={i} />
           ))}
         </div>
       )}
 
-      {/* Locations List - Horizontal Cards with Checkboxes */}
-      {!loading && filteredLocations.length > 0 && (
+      {!loading && filteredLocations.length > 0 && variant === 'standard' && (
         <div className="flex flex-col gap-4">
           {filteredLocations.map((location) => (
             <div key={location.id} className="flex items-start gap-3">
@@ -475,6 +483,27 @@ export function LocationsListView() {
                 />
               </div>
             </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && filteredLocations.length > 0 && variant === 'compact' && (
+        <div className="flex flex-col gap-3">
+          {filteredLocations.map((location) => (
+            <CompactLocationRow
+              key={location.id}
+              location={location}
+              selected={selectedLocationIds.has(location.id)}
+              onToggleSelect={() => handleToggleLocation(location.id)}
+              onViewDetails={() => router.push(`/locations/${location.id}`)}
+              onFocus={() => {
+                setFocusedLocationId(location.id);
+                window.dispatchEvent(
+                  new CustomEvent('location:select', { detail: { id: location.id } })
+                );
+              }}
+              isFocused={focusedLocationId === location.id}
+            />
           ))}
         </div>
       )}
@@ -511,5 +540,86 @@ export function LocationsListView() {
       />
     </div>
   );
+}
+
+interface CompactRowProps {
+  location: Location;
+  onToggleSelect: () => void;
+  onViewDetails: () => void;
+  onFocus: () => void;
+  selected: boolean;
+  isFocused: boolean;
+}
+
+function CompactLocationRow({
+  location,
+  onToggleSelect,
+  onViewDetails,
+  onFocus,
+  selected,
+  isFocused
+}: CompactRowProps) {
+  const rating = location.rating != null ? location.rating.toFixed(1) : '—';
+  const reviews = location.reviewCount ?? 0;
+
+  return (
+    <div
+      className={cn(
+        'flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 transition-colors',
+        isFocused && 'border-primary/60 bg-primary/10'
+      )}
+    >
+      <Checkbox checked={selected} onCheckedChange={onToggleSelect} className="mt-1" />
+      <div className="flex-1 space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h4 className="truncate text-sm font-semibold text-white">{location.name}</h4>
+            {location.address && (
+              <p className="mt-1 line-clamp-2 text-xs text-white/60">{location.address}</p>
+            )}
+          </div>
+          <Badge variant="outline" className={cn('text-xs', badgeTone(location.status))}>
+            {location.status === 'verified' ? 'Verified' : location.status === 'pending' ? 'Pending' : 'Suspended'}
+          </Badge>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4 text-xs text-white/60">
+          <span className="flex items-center gap-1"><Star className="h-3 w-3" /> {rating}</span>
+          <span>{reviews} reviews</span>
+          {location.responseRate != null && (
+            <span>{Math.round(Number(location.responseRate))}% response rate</span>
+          )}
+          {location.healthScore != null && (
+            <span>{Math.round(Number(location.healthScore))}% health score</span>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-white/20 bg-white/5 text-white hover:bg-white/10"
+            onClick={onFocus}
+          >
+            <MapPin className="mr-1.5 h-4 w-4" /> Focus on map
+          </Button>
+          <Button size="sm" variant="ghost" className="text-white/80 hover:text-white" onClick={onViewDetails}>
+            View details
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function badgeTone(status: Location['status']) {
+  switch (status) {
+    case 'verified':
+      return 'border-emerald-500/30 text-emerald-200';
+    case 'suspended':
+      return 'border-destructive/30 text-destructive';
+    default:
+      return 'border-amber-400/30 text-amber-300';
+  }
 }
 
