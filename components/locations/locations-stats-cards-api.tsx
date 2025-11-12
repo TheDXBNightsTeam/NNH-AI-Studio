@@ -94,7 +94,7 @@ export function LocationsStatsCardsAPI({ refreshKey }: { refreshKey?: number } =
     },
     {
       label: 'Average Rating',
-      value: stats?.avgRating ? stats.avgRating.toFixed(1) : '—',
+      value: stats?.avgRating && stats.avgRating > 0 ? stats.avgRating.toFixed(1) : '—',
       icon: Star,
       color: 'text-yellow-500',
       bgColor: 'bg-yellow-500/10',
@@ -112,7 +112,10 @@ export function LocationsStatsCardsAPI({ refreshKey }: { refreshKey?: number } =
     },
     {
       label: 'Avg Health Score',
-      value: `${Math.round(stats?.avgHealthScore ?? 0)}%`,
+      value:
+        stats?.avgHealthScore != null && Number.isFinite(stats.avgHealthScore)
+          ? `${Math.round(stats.avgHealthScore)}%`
+          : '—',
       icon: Eye,
       color: 'text-purple-500',
       bgColor: 'bg-purple-500/10',
@@ -194,7 +197,11 @@ export function LocationsStatsCardsAPI({ refreshKey }: { refreshKey?: number } =
   );
 }
 
-function renderTrend(trendPct: number) {
+function renderTrend(trendPct: number | null) {
+  if (trendPct == null) {
+    return <span className="text-gray-500">—</span>;
+  }
+
   if (trendPct > 0) {
     return <span className="text-green-500">↑ +{Math.round(trendPct)}%</span>;
   }
@@ -214,11 +221,11 @@ function getHealthBorderClass(score: number) {
 
 function calculateTrend(current: number, previous: number) {
   if (!Number.isFinite(current)) {
-    return 0;
+    return null;
   }
 
-  if (!Number.isFinite(previous) || previous === 0) {
-    return current > 0 ? 100 : 0;
+  if (!Number.isFinite(previous) || previous <= 0) {
+    return null;
   }
 
   const delta = current - previous;
