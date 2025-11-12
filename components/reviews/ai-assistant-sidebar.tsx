@@ -59,6 +59,21 @@ export function AIAssistantSidebar({ selectedReview, pendingReviewsCount, locati
   const [currentTip, setCurrentTip] = useState(0);
   const [settings, setSettings] = useState<AutoReplySettings | null>(null);
 
+  const loadSettings = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await getAutoReplySettings(locationId);
+      if (result.success && result.data) {
+        setSettings(result.data);
+        setAutoReplyEnabled(result.data.enabled);
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [locationId]);
+
   // Load auto-reply settings
   useEffect(() => {
     loadSettings();
@@ -84,21 +99,6 @@ export function AIAssistantSidebar({ selectedReview, pendingReviewsCount, locati
     }, 5000);
     return () => clearInterval(interval);
   }, []);
-
-  const loadSettings = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await getAutoReplySettings(locationId);
-      if (result.success && result.data) {
-        setSettings(result.data);
-        setAutoReplyEnabled(result.data.enabled);
-      }
-    } catch (error) {
-      console.error('Error loading settings:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [locationId]);
 
   const handleToggleAutoReply = async (enabled: boolean) => {
     if (!settings) {
