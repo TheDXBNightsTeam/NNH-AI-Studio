@@ -189,7 +189,7 @@ export function useLocations(
 
       console.log('✅ [useLocations] User authenticated:', { userId: user.id });
 
-    const [{ data: brandingData }, { data: profileData }] = await Promise.all([
+    const [brandingResult, profileResult] = await Promise.all([
       supabase
         .from('branding_settings')
         .select('logo_url, cover_image_url')
@@ -201,6 +201,23 @@ export function useLocations(
         .eq('id', user.id)
         .maybeSingle(),
     ]);
+
+    let brandingData = brandingResult.data as { logo_url?: string | null; cover_image_url?: string | null } | null;
+
+    if (brandingResult.error) {
+      if (brandingResult.error.code === '42P01') {
+        brandingData = null;
+      } else {
+        console.warn('[useLocations] branding_settings lookup error:', brandingResult.error);
+        brandingData = null;
+      }
+    }
+
+    const profileData = profileResult.data as { avatar_url?: string | null } | null;
+
+    if (profileResult.error && profileResult.error.code !== 'PGRST116') {
+      console.warn('[useLocations] profiles lookup error:', profileResult.error);
+    }
 
     const fallbackLogoUrl =
       coerceString(brandingData?.logo_url) ??
