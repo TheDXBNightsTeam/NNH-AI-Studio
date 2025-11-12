@@ -984,6 +984,7 @@ export async function POST(request: NextRequest) {
   const g: any = globalThis as any;
   if (!g.__gmbSyncLocks) g.__gmbSyncLocks = new Map<string, number>();
   const syncLocks: Map<string, number> = g.__gmbSyncLocks;
+  let resolvedAccountId: string | null = null;
   let acquiredLock = false;
   let usingRedis = false;
   let redis: Redis | null = null;
@@ -1031,6 +1032,7 @@ export async function POST(request: NextRequest) {
 
     // Support both naming conventions: account_id/accountId and sync_type/syncType
     const accountId = body.accountId || body.account_id;
+    resolvedAccountId = accountId ?? null;
     const syncType = (body.syncType || body.sync_type || 'full').toLowerCase();
 
     if (!VALID_SYNC_TYPES.includes(syncType)) {
