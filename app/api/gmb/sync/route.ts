@@ -1826,7 +1826,7 @@ export async function POST(request: NextRequest) {
       redis,
       usingRedis,
       syncLocks,
-      accountId: accountId,
+      accountId: resolvedAccountId,
     });
   }
 }
