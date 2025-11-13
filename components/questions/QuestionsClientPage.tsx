@@ -33,8 +33,13 @@ import { useDashboardSnapshot } from '@/hooks/use-dashboard-cache';
 import type { GMBQuestion } from '@/lib/types/database';
 import type { DashboardSnapshot } from '@/types/dashboard';
 
-type SnapshotQuestion = DashboardSnapshot['questionStats']['recentQuestions'][number];
-type QuestionEntity = SnapshotQuestion & Partial<GMBQuestion> & Record<string, any>;
+type QuestionEntity = GMBQuestion & {
+  locationId: string;
+  questionText: string;
+  createdAt: string | null;
+  answerStatus: GMBQuestion['answer_status'] | 'unanswered';
+  upvoteCount: number;
+};
 
 interface QuestionStatsSnapshot {
   total: number;
@@ -105,24 +110,14 @@ export function QuestionsClientPage({
   const [bulkProgress, setBulkProgress] = useState({ completed: 0, total: 0 });
   const { data: dashboardSnapshot } = useDashboardSnapshot();
 
-  const normalizedSelectedQuestion = useMemo(() => {
-    if (!selectedQuestion) {
-      return null;
-    }
-    return normalizeQuestionEntity(selectedQuestion);
-  }, [selectedQuestion]);
-
   const stats = useMemo<QuestionStatsSnapshot | null>(() => {
     const questionStats = dashboardSnapshot?.questionStats;
     if (!questionStats) {
       return null;
     }
 
-    const recent = questionStats.recentQuestions ?? [];
-    const upvotes = recent.reduce(
-      (acc: number, q: QuestionEntity) => acc + (q.upvoteCount ?? q.upvote_count ?? 0),
-      0,
-    );
+    const recent = (questionStats.recentQuestions ?? []).map(normalizeQuestionEntity);
+    const upvotes = recent.reduce((acc: number, q) => acc + q.upvoteCount, 0);
 
     return {
       total: questionStats.totals?.total ?? 0,
@@ -141,8 +136,10 @@ export function QuestionsClientPage({
     };
   }, [dashboardSnapshot?.questionStats]);
 
+  const normalizedQuestions = useMemo(() => (initialQuestions ?? []).map(normalizeQuestionEntity), [initialQuestions]);
+
   const topicStats = useMemo(() => {
-    const pool = [...(stats?.recentQuestions ?? []), ...initialQuestions];
+    const pool = [...(stats?.recentQuestions ?? []), ...normalizedQuestions];
     const definitions = [
       { key: 'hours', label: 'Hours', keywords: ['hour', 'open', 'close', 'time'] },
       { key: 'delivery', label: 'Delivery', keywords: ['deliver', 'delivery', 'shipping'] },
@@ -155,8 +152,7 @@ export function QuestionsClientPage({
     return definitions
       .map((definition) => {
         const count = pool.reduce((acc, question) => {
-          const text = String(question.question_text ?? question.questionText ?? '')
-            .toLowerCase();
+          const text = (question.questionText ?? '').toLowerCase();
           return definition.keywords.some((keyword) => text.includes(keyword)) ? acc + 1 : acc;
         }, 0);
 
@@ -167,7 +163,7 @@ export function QuestionsClientPage({
         };
       })
       .sort((a, b) => b.count - a.count);
-  }, [initialQuestions, stats?.recentQuestions]);
+  }, [initialQuestions, stats?.recentQuestions, normalizedQuestions]);
 
   const patterns = useMemo(() => topicStats.filter((topic) => topic.count > 0), [topicStats]);
 
@@ -182,23 +178,23 @@ export function QuestionsClientPage({
   );
 
   const suggestion = useMemo<SuggestionInfo | null>(() => {
-    const pool = [...(stats?.recentQuestions ?? []), ...initialQuestions];
+    const pool = [...(stats?.recentQuestions ?? []), ...normalizedQuestions];
     if (pool.length === 0) {
       return null;
     }
 
     const target =
       pool.find((question) => {
-        const status = question.answer_status ?? question.status;
-        const hasAnswer = Boolean(question.answer_text ?? question.answerText);
+        const status = question.answerStatus ?? question.answer_status;
+        const hasAnswer = Boolean(question.answer_text);
         return !hasAnswer && (status === 'unanswered' || status === 'pending');
       }) ?? pool[0];
 
-    const text = String(target.question_text ?? target.questionText ?? 'Upcoming question').trim();
+    const text = (target.questionText ?? 'Upcoming question').trim();
     const topic = patterns[0]?.label ?? 'General';
     const confidence = Math.min(
       98,
-      Math.max(72, (target.upvote_count ?? target.upvoteCount ?? 0) * 3 + 85),
+      Math.max(72, target.upvoteCount * 3 + 85),
     );
 
     return {
@@ -207,7 +203,7 @@ export function QuestionsClientPage({
       confidence,
       description: 'Let AI draft a human-quality answer based on your knowledge base.',
     };
-  }, [initialQuestions, patterns, stats?.recentQuestions]);
+  }, [normalizedQuestions, patterns, stats?.recentQuestions]);
 
   const insights: InsightItem[] = useMemo(() => {
     const topPattern = patterns[0];
@@ -394,7 +390,7 @@ export function QuestionsClientPage({
   }, [selectedQuestion]);
 
   const canSync = Boolean(currentFilters.locationId);
-  const questions = initialQuestions ?? [];
+  const questions = normalizedQuestions;
   const totalPages = Math.max(1, Math.ceil(totalCount / 50));
   const currentPage = currentFilters.page ?? 1;
   const hasActiveFilters = Boolean(
@@ -468,7 +464,7 @@ export function QuestionsClientPage({
       />
 
       <AnswerDialog
-        question={normalizedSelectedQuestion}
+        question={selectedQuestion}
         isOpen={answerDialogOpen}
         onClose={() => {
           setAnswerDialogOpen(false);
@@ -793,9 +789,9 @@ function FilterChip({
 interface QuestionsFeedSectionProps {
   questions: QuestionEntity[];
   isPending: boolean;
-  selectedQuestion: GMBQuestion | null;
-  onSelectQuestion: (question: GMBQuestion) => void;
-  onAnswer: (question: GMBQuestion) => void;
+  selectedQuestion: QuestionEntity | null;
+  onSelectQuestion: (question: QuestionEntity) => void;
+  onAnswer: (question: QuestionEntity) => void;
 }
 
 function QuestionsFeedSection({
@@ -827,11 +823,9 @@ function QuestionsFeedSection({
     );
   }
 
-  const normalizedQuestions = questions.map((question) => normalizeQuestionEntity(question));
-
   return (
     <section className="space-y-4">
-      {normalizedQuestions.map((question) => (
+      {questions.map((question) => (
                 <QuestionCard
                   key={question.id}
                   question={question}
@@ -846,7 +840,7 @@ function QuestionsFeedSection({
 
 interface AutoAnswerSidebarProps {
   pendingCount: number;
-  selectedQuestion: GMBQuestion | null;
+  selectedQuestion: QuestionEntity | null;
   autoAnswerEnabled: boolean;
   autoAnswerLoading: boolean;
   onToggleAutoAnswer: (enabled: boolean) => void;
@@ -1161,41 +1155,59 @@ function QuestionsPagination({ currentPage, totalPages, onPageChange }: Question
   );
 }
 
-function normalizeQuestionEntity(question: QuestionEntity | GMBQuestion): GMBQuestion {
-  const q = question as Record<string, any>;
+function normalizeQuestionEntity(questionInput: Partial<GMBQuestion> & Record<string, any>): QuestionEntity {
+  const q = questionInput as Record<string, any>;
+  const now = new Date().toISOString();
+
+  const locationId = q.location_id ?? q.locationId ?? '';
+  const questionText = q.question_text ?? q.questionText ?? '';
+  const createdAtValue = q.asked_at ?? q.created_at ?? q.createdAt ?? null;
+  const createdAt = typeof createdAtValue === 'string' ? createdAtValue : null;
+  const answerStatusRaw = q.answer_status ?? (q.status === 'answered' ? 'answered' : q.status === 'pending' ? 'pending' : undefined);
+  const answerStatus = (answerStatusRaw ?? 'unanswered') as QuestionEntity['answerStatus'];
+  const upvoteCount = q.upvote_count ?? q.upvoteCount ?? 0;
+
+  const base: GMBQuestion = {
+    id: q.id ?? crypto.randomUUID?.() ?? `${Date.now()}`,
+    location_id: locationId,
+    user_id: q.user_id ?? '',
+    gmb_account_id: q.gmb_account_id ?? undefined,
+    question_id: q.question_id ?? undefined,
+    external_question_id: q.external_question_id ?? undefined,
+    question_text: questionText,
+    asked_at: createdAt,
+    author_name: q.author_name ?? undefined,
+    author_display_name: q.author_display_name ?? undefined,
+    author_profile_photo_url: q.author_profile_photo_url ?? undefined,
+    author_type: q.author_type ?? undefined,
+    answer_text: q.answer_text ?? undefined,
+    answered_at: q.answered_at ?? undefined,
+    answered_by: q.answered_by ?? undefined,
+    answer_status: answerStatus === 'unanswered' ? 'unanswered' : (answerStatus as GMBQuestion['answer_status']),
+    answer_id: q.answer_id ?? undefined,
+    upvote_count: upvoteCount,
+    total_answer_count: q.total_answer_count ?? undefined,
+    ai_suggested_answer: q.ai_suggested_answer ?? undefined,
+    ai_confidence_score: q.ai_confidence_score ?? undefined,
+    ai_answer_generated: q.ai_answer_generated ?? undefined,
+    ai_category: q.ai_category ?? undefined,
+    status: q.status ?? undefined,
+    priority: q.priority ?? undefined,
+    question_url: q.question_url ?? undefined,
+    google_resource_name: q.google_resource_name ?? undefined,
+    internal_notes: q.internal_notes ?? undefined,
+    created_at: q.created_at ?? createdAt ?? now,
+    updated_at: q.updated_at ?? now,
+    location_name: q.location_name ?? q.locationName ?? undefined,
+    location_address: q.location_address ?? q.locationAddress ?? undefined,
+  };
 
   return {
-    id: question.id,
-    location_id: q.location_id ?? q.locationId ?? '',
-    user_id: q.user_id ?? '',
-    gmb_account_id: q.gmb_account_id,
-    question_id: q.question_id,
-    external_question_id: q.external_question_id,
-    question_text: q.question_text ?? q.questionText ?? '',
-    asked_at: q.asked_at ?? q.createdAt ?? null,
-    author_name: q.author_name,
-    author_display_name: q.author_display_name,
-    author_profile_photo_url: q.author_profile_photo_url,
-    author_type: q.author_type,
-    answer_text: q.answer_text,
-    answered_at: q.answered_at,
-    answered_by: q.answered_by,
-    answer_status: q.answer_status ?? q.status ?? 'unanswered',
-    answer_id: q.answer_id,
-    upvote_count: q.upvote_count ?? q.upvoteCount ?? 0,
-    total_answer_count: q.total_answer_count,
-    ai_suggested_answer: q.ai_suggested_answer,
-    ai_confidence_score: q.ai_confidence_score,
-    ai_answer_generated: q.ai_answer_generated,
-    ai_category: q.ai_category,
-    status: q.status,
-    priority: q.priority,
-    question_url: q.question_url,
-    google_resource_name: q.google_resource_name,
-    internal_notes: q.internal_notes,
-    created_at: q.created_at ?? new Date().toISOString(),
-    updated_at: q.updated_at ?? new Date().toISOString(),
-    location_name: q.location_name ?? q.locationName,
-    location_address: q.location_address ?? q.locationAddress,
+    ...base,
+    locationId,
+    questionText,
+    createdAt,
+    answerStatus,
+    upvoteCount,
   };
 }
