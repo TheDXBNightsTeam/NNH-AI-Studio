@@ -8,6 +8,14 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
+type Suggestion = {
+  readonly title: string
+  readonly description: string
+  readonly cta?: string
+  readonly onApply?: () => void
+  readonly disabled?: boolean
+}
+
 const FEATURE_CATEGORY_KEYS: readonly FeatureCategoryKey[] = ['amenities', 'payment_methods', 'services', 'atmosphere']
 
 const DEFAULT_FEATURES: FeatureSelection = {
@@ -104,14 +112,14 @@ export function FeaturesTab({ profile, onChange, onDirty }: TabComponentProps) {
     window.dispatchEvent(new Event('dashboard:refresh'))
     console.log('[FeaturesTab] Feature toggled, dashboard refresh triggered')
   }
-
+  
   return (
     <div className="space-y-8">
       <div className="text-center py-4">
         <h2 className="text-2xl font-bold text-white mb-2">✨ Features & Attributes</h2>
         <p className="text-zinc-400">Enable features that your business offers to improve discoverability</p>
       </div>
-
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-zinc-800/50 rounded-xl p-6 text-center">
           <div className="text-3xl font-bold text-white mb-1">{activeFeatureCount}</div>
@@ -126,7 +134,7 @@ export function FeaturesTab({ profile, onChange, onDirty }: TabComponentProps) {
           <div className="text-sm text-zinc-400">Missing Features</div>
         </div>
       </div>
-
+      
       {FEATURE_CATEGORY_KEYS.map((category) => {
         const categoryConfig = allFeatures[category] ?? []
         const enabledFeatures = new Set(profile.features?.[category] ?? [])
@@ -135,7 +143,7 @@ export function FeaturesTab({ profile, onChange, onDirty }: TabComponentProps) {
 
         return (
           <div key={category} className="bg-zinc-800/30 border border-zinc-800 rounded-xl overflow-hidden">
-            <FeatureCategorySection
+        <FeatureCategorySection
               categoryKey={category}
               name={
                 {
@@ -206,7 +214,7 @@ interface FeatureCategorySectionProps {
 
 function FeatureCategorySection({ categoryKey, name, icon, total, enabledCount, completion, children }: FeatureCategorySectionProps) {
   const [isExpanded, setExpanded] = useState(true)
-
+  
   return (
     <div>
       <button
@@ -231,7 +239,7 @@ function FeatureCategorySection({ categoryKey, name, icon, total, enabledCount, 
           <span className={cn('text-zinc-400 transition-transform', isExpanded ? 'rotate-180' : '')}>▼</span>
         </div>
       </button>
-
+      
       {isExpanded && (
         <div id={`${categoryKey}-features`} className="border-t border-zinc-800">
           {children}
@@ -351,14 +359,6 @@ export function BusinessInfoTab({ profile, onChange, onDirty }: TabComponentProp
     },
     [profile, commitProfile],
   )
-
-  type Suggestion = {
-    readonly title: string
-    readonly description: string
-    readonly cta?: string
-    readonly onApply?: () => void
-    readonly disabled?: boolean
-  }
 
   const criticalSuggestions = useMemo<Suggestion[]>(() => {
     const suggestions: Suggestion[] = []
@@ -491,7 +491,7 @@ export function BusinessInfoTab({ profile, onChange, onDirty }: TabComponentProp
         <MetricCard title="Missing" subtitle="Items to fix" value={`${missingChecklist}`} accent="bg-red-500/15 text-red-200" />
         <MetricCard title="Compet." subtitle="Rank" value={competitorRank} accent="bg-sky-500/15 text-sky-200" />
       </div>
-
+      
       <div className="flex flex-wrap items-center gap-3">
         {(
           [
@@ -516,23 +516,23 @@ export function BusinessInfoTab({ profile, onChange, onDirty }: TabComponentProp
           </button>
         ))}
       </div>
-
+      
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
           <div className={infoCardClass('basic')}>
             <div className="flex items-center justify-between">
-              <div>
+      <div>
                 <h3 className="text-lg font-semibold text-white">🏢 Basic details</h3>
                 <p className="text-xs text-zinc-400">Edit your core listing information</p>
-              </div>
+      </div>
               <Badge variant="outline" className="border-emerald-500/40 text-emerald-200">
                 AI Score +8 when completed
               </Badge>
             </div>
             <div className="mt-4 space-y-3">
-              <div>
+      <div>
                 <label className="text-xs uppercase tracking-wide text-zinc-500">Business name</label>
-                <input
+        <input
                   value={profile.locationName}
                   onChange={(event) => handleInputChange('locationName', event.target.value)}
                   className="mt-1 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white focus:border-orange-500 focus:outline-none"
@@ -546,31 +546,31 @@ export function BusinessInfoTab({ profile, onChange, onDirty }: TabComponentProp
                     Skip ✗
                   </Button>
                 </div>
-              </div>
-
+      </div>
+      
               <div className="grid gap-3 sm:grid-cols-2">
-                <div>
+        <div>
                   <label className="text-xs uppercase tracking-wide text-zinc-500">Phone number</label>
-                  <input
-                    value={profile.phone}
+          <input
+            value={profile.phone}
                     onChange={(event) => handleInputChange('phone', event.target.value)}
                     className="mt-1 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white focus:border-orange-500 focus:outline-none"
-                    placeholder="+971 XX XXX XXXX"
-                  />
-                </div>
-                <div>
+            placeholder="+971 XX XXX XXXX"
+          />
+        </div>
+        <div>
                   <label className="text-xs uppercase tracking-wide text-zinc-500">Website</label>
-                  <input
-                    value={profile.website}
+          <input
+            value={profile.website}
                     onChange={(event) => handleInputChange('website', event.target.value)}
                     className="mt-1 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white focus:border-orange-500 focus:outline-none"
                     placeholder="https://example.com"
                   />
                 </div>
               </div>
-            </div>
-          </div>
-
+        </div>
+      </div>
+      
           <div className={infoCardClass('basic')}>
             <h3 className="text-lg font-semibold text-white">📝 Description</h3>
             <p className="text-xs text-zinc-400">Tell customers what makes you unique</p>
@@ -695,9 +695,9 @@ export function BusinessInfoTab({ profile, onChange, onDirty }: TabComponentProp
                 {competitorIntel.map((item) => (
                   <li key={item.label}>{item.label}: {item.available ? '✅' : '⬜'}</li>
                 ))}
-              </ul>
-            </div>
+            </ul>
           </div>
+        </div>
 
           <div className={infoCardClass('insights')}>
             <div className="flex items-center justify-between">
@@ -846,7 +846,7 @@ function SuggestionGroup({ title, badge, suggestions }: SuggestionGroupProps) {
 
 export function CategoriesTab({ profile, onChange, onDirty }: TabComponentProps) {
   const [searchQuery, setSearchQuery] = useState('')
-
+  
   const addCategory = (category: string) => {
     if (profile.additionalCategories.length >= 9 || profile.additionalCategories.includes(category)) {
       return
@@ -862,7 +862,7 @@ export function CategoriesTab({ profile, onChange, onDirty }: TabComponentProps)
     window.dispatchEvent(new Event('dashboard:refresh'))
     console.log('[CategoriesTab] Category added, dashboard refresh triggered')
   }
-
+  
   const removeCategory = (category: string) => {
     const next: BusinessProfilePayload = {
       ...profile,
@@ -895,14 +895,14 @@ export function CategoriesTab({ profile, onChange, onDirty }: TabComponentProps)
     window.dispatchEvent(new Event('dashboard:refresh'))
     console.log('[CategoriesTab] Primary category updated, dashboard refresh triggered')
   }
-
+  
   return (
     <div className="space-y-6 max-w-3xl">
       <div className="text-center py-4">
         <h2 className="text-2xl font-bold text-white mb-2">🏷️ Business Categories</h2>
         <p className="text-zinc-400">Help customers find your business by selecting relevant categories</p>
       </div>
-
+      
       <div>
         <label className="block text-sm font-medium text-white mb-2">Primary Category *</label>
         <select
@@ -918,14 +918,14 @@ export function CategoriesTab({ profile, onChange, onDirty }: TabComponentProps)
         </select>
         <p className="text-xs text-zinc-500 mt-1">Your main business category - choose the most relevant one</p>
       </div>
-
+      
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm font-medium text-white">
             Additional Categories ({profile.additionalCategories.length}/9)
           </label>
         </div>
-
+        
         {profile.additionalCategories.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
             {profile.additionalCategories.map((category) => (
@@ -943,7 +943,7 @@ export function CategoriesTab({ profile, onChange, onDirty }: TabComponentProps)
             ))}
           </div>
         )}
-
+        
         <input
           type="text"
           value={searchQuery}
@@ -951,7 +951,7 @@ export function CategoriesTab({ profile, onChange, onDirty }: TabComponentProps)
           placeholder="Search categories..."
           className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none mb-3"
         />
-
+        
         <div className="max-h-64 overflow-y-auto space-y-2 bg-zinc-900/50 border border-zinc-800 rounded-lg p-3">
           {filteredCategories.map((category) => (
             <button
@@ -966,7 +966,7 @@ export function CategoriesTab({ profile, onChange, onDirty }: TabComponentProps)
           ))}
         </div>
       </div>
-
+      
       <div className="bg-purple-950/20 border border-purple-500/30 rounded-xl p-4">
         <div className="flex gap-3">
           <span className="text-2xl" aria-hidden>
@@ -1030,51 +1030,51 @@ export function LinksTab({ profile, onChange, onDirty }: TabComponentProps) {
       description: 'Link for booking appointments',
     },
   ]
-
+  
   return (
     <div className="space-y-6 max-w-3xl">
       <div className="text-center py-4">
         <h2 className="text-2xl font-bold text-white mb-2">🔗 Special Links</h2>
         <p className="text-zinc-400">Add direct action links to improve customer experience</p>
       </div>
-
+      
       {links.map((link) => {
         const value = profile.specialLinks?.[link.key] ?? ''
 
         return (
-          <div key={link.key} className="bg-zinc-800/30 border border-zinc-800 rounded-xl p-6">
-            <div className="flex items-center gap-3 mb-3">
+        <div key={link.key} className="bg-zinc-800/30 border border-zinc-800 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-3">
               <span className="text-2xl" aria-hidden>
                 {link.icon}
               </span>
-              <div>
+            <div>
                 <label className="block text-sm font-medium text-white">{link.label}</label>
-                <p className="text-xs text-zinc-500">{link.description}</p>
-              </div>
+              <p className="text-xs text-zinc-500">{link.description}</p>
             </div>
-
-            <input
-              type="url"
+          </div>
+          
+          <input
+            type="url"
               value={value ?? ''}
               onChange={(event) => handleChange(link.key, event.target.value)}
-              placeholder={link.placeholder}
-              className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none"
-            />
-
+            placeholder={link.placeholder}
+            className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none"
+          />
+          
             {value && (
-              <a
+            <a
                 href={value}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 mt-2 text-sm text-orange-400 hover:text-orange-300"
-              >
-                Test Link →
-              </a>
-            )}
-          </div>
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 mt-2 text-sm text-orange-400 hover:text-orange-300"
+            >
+              Test Link →
+            </a>
+          )}
+        </div>
         )
       })}
-
+      
       <div className="bg-green-950/20 border border-green-500/30 rounded-xl p-4">
         <div className="flex gap-3">
           <span className="text-2xl" aria-hidden>
@@ -1138,14 +1138,14 @@ export function MoreTab({ profile, onChange, onDirty }: TabComponentProps) {
     window.dispatchEvent(new Event('dashboard:refresh'))
     console.log('[MoreTab] Service area toggled, dashboard refresh triggered')
   }
-
+  
   return (
     <div className="space-y-6 max-w-3xl">
       <div className="text-center py-4">
         <h2 className="text-2xl font-bold text-white mb-2">📋 More Attributes</h2>
         <p className="text-zinc-400">Additional business information and settings</p>
       </div>
-
+      
       <div>
         <label className="block text-sm font-medium text-white mb-3">From the Business</label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1176,7 +1176,7 @@ export function MoreTab({ profile, onChange, onDirty }: TabComponentProps) {
         </div>
         <p className="text-xs text-zinc-500 mt-2">These attributes help customers find businesses that align with their values</p>
       </div>
-
+      
       <div>
         <label className="block text-sm font-medium text-white mb-2">Opening Date</label>
         <input
@@ -1187,7 +1187,7 @@ export function MoreTab({ profile, onChange, onDirty }: TabComponentProps) {
         />
         <p className="text-xs text-zinc-500 mt-1">When did your business first open?</p>
       </div>
-
+      
       <div className="bg-zinc-800/30 border border-zinc-800 rounded-xl p-6">
         <label className="flex items-center gap-3 cursor-pointer">
           <input
@@ -1202,7 +1202,7 @@ export function MoreTab({ profile, onChange, onDirty }: TabComponentProps) {
           </div>
         </label>
       </div>
-
+      
       <div className="bg-zinc-950/50 border border-zinc-800 rounded-xl p-4">
         <div className="flex gap-3">
           <span className="text-2xl" aria-hidden>
