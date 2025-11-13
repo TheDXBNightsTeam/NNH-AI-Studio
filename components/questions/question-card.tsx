@@ -41,7 +41,7 @@ interface QuestionMetadata {
   flagged_reason?: string;
 }
 
-type QuestionType = GMBQuestion & {
+type QuestionType = GMBQuestion & { 
   location_name?: string;
   gmb_locations?: { location_name?: string };
   metadata?: QuestionMetadata | null;
@@ -178,7 +178,7 @@ export function QuestionCard({ question, isSelected, onClick, onAnswer }: Questi
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-semibold text-white">
                     {question.author_name || question.author_display_name || 'Anonymous'}
-                  </span>
+                </span>
                   <Badge className={`${statusBadge.className} flex items-center gap-1 text-[11px] uppercase tracking-wide`}>
                     <statusBadge.icon className="h-3.5 w-3.5" />
                     {statusBadge.label}
@@ -224,15 +224,15 @@ export function QuestionCard({ question, isSelected, onClick, onAnswer }: Questi
                 <div className="flex items-center gap-1">
                   <MessageSquare className="h-4 w-4" />
                   <span>{totalAnswers} answers on Google</span>
-                </div>
+          </div>
               ) : null}
               {question.ai_category ? (
                 <div className="flex items-center gap-1">
                   <Layers className="h-4 w-4" />
                   <span>Intent: {String(question.ai_category).replace(/_/g, ' ')}</span>
-                </div>
+          </div>
               ) : null}
-            </div>
+        </div>
 
             <div className="flex flex-wrap gap-2">
               <Button
@@ -258,7 +258,7 @@ export function QuestionCard({ question, isSelected, onClick, onAnswer }: Questi
               >
                 <Bookmark className="mr-2 h-4 w-4" /> Pin
               </Button>
-            </div>
+        </div>
 
             {isAnswered && question.answer_text ? (
               <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
@@ -301,21 +301,21 @@ export function QuestionCard({ question, isSelected, onClick, onAnswer }: Questi
               >
                 <Send className="mr-2 h-4 w-4" /> {aiDraftText ? 'Review & send' : 'Generate draft'}
               </Button>
-              <Button
-                size="sm"
+            <Button 
+              size="sm"
                 variant="ghost"
                 className="text-orange-200 hover:text-orange-100"
                 onClick={(event) => event.stopPropagation()}
-              >
+            >
                 <CornerDownRight className="mr-2 h-4 w-4" /> Configure rules
-              </Button>
+            </Button>
             </div>
             <div className="rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-2 text-xs text-orange-100/80">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-3.5 w-3.5" /> Knowledge base
               </div>
               <p className="mt-1">Source: {aiSourceLabel}</p>
-            </div>
+        </div>
           </div>
         </div>
       </CardContent>
@@ -327,22 +327,22 @@ function formatTimeAgo(date: string | undefined | null): string {
   if (!date) {
     return 'Unknown';
   }
-
+  
   try {
     const now = new Date();
     let questionDate: Date;
-
+    
     const hasTimezone = date.includes('Z') || /[+-]\d{2}:\d{2}$/.test(date) || /[+-]\d{4}$/.test(date);
-
+    
     questionDate = hasTimezone ? new Date(date) : new Date(`${date}Z`);
-
+    
     if (Number.isNaN(questionDate.getTime())) {
       return 'Unknown';
     }
-
+    
     const diffMs = now.getTime() - questionDate.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
+    
     if (diffDays < 0) return 'Recently';
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return '1 day ago';

@@ -823,14 +823,14 @@ function ReviewsFeedSection({
         <div className="flex items-center gap-2 text-xs text-zinc-500">
           <ArrowUpRight className="h-3.5 w-3.5 text-orange-400" />
           Real-time sync enabled
-        </div>
+          </div>
       </header>
 
       <div className="max-h-[calc(100vh-320px)] overflow-y-auto px-6 py-6">
         {error && <ErrorBanner message={error} />}
 
         {loading && !hasReviews && (
-          <div className="flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-12">
             <RefreshCw className="w-8 h-8 animate-spin text-orange-500" aria-hidden="true" />
             </div>
           )}
@@ -880,8 +880,8 @@ function ReviewsFeedSection({
                 </div>
               )}
           </div>
-        )}
-      </div>
+          )}
+        </div>
     </section>
   );
 }
@@ -890,7 +890,7 @@ function ErrorBanner({ message }: { message: string }) {
   return (
     <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-4">
       <p className="text-red-400">{message}</p>
-    </div>
+            </div>
   );
 }
 
@@ -1068,7 +1068,7 @@ function AutoReplySidebar({
             <PreferenceRow label="⭐ 3" description="Manual review with AI draft suggestion." active />
             <PreferenceRow label="⭐ 2" description="Escalate with urgency, AI draft ready." />
             <PreferenceRow label="⭐ 1" description="Alert team + manual response required." />
-        </div>
+          </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -1076,7 +1076,7 @@ function AutoReplySidebar({
               <span className="text-xs text-zinc-500">
                 {selectedDisplay} {selectedDisplay === 1 ? 'review' : 'reviews'} queued
               </span>
-            </div>
+        </div>
             <Button
               onClick={onBulkDrafts}
               disabled={bulkDrafting || autoReplyBusy}

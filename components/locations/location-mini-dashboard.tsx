@@ -135,23 +135,23 @@ export function LocationMiniDashboard({ location, isExpanded, onToggle, metrics 
       >
         {data.length > 1 ? (
           <>
-            <path
-              d={pathData}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="text-primary"
-            />
-            {points.map((point, index) => (
-              <circle
-                key={index}
-                cx={point.x}
-                cy={point.y}
-                r="2"
-                fill="currentColor"
-                className="text-primary"
-              />
-            ))}
+        <path
+          d={pathData}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="text-primary"
+        />
+        {points.map((point, index) => (
+          <circle
+            key={index}
+            cx={point.x}
+            cy={point.y}
+            r="2"
+            fill="currentColor"
+            className="text-primary"
+          />
+        ))}
           </>
         ) : (
           <circle

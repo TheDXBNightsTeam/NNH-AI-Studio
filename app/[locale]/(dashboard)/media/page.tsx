@@ -8,7 +8,7 @@ export default function MediaLibraryPage() {
           title="Media Library"
           description="Centralized asset management, AI tagging, and brand-safe automation are almost here. Soon you'll curate every visual from one smart library."
           icon="🖼️"
-        />
+          />
       </div>
     </div>
   );

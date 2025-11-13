@@ -7,7 +7,7 @@ export default function GridTrackingPage() {
         <ComingSoon
           title="Local Grid Tracking"
           description="Hyper-local rank tracking with AI diagnostics and competitive overlays is on the way. Soon you'll monitor SERP positions across every grid point in seconds."
-          icon="🗺️"
+            icon="🗺️"
         />
       </div>
     </div>

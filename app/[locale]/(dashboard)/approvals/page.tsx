@@ -9,7 +9,7 @@ export default function ApprovalsPage() {
         <ComingSoon
           title="Approvals Workflow"
           description="Centralized content approvals, AI guardrails, and compliance controls are nearly complete. Soon you’ll manage every review cycle from a single command center."
-          icon="✅"
+            icon="✅"
         />
       </div>
     </div>
