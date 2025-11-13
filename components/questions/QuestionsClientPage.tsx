@@ -105,6 +105,13 @@ export function QuestionsClientPage({
   const [bulkProgress, setBulkProgress] = useState({ completed: 0, total: 0 });
   const { data: dashboardSnapshot } = useDashboardSnapshot();
 
+  const normalizedSelectedQuestion = useMemo(() => {
+    if (!selectedQuestion) {
+      return null;
+    }
+    return normalizeQuestionEntity(selectedQuestion);
+  }, [selectedQuestion]);
+
   const stats = useMemo<QuestionStatsSnapshot | null>(() => {
     const questionStats = dashboardSnapshot?.questionStats;
     if (!questionStats) {
@@ -461,7 +468,7 @@ export function QuestionsClientPage({
       />
 
       <AnswerDialog
-        question={selectedQuestion}
+        question={normalizedSelectedQuestion}
         isOpen={answerDialogOpen}
         onClose={() => {
           setAnswerDialogOpen(false);
@@ -1150,4 +1157,41 @@ function QuestionsPagination({ currentPage, totalPages, onPageChange }: Question
       </div>
     </footer>
   );
+}
+
+function normalizeQuestionEntity(question: QuestionEntity): GMBQuestion {
+  return {
+    id: question.id,
+    location_id: question.location_id ?? question.locationId ?? '',
+    user_id: question.user_id ?? '',
+    gmb_account_id: question.gmb_account_id,
+    question_id: question.question_id,
+    external_question_id: question.external_question_id,
+    question_text: question.question_text ?? (question as any).questionText ?? '',
+    asked_at: question.asked_at ?? (question as any).createdAt ?? null,
+    author_name: question.author_name,
+    author_display_name: question.author_display_name,
+    author_profile_photo_url: question.author_profile_photo_url,
+    author_type: question.author_type,
+    answer_text: question.answer_text,
+    answered_at: question.answered_at,
+    answered_by: question.answered_by,
+    answer_status: question.answer_status ?? (question as any).status ?? 'unanswered',
+    answer_id: question.answer_id,
+    upvote_count: question.upvote_count ?? question.upvoteCount ?? 0,
+    total_answer_count: question.total_answer_count,
+    ai_suggested_answer: question.ai_suggested_answer,
+    ai_confidence_score: question.ai_confidence_score,
+    ai_answer_generated: question.ai_answer_generated,
+    ai_category: question.ai_category,
+    status: question.status,
+    priority: question.priority,
+    question_url: question.question_url,
+    google_resource_name: question.google_resource_name,
+    internal_notes: question.internal_notes,
+    created_at: question.created_at ?? new Date().toISOString(),
+    updated_at: question.updated_at ?? new Date().toISOString(),
+    location_name: question.location_name ?? (question as any).locationName,
+    location_address: question.location_address ?? (question as any).locationAddress,
+  };
 }
