@@ -30,8 +30,9 @@ import { QuestionCard } from './question-card';
 import { AnswerDialog } from './answer-dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useDashboardSnapshot } from '@/hooks/use-dashboard-cache';
+import type { GMBQuestion } from '@/lib/types/database';
 
-type QuestionEntity = Record<string, any>;
+type QuestionEntity = GMBQuestion & Record<string, any>;
 
 interface QuestionStatsSnapshot {
   total: number;
@@ -231,16 +232,16 @@ export function QuestionsClientPage({
       const params = new URLSearchParams(searchParamsString);
 
       if (value && value.length > 0) {
-        params.set(key, value);
-      } else {
-        params.delete(key);
-      }
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
 
-      if (key !== 'page') {
-        params.set('page', '1');
-      }
+    if (key !== 'page') {
+      params.set('page', '1');
+    }
 
-      router.push(`/questions?${params.toString()}`);
+    router.push(`/questions?${params.toString()}`);
     },
     [router, searchParamsString],
   );
@@ -597,8 +598,8 @@ function MetricTile({
       <CardContent className="py-5">
         <p className="text-sm text-zinc-400">{label}</p>
         <p className="mt-1 text-3xl font-semibold">{value}</p>
-      </CardContent>
-    </Card>
+              </CardContent>
+            </Card>
   );
 }
 
@@ -675,7 +676,7 @@ function QuestionsFilterBar({
         >
           <Download className="h-4 w-4" /> Export CSV
         </Button>
-      </div>
+        </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div>
@@ -750,8 +751,8 @@ function QuestionsFilterBar({
           <Button variant="ghost" size="sm" onClick={onClearFilters} className="text-zinc-400">
             Reset filters
           </Button>
-        </div>
-      )}
+            </div>
+          )}
     </section>
   );
 }
@@ -820,14 +821,14 @@ function QuestionsFeedSection({
   return (
     <section className="space-y-4">
       {questions.map((question) => (
-        <QuestionCard
-          key={question.id}
-          question={question}
-          isSelected={selectedQuestion?.id === question.id}
+                <QuestionCard
+                  key={question.id}
+                  question={question}
+                  isSelected={selectedQuestion?.id === question.id}
           onClick={() => onSelectQuestion(question)}
           onAnswer={() => onAnswer(question)}
-        />
-      ))}
+                />
+              ))}
     </section>
   );
 }
@@ -879,7 +880,7 @@ function AutoAnswerSidebar({
             <Sparkles className="h-5 w-5" />
           </div>
           <span className="absolute -right-1 -top-1 h-3 w-3 animate-pulse rounded-full border border-zinc-900 bg-emerald-400" />
-        </div>
+            </div>
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-white">AI Answer Engine</h3>
           <p className="text-xs text-zinc-400">
@@ -889,7 +890,7 @@ function AutoAnswerSidebar({
         <Badge className="bg-orange-500/20 text-orange-200 border border-orange-500/40">
           {autoAnswerEnabled ? 'Active' : 'Standby'}
         </Badge>
-      </div>
+        </div>
 
       <Card className="border border-zinc-800/60 bg-zinc-900/40">
         <CardContent className="space-y-3 p-4">
@@ -955,11 +956,11 @@ function AutoAnswerSidebar({
             <div>
               <p className="text-sm font-semibold text-white">AI suggestion</p>
               <p className="text-xs text-orange-100/80">Topic: {suggestion?.topic ?? 'General'}</p>
-            </div>
+        </div>
             <Badge className="bg-white/10 text-white">
               {suggestion ? `${suggestion.confidence}% match` : 'Ready'}
             </Badge>
-          </div>
+      </div>
           <p className="text-sm text-orange-50/90">
             {suggestion?.title ?? 'Select a question to generate a tailored answer.'}
           </p>
@@ -1026,7 +1027,7 @@ function AutoAnswerSidebar({
             >
               <span className="text-xs uppercase tracking-wide text-zinc-500">{item.label}</span>
               <span className="text-sm font-semibold text-zinc-100">{item.value}</span>
-            </div>
+          </div>
           ))}
         </CardContent>
       </Card>
